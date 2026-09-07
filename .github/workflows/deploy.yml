@@ -63,6 +63,9 @@ jobs:
                 || github.event.inputs.ref
             }}
 
+      - name: Record deployed commit for traceability
+        run: echo "DEPLOY_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -93,17 +96,19 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --config wrangler.staging.jsonc --var GIT_COMMIT:${{ github.sha }}
+          command: deploy --config wrangler.staging.jsonc --var GIT_COMMIT:${{ env.DEPLOY_SHA }}
 
       - name: Staging post-deploy smoke
         if: env.STAGING_UNCONFIGURED != 'true' && vars.STAGING_URL != ''
         run: bash scripts/post-deploy-smoke.sh "${{ vars.STAGING_URL }}"
 
   production:
+    # Boolean input: compare against boolean true. String 'true' would coerce
+    # to NaN in GitHub's number-based loose equality and never open the gate.
     if: >-
       github.event_name == 'workflow_dispatch' &&
       inputs.environment == 'production' &&
-      inputs.confirm_production == 'true'
+      inputs.confirm_production == true
     runs-on: ubuntu-latest
     # The explicit gate: require approval (and, recommended, required
     # reviewers) in the `production` GitHub Environment before this job gets
@@ -114,6 +119,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.ref }}
+
+      # github.sha is the dispatched ref tip, not necessarily the checked-out
+      # commit (rollback deploys use an older SHA). Stamp what is deployed.
+      - name: Record deployed commit for traceability
+        run: echo "DEPLOY_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -149,7 +159,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --var GIT_COMMIT:${{ github.sha }}
+          command: deploy --var GIT_COMMIT:${{ env.DEPLOY_SHA }}
 
       - name: Production post-deploy smoke
         run: bash scripts/post-deploy-smoke.sh "${{ vars.PRODUCTION_URL || 'https://frigo.tungjpstore.net' }}"
