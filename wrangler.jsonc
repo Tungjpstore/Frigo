@@ -72,6 +72,9 @@
       "persist": true
     }
   },
+  "triggers": {
+    "crons": ["0 3 * * *"]
+  },
   "routes": [
     {
       "pattern": "frigo.tungjpstore.net",

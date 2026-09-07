@@ -25,6 +25,17 @@ export interface Env {
   WEEK_SCHEMA_MODE?: WeekSchemaMode;
   APP_URL?: string;
   AI_MOCK_MODE?: string;
+  // Deploy traceability: injected by the deploy workflow as a Wrangler var.
+  GIT_COMMIT?: string;
+  // Best-effort (default) degrades to isolate-local counters when KV fails;
+  // fail-closed rejects the request instead. Per-limiter call sites can
+  // override this with `enforcement`.
+  RATE_LIMIT_ENFORCEMENT?: 'best-effort' | 'fail-closed';
+  // Scheduled cleanup retention overrides (days), see config/retention.ts.
+  CLEANUP_OTP_RETENTION_DAYS?: string;
+  CLEANUP_SESSION_RETENTION_DAYS?: string;
+  CLEANUP_READY_JOB_RETENTION_DAYS?: string;
+  CLEANUP_FAILED_JOB_RETENTION_DAYS?: string;
 
   QWEN_API_KEY?: string;
   QWEN_BASE_URL?: string;

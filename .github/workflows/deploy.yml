@@ -1,0 +1,165 @@
+# Frigo deployment pipeline.
+#
+# Flow: CI (separate workflow) -> merge to main -> staging deploy -> staging
+# smoke -> PRODUCTION APPROVAL -> production deploy -> production smoke.
+#
+# Staging deploys automatically after CI succeeds on main. Production NEVER
+# deploys from a merge: it requires a manual workflow_dispatch with the
+# `confirm` input AND approval of the `production` GitHub Environment
+# (configure required reviewers there; see DEPLOYMENT.md). Secrets live only
+# in GitHub secrets / environment secrets — never in this file.
+
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options:
+          - staging
+          - production
+        default: production
+      ref:
+        description: Git ref (branch/tag/SHA) to deploy
+        type: string
+        default: main
+      confirm_production:
+        description: Confirm this is an intentional production deployment
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Serialize deployments; never cancel in progress, the current run must finish.
+concurrency:
+  group: frigo-deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout validated commit
+        uses: actions/checkout@v4
+        with:
+          ref: >-
+            ${{
+              github.event_name == 'workflow_run'
+                && github.event.workflow_run.head_sha
+                || github.event.inputs.ref
+            }}
+
+      - name: Record deployed commit for traceability
+        run: echo "DEPLOY_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify staging configuration exists
+        run: |
+          if [ ! -f wrangler.staging.jsonc ]; then
+            echo "::notice::wrangler.staging.jsonc not found — staging is not provisioned, skipping deployment. See DEPLOYMENT.md."
+            echo "STAGING_UNCONFIGURED=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build
+        if: env.STAGING_UNCONFIGURED != 'true'
+        run: pnpm build
+
+      - name: Deploy to Cloudflare staging
+        if: env.STAGING_UNCONFIGURED != 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --config wrangler.staging.jsonc --var GIT_COMMIT:${{ env.DEPLOY_SHA }}
+
+      - name: Staging post-deploy smoke
+        if: env.STAGING_UNCONFIGURED != 'true' && vars.STAGING_URL != ''
+        run: bash scripts/post-deploy-smoke.sh "${{ vars.STAGING_URL }}"
+
+  production:
+    # Boolean input: compare against boolean true. String 'true' would coerce
+    # to NaN in GitHub's number-based loose equality and never open the gate.
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.environment == 'production' &&
+      inputs.confirm_production == true
+    runs-on: ubuntu-latest
+    # The explicit gate: require approval (and, recommended, required
+    # reviewers) in the `production` GitHub Environment before this job gets
+    # its secrets.
+    environment: production
+    steps:
+      - name: Checkout requested ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+
+      # github.sha is the dispatched ref tip, not necessarily the checked-out
+      # commit (rollback deploys use an older SHA). Stamp what is deployed.
+      - name: Record deployed commit for traceability
+        run: echo "DEPLOY_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Local gates
+        run: |
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+          pnpm check:migrations
+          pnpm build
+
+      # READ-ONLY schema expectation check against remote D1. It does not
+      # apply migrations. If the deployed schema is missing something this
+      # fails BEFORE any code is deployed; the operator then runs
+      # `wrangler d1 migrations apply --remote` manually (documented in
+      # DEPLOYMENT.md) and re-dispatches.
+      - name: Pre-deploy schema gate (read-only)
+        run: bash scripts/d1-schema-gate.sh remote
+
+      - name: Deploy to Cloudflare production
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --var GIT_COMMIT:${{ env.DEPLOY_SHA }}
+
+      - name: Production post-deploy smoke
+        run: bash scripts/post-deploy-smoke.sh "${{ vars.PRODUCTION_URL || 'https://frigo.tungjpstore.net' }}"

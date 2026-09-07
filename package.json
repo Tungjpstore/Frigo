@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:web": "vite",
-    "dev:worker": "wrangler dev",
+    "dev:worker": "wrangler dev --var ENVIRONMENT:development",
     "build": "vite build && tsc -p tsconfig.worker.json",
     "build:web": "vite build",
     "build:worker": "tsc -p tsconfig.worker.json",

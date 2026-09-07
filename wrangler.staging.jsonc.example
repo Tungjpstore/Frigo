@@ -1,0 +1,65 @@
+// Frigo STAGING deployment configuration template.
+//
+// Copy this file to `wrangler.staging.jsonc` and replace every
+// <REPLACE_...> placeholder with REAL staging infrastructure provisioned in
+// the Cloudflare account (see DEPLOYMENT.md, "Staging setup"). Do NOT copy
+// production identifiers here: staging must never share production D1, KV,
+// R2, or queue resources. The deploy workflow refuses to deploy staging when
+// this file does not exist, so a half-configured staging can never inherit
+// production bindings from wrangler.jsonc.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "frigo-staging",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2024-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // Served on <name>.<account>.workers.dev — no production DNS involved.
+  "workers_dev": true,
+
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "single-page-application"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "frigo-db-staging",
+      "database_id": "<REPLACE_WITH_STAGING_D1_DATABASE_ID>",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "IMAGES", "bucket_name": "frigo-images-staging" }],
+  "kv_namespaces": [{ "binding": "CACHE", "id": "<REPLACE_WITH_STAGING_KV_NAMESPACE_ID>" }],
+
+  // Staging processes scans inline (SCAN_QUEUE_MODE: "sync" below), so no
+  // queue bindings are declared. Declare real staging queues here instead if
+  // staging must exercise the async consumer.
+  "ai": { "binding": "AI" },
+  "vars": {
+    "ENVIRONMENT": "staging",
+    // Mocked AI avoids third-party cost/keys in staging; production must
+    // never run with AI_MOCK_MODE=true (config gate fails closed).
+    "AI_MOCK_MODE": "true",
+    "SCAN_QUEUE_MODE": "sync",
+    "WEEK_SCHEMA_MODE": "dual",
+    // Cloudflare PUBLISHED Turnstile test keys (always pass). Never use these
+    // in production.
+    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA"
+  },
+
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 0.1,
+      "invocation_logs": true,
+      "persist": true
+    }
+  },
+
+  "triggers": {
+    "crons": ["0 3 * * *"]
+  }
+}

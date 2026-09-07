@@ -1,0 +1,161 @@
+import { Env } from '../types';
+
+/**
+ * Centralized configuration validation. Production must fail loudly when the
+ * deployment is dangerous; every message is a static string and never embeds
+ * secret values, token material, or binding identifiers.
+ *
+ * Feature awareness: a feature that is intentionally disabled (for example
+ * Turnstile with no site key, or AI in mock mode) does not require its
+ * credentials. Only features whose production configuration implies they are
+ * enabled must have their backing binding/secret present.
+ */
+
+export const VALID_ENVIRONMENTS = ['development', 'staging', 'production'] as const;
+
+export type ConfigSeverity = 'fatal' | 'warning';
+
+export interface ConfigIssue {
+  code: string;
+  severity: ConfigSeverity;
+  message: string;
+}
+
+export interface ConfigValidationResult {
+  environment: string;
+  /** No fatal issues (non-production environments always pass). */
+  ok: boolean;
+  fatal: ConfigIssue[];
+  warnings: ConfigIssue[];
+}
+
+function fatal(code: string, message: string): ConfigIssue {
+  return { code, severity: 'fatal', message };
+}
+
+function warning(code: string, message: string): ConfigIssue {
+  return { code, severity: 'warning', message };
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname.endsWith('.localhost');
+}
+
+export function validateEnvironment(env: Env): ConfigValidationResult {
+  const environment = env.ENVIRONMENT || 'development';
+  const warnings: ConfigIssue[] = [];
+
+  if (!VALID_ENVIRONMENTS.includes(environment as (typeof VALID_ENVIRONMENTS)[number])) {
+    warnings.push(
+      warning(
+        'CONFIG_INVALID_ENVIRONMENT',
+        'ENVIRONMENT must be one of development, staging, production; treating the deployment as non-production.'
+      )
+    );
+  }
+
+  if (environment !== 'production') {
+    return { environment, ok: true, fatal: [], warnings };
+  }
+
+  const fatalIssues: ConfigIssue[] = [];
+
+  // Network reachability: public URL must never point at a loopback address.
+  if (env.APP_URL) {
+    const parsed = /^https?:\/\//.test(env.APP_URL) ? new URL(env.APP_URL) : null;
+    if (!parsed || (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') || isLoopbackHost(parsed.hostname)) {
+      fatalIssues.push(
+        fatal('CONFIG_PRODUCTION_APP_URL', 'APP_URL must be a public HTTP(S) URL in production; loopback hosts are rejected.')
+      );
+    }
+  }
+
+  if (env.AI_MOCK_MODE === 'true') {
+    fatalIssues.push(fatal('CONFIG_MOCK_MODE_IN_PRODUCTION', 'AI_MOCK_MODE must not be true in production.'));
+  }
+
+  if (env.WEEK_SCHEMA_MODE && env.WEEK_SCHEMA_MODE !== 'dual') {
+    fatalIssues.push(
+      fatal('CONFIG_WEEK_SCHEMA_MODE', 'WEEK_SCHEMA_MODE must be dual in production; legacy mode disables the shadow write.')
+    );
+  }
+
+  if (env.SCAN_QUEUE_MODE && env.SCAN_QUEUE_MODE !== 'async') {
+    fatalIssues.push(
+      fatal('CONFIG_SCAN_QUEUE_MODE', 'SCAN_QUEUE_MODE must be async in production; sync mode bypasses the durable queue.')
+    );
+  }
+
+  if (!env.DB) {
+    fatalIssues.push(fatal('CONFIG_BINDING_DB_MISSING', 'Required D1 binding DB is absent.'));
+  }
+  if (!env.CACHE) {
+    fatalIssues.push(
+      fatal(
+        'CONFIG_BINDING_CACHE_MISSING',
+        'Required KV namespace CACHE is absent; session revocation and rate limiting cannot be enforced.'
+      )
+    );
+  }
+  if (!env.JWT_SECRET) {
+    fatalIssues.push(
+      fatal('CONFIG_JWT_SECRET_MISSING', 'Required auth secret JWT_SECRET is absent; every authenticated request fails closed.')
+    );
+  }
+
+  // AI is enabled unless the mock flag is set, so it needs the AI binding.
+  if (env.AI_MOCK_MODE !== 'true' && !env.AI) {
+    fatalIssues.push(fatal('CONFIG_AI_BINDING_MISSING', 'AI binding is absent while AI_MOCK_MODE is false.'));
+  }
+  // The queue is the production scan path; without the binding async mode is a lie.
+  if (env.SCAN_QUEUE_MODE !== 'sync' && !env.SCAN_QUEUE) {
+    fatalIssues.push(
+      fatal('CONFIG_QUEUE_BINDING_MISSING', 'SCAN_QUEUE binding is absent while SCAN_QUEUE_MODE is async.')
+    );
+  }
+
+  // Turnstile: page shows a widget only when a site key exists. A site key
+  // without the secret makes verification silently pass — warn loudly.
+  if (env.TURNSTILE_SITE_KEY && !env.TURNSTILE_SECRET_KEY) {
+    warnings.push(
+      warning(
+        'CONFIG_TURNSTILE_MISSING_SECRET',
+        'TURNSTILE_SITE_KEY is configured but TURNSTILE_SECRET_KEY is absent; token verification silently passes.'
+      )
+    );
+  } else if (!env.TURNSTILE_SITE_KEY && env.TURNSTILE_SECRET_KEY) {
+    warnings.push(
+      warning(
+        'CONFIG_TURNSTILE_MISSING_SITE_KEY',
+        'TURNSTILE_SECRET_KEY is configured but no site key is published; the widget will not render.'
+      )
+    );
+  }
+
+  // Account creation depends on OTP email delivery; the service degrades to
+  // provider 'none' without both paths, so this must be surfaced.
+  if (!env.SEND_EMAIL && !env.RESEND_API_KEY) {
+    warnings.push(
+      warning(
+        'CONFIG_EMAIL_DELIVERY_UNAVAILABLE',
+        'No email provider configured (SEND_EMAIL binding or RESEND_API_KEY); transactional OTP mail cannot be sent.'
+      )
+    );
+  }
+
+  if (!env.PLUS_GRANT_SECRET) {
+    warnings.push(
+      warning(
+        'CONFIG_PLUS_GRANT_SECRET_MISSING',
+        'PLUS_GRANT_SECRET is absent; the manual Frigo Plus grant flow is disabled.'
+      )
+    );
+  }
+
+  return {
+    environment,
+    ok: fatalIssues.length === 0,
+    fatal: fatalIssues,
+    warnings,
+  };
+}
