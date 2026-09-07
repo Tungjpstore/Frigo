@@ -5,7 +5,7 @@
 // (cross-client token substitution).
 
 export const GOOGLE_OAUTH_CLIENT_ID =
-  'YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com';
+  '509963441971-c9sofh0ueaf8nji4r2gd5kahjlerrjdl.apps.googleusercontent.com';
 
 export interface GoogleUserPayload {
   sub: string;
