@@ -1,10 +1,12 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { logger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
 import { HTTPException } from 'hono/http-exception';
 import { Env, AuthContext } from './types';
+import { apiCsp, spaCsp } from './config/csp';
+import { runScheduledCleanup } from './services/cleanup';
 import { authMiddleware } from './middleware/auth';
+import { productionConfigGate } from './middleware/config-gate';
 import { healthRoutes } from './routes/health';
 import { authRoutes } from './routes/auth';
 import { inventoryRoutes } from './routes/inventory';
@@ -16,10 +18,42 @@ import { notificationRoutes } from './routes/notifications';
 import { weekRoutes } from './routes/week';
 import { processScanJob, ScanQueueError } from './services/scan-queue';
 
-const app = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
+type WorkerVariables = { auth: AuthContext; requestId: string };
+type WorkerApp = { Bindings: Env; Variables: WorkerVariables };
 
-// 1. Global Security Middlewares
-app.use('*', logger());
+const app = new Hono<WorkerApp>();
+
+// 1. Structured request logging with correlation + traceability. Sensitive
+// headers (Cookie, Authorization, tokens) are never logged.
+app.use('*', async (c, next) => {
+  const requestId = c.req.header('X-Request-Id') || crypto.randomUUID();
+  c.set('requestId', requestId);
+  const startedAt = Date.now();
+  let status = 500;
+  try {
+    await next();
+    status = c.res.status;
+  } finally {
+    const durationMs = Date.now() - startedAt;
+    c.header('X-Request-Id', requestId);
+    const environment = c.env.ENVIRONMENT || 'development';
+    const record = {
+      requestId,
+      method: c.req.method,
+      path: c.req.path,
+      status,
+      durationMs,
+      environment,
+    };
+    if (environment === 'production') {
+      console.log(JSON.stringify({ level: 'info', ...record }));
+    } else {
+      console.log(`[req] ${record.method} ${record.path} ${status} ${durationMs}ms ${requestId}`);
+    }
+  }
+});
+
+// 2. Global Security Middlewares
 app.use('*', secureHeaders({
   xFrameOptions: 'DENY',
   xContentTypeOptions: 'nosniff',
@@ -36,29 +70,12 @@ app.use('*', async (c, next) => {
   // CSP: API responses get a locked-down policy; the SPA is served from the
   // same worker so it needs the full script/style/img connect allowances.
   const isApi = c.req.path.startsWith('/api/');
-  if (isApi) {
-    c.header('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
-  } else {
-    c.header(
-      'Content-Security-Policy',
-      [
-        "default-src 'self'",
-        // Vite emits inline module preload + Google OAuth needs accounts.google.com
-        "script-src 'self' 'unsafe-inline' https://accounts.google.com https://challenges.cloudflare.com",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob: https://lh3.googleusercontent.com",
-        "font-src 'self' data:",
-        "connect-src 'self' https://api.resend.com https://challenges.cloudflare.com https://oauth2.googleapis.com",
-        "frame-src https://accounts.google.com https://challenges.cloudflare.com",
-        "object-src 'none'",
-        "base-uri 'self'",
-        "form-action 'self'",
-        "frame-ancestors 'none'",
-        'upgrade-insecure-requests',
-      ].join('; ')
-    );
-  }
+  c.header('Content-Security-Policy', isApi ? apiCsp() : spaCsp());
 });
+
+// 3. Production configuration gate: fail closed with a sanitized diagnostic
+// when the deployment is dangerous. Development/staging are not gated.
+app.use('*', productionConfigGate);
 
 app.use('*', cors({
   origin: (origin, c) => {
@@ -78,7 +95,7 @@ app.use('*', cors({
   maxAge: 86400,
 }));
 
-// 2. Global Error Handler (Sanitize internal errors in production)
+// 4. Global Error Handler (Sanitize internal errors in production)
 app.onError((err, c) => {
   // Preserve intentional Hono errors (401/403/404/409/503, etc.). Turning
   // every exception into a 500 makes clients retry the wrong class of error
@@ -87,7 +104,14 @@ app.onError((err, c) => {
     return err.getResponse();
   }
 
-  console.error('[API Error]:', err);
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      requestId: c.get('requestId'),
+      code: 'INTERNAL_SERVER_ERROR',
+      error: err.message,
+    })
+  );
   const isProd = c.env.ENVIRONMENT === 'production';
   return c.json(
     {
@@ -99,10 +123,12 @@ app.onError((err, c) => {
   );
 });
 
-// 3. API v1 Router
-const api = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
+// 5. Public observability (no auth): liveness, readiness, public config.
+app.route('/api/v1', healthRoutes);
 
-api.route('/', healthRoutes);
+// 6. API v1 Router (auth-protected)
+const api = new Hono<WorkerApp>();
+
 api.use('*', authMiddleware);
 api.route('/', authRoutes);
 api.route('/', inventoryRoutes);
@@ -116,7 +142,7 @@ api.route('/', weekRoutes);
 // Mount API under /api/v1
 app.route('/api/v1', api);
 
-// 4. Static assets fallback (SPA)
+// 7. Static assets fallback (SPA)
 app.get('*', async (c) => {
   if (c.env.ASSETS) {
     return await c.env.ASSETS.fetch(c.req.raw);
@@ -124,7 +150,7 @@ app.get('*', async (c) => {
   return c.text('Frigo API Worker Running. Static assets not attached in this environment.', 200);
 });
 
-// 5. Cloudflare Worker export with queue consumer
+// 8. Cloudflare Worker export with queue consumer and scheduled cleanup
 export default {
   fetch: app.fetch,
   async queue(batch: MessageBatch<any>, env: Env): Promise<void> {
@@ -146,5 +172,9 @@ export default {
         }
       }
     }
+  },
+  async scheduled(_event: ScheduledEvent, env: Env): Promise<void> {
+    const report = await runScheduledCleanup(env);
+    console.log(`[Cleanup] ${JSON.stringify(report)}`);
   },
 };

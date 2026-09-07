@@ -1,0 +1,163 @@
+import { Hono } from 'hono';
+import { describe, expect, it } from 'vitest';
+import { productionConfigGate } from '../../src/worker/middleware/config-gate';
+import { healthRoutes } from '../../src/worker/routes/health';
+import type { Env } from '../../src/worker/types';
+
+function healthyDb(): Env['DB'] {
+  return {
+    prepare() {
+      return {
+        bind() {
+          return this;
+        },
+        first: async () => ({ ok: 1 }),
+        run: async () => ({ success: true, meta: { changes: 0 } }),
+        all: async () => ({ results: [], success: true, meta: {} }),
+      };
+    },
+    batch: async () => [],
+    exec: async () => ({ count: 0, duration: 0 }),
+  } as unknown as Env['DB'];
+}
+
+const SECRETS_IN_ENV: Partial<Env> = {
+  RESEND_API_KEY: 're_sk_do_not_leak_1234567890',
+  TURNSTILE_SECRET_KEY: '0xturnstile_secret_do_not_leak',
+  JWT_SECRET: 'jwt_secret_do_not_leak_0123456789abcdef',
+  PLUS_GRANT_SECRET: 'plus_grant_do_not_leak',
+};
+
+// Mirrors the production wiring: config gate first, then the public
+// observability router mounted under /api/v1.
+function createApp() {
+  const app = new Hono<{ Bindings: Env; Variables: { requestId: string } }>();
+  app.use('*', productionConfigGate);
+  app.route('/api/v1', healthRoutes);
+  return app;
+}
+
+async function fetchReady(app: ReturnType<typeof createApp>, env: Partial<Env>): Promise<Response> {
+  return app.request('/api/v1/health/ready', { method: 'GET' }, env as Env);
+}
+
+async function fetchHealth(app: ReturnType<typeof createApp>, env: Partial<Env>): Promise<Response> {
+  return app.request('/api/v1/health', { method: 'GET' }, env as Env);
+}
+
+describe('health endpoints', () => {
+  it('public liveness returns a minimal ok payload', async () => {
+    const app = createApp();
+    const response = await fetchHealth(app, { ENVIRONMENT: 'development' });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({ status: 'ok', app: 'Frigo' });
+    expect(Object.keys(body as object).sort()).toEqual(['app', 'status', 'timestamp']);
+  });
+
+  it('readiness reports ok with healthy database and exposes deployment traceability', async () => {
+    const app = createApp();
+    const response = await fetchReady(app, {
+      ENVIRONMENT: 'production',
+      DB: healthyDb(),
+      GIT_COMMIT: 'abc1234def5678',
+      AI_MOCK_MODE: 'false',
+      AI: {},
+      SCAN_QUEUE: {} as unknown as Env['SCAN_QUEUE'],
+      SCAN_QUEUE_MODE: 'async',
+      WEEK_SCHEMA_MODE: 'dual',
+      CACHE: {} as unknown as Env['CACHE'],
+      JWT_SECRET: 's'.repeat(40),
+      TURNSTILE_SITE_KEY: '0xpublic_site_key_not_secret',
+      ...SECRETS_IN_ENV,
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as Record<string, unknown>;
+    expect(body.status).toBe('ok');
+    expect((body.services as Record<string, unknown>).database).toBe('ok');
+    expect(body.commit).toBe('abc1234def5678');
+  });
+
+  it('readiness reports degraded when optional dependencies are missing, without failing liveness', async () => {
+    const app = createApp();
+    const response = await fetchReady(app, {
+      ENVIRONMENT: 'production',
+      DB: healthyDb(),
+      AI_MOCK_MODE: 'false',
+      AI: {},
+      SCAN_QUEUE: {} as unknown as Env['SCAN_QUEUE'],
+      SCAN_QUEUE_MODE: 'async',
+      WEEK_SCHEMA_MODE: 'dual',
+      CACHE: {} as unknown as Env['CACHE'],
+      JWT_SECRET: 's'.repeat(40),
+      // No email provider and no Plus grant secret: warnings only, not fatal.
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as Record<string, unknown>;
+    expect(body.status).toBe('degraded');
+  });
+
+  it('readiness reports unhealthy when the database is unreachable', async () => {
+    const app = createApp();
+    const response = await fetchReady(app, {
+      ENVIRONMENT: 'development',
+      DB: {
+        prepare: () => {
+          throw new Error('D1 down');
+        },
+      } as unknown as Env['DB'],
+    });
+    expect(response.status).toBe(503);
+    const body = (await response.json()) as Record<string, unknown>;
+    expect(body.status).toBe('unhealthy');
+    expect((body.services as Record<string, unknown>).database).toBe('error');
+  });
+
+  it('readiness never leaks secret values', async () => {
+    const app = createApp();
+    const response = await fetchReady(app, {
+      ENVIRONMENT: 'production',
+      DB: healthyDb(),
+      AI_MOCK_MODE: 'false',
+      AI: {},
+      SCAN_QUEUE: {} as unknown as Env['SCAN_QUEUE'],
+      SCAN_QUEUE_MODE: 'async',
+      WEEK_SCHEMA_MODE: 'dual',
+      CACHE: {} as unknown as Env['CACHE'],
+      JWT_SECRET: 's'.repeat(40),
+      ...SECRETS_IN_ENV,
+    });
+    const text = await response.text();
+    for (const secret of Object.values(SECRETS_IN_ENV)) {
+      expect(text).not.toContain(secret as string);
+    }
+  });
+
+  it('production gate fails closed with sanitized diagnostics on dangerous configuration', async () => {
+    const app = createApp();
+    const response = await fetchHealth(app, { ENVIRONMENT: 'production', AI_MOCK_MODE: 'true' });
+    expect(response.status).toBe(503);
+    const body = (await response.json()) as { code: string; issues: string[] };
+    expect(body.code).toBe('CONFIG_INVALID');
+    expect(body.issues).toContain('CONFIG_MOCK_MODE_IN_PRODUCTION');
+    expect(body.issues).toContain('CONFIG_BINDING_DB_MISSING');
+  });
+
+  it('production gate passes valid configuration through to liveness', async () => {
+    const app = createApp();
+    const response = await fetchHealth(app, {
+      ENVIRONMENT: 'production',
+      AI_MOCK_MODE: 'false',
+      AI: {},
+      SCAN_QUEUE: {} as unknown as Env['SCAN_QUEUE'],
+      SCAN_QUEUE_MODE: 'async',
+      WEEK_SCHEMA_MODE: 'dual',
+      CACHE: {} as unknown as Env['CACHE'],
+      DB: healthyDb(),
+      JWT_SECRET: 's'.repeat(40),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ status: 'ok' });
+  });
+});
