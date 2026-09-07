@@ -1,0 +1,81 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "frigo",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2024-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "single-page-application"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "frigo-db",
+      "database_id": "f975ec39-b2c8-4a2a-80e1-0366054599d3",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "IMAGES",
+      "bucket_name": "frigo-images"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "cbcd186cb63d4729ac23b04f1a539f2d"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "SCAN_QUEUE",
+        "queue": "frigo-scan-queue"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "frigo-scan-queue",
+        "max_batch_size": 5,
+        "max_batch_timeout": 10,
+        "dead_letter_queue": "frigo-scan-dlq"
+      }
+    ]
+  },
+  "ai": {
+    "binding": "AI"
+  },
+  // B1: native email sending (Workers Paid). Requires destination address
+  // verification in Cloudflare Dashboard → Email → Email Routing, and a
+  // verified domain. Binding name must match Env.SEND_EMAIL.
+  "send_email": [
+    {
+      "name": "SEND_EMAIL"
+    }
+  ],
+  "vars": {
+    "ENVIRONMENT": "production",
+    "AI_MOCK_MODE": "false",
+    "SCAN_QUEUE_MODE": "async",
+    "WEEK_SCHEMA_MODE": "dual",
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAEqYwPIUD6OGmNNQ"
+  },
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+      "persist": true
+    }
+  },
+  "routes": [
+    {
+      "pattern": "frigo.tungjpstore.net",
+      "custom_domain": true
+    }
+  ]
+}

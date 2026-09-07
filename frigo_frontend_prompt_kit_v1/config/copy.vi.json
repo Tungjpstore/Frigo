@@ -1,0 +1,58 @@
+{
+  "brand": {
+    "name": "Frigo",
+    "tagline": "Mở tủ lạnh. Biết ngay hôm nay ăn gì."
+  },
+  "nav": {
+    "home": "Trang chủ",
+    "fridge": "Tủ lạnh",
+    "scan": "Quét",
+    "recipes": "Món ăn",
+    "profile": "Tôi"
+  },
+  "home": {
+    "title": "Hôm nay ăn gì?",
+    "scan": "Chụp tủ lạnh",
+    "useSoon": "Nên dùng sớm",
+    "forYou": "Gợi ý cho bạn",
+    "noShopping": "Không muốn mua thêm gì"
+  },
+  "scan": {
+    "title": "Quét tủ lạnh",
+    "processing": "Frigo đang xem trong tủ lạnh...",
+    "confirm": "Xác nhận nguyên liệu"
+  },
+  "inventory": {
+    "title": "Tủ lạnh của tôi",
+    "all": "Tất cả",
+    "expiring": "Sắp hết hạn",
+    "add": "Thêm nguyên liệu",
+    "empty": "Tủ lạnh đang trống"
+  },
+  "recipe": {
+    "ingredients": "Nguyên liệu",
+    "steps": "Cách làm",
+    "start": "Bắt đầu nấu",
+    "match": "Khớp nguyên liệu",
+    "missing": "Còn thiếu",
+    "noShopping": "Nấu không cần mua thêm"
+  },
+  "shopping": {
+    "title": "Danh sách mua sắm",
+    "add": "Thêm món"
+  },
+  "status": {
+    "fresh": "Tươi",
+    "useSoon": "Dùng sớm",
+    "expiring": "Sắp hết hạn",
+    "out": "Đã hết",
+    "low": "Sắp hết",
+    "frozen": "Trong ngăn đông"
+  },
+  "plus": {
+    "title": "Nấu ăn thông minh hơn cùng Frigo Plus",
+    "monthly": "79.000đ / tháng",
+    "yearly": "599.000đ / năm",
+    "cta": "Nâng cấp ngay"
+  }
+}

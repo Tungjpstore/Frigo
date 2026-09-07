@@ -1,0 +1,21 @@
+:root{
+--frigo-primary:#22C55E;
+--frigo-deep:#0F3D2E;
+--frigo-mint:#DDF7E3;
+--frigo-cream:#FFFDF6;
+--frigo-danger:#EF4444;
+--frigo-warning:#FACC15;
+--frigo-muted:#64748B;
+--frigo-border:#E5E7EB;
+--frigo-surface:#FFFFFF;
+--frigo-radius-sm:12px;
+--frigo-radius-md:16px;
+--frigo-radius-lg:20px;
+--frigo-radius-xl:24px;
+--frigo-radius-pill:999px;
+--frigo-shadow-card:0 8px 24px rgba(15,61,46,.08);
+--frigo-shadow-floating:0 12px 32px rgba(15,61,46,.14);
+--frigo-tap-target:44px;
+--frigo-button-height:52px;
+--frigo-mobile-max:480px;
+}

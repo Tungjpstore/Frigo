@@ -1,0 +1,85 @@
+import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { FRIGO_ASSETS } from '../../lib/frigo-assets';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { Bell, User, ArrowLeft, Settings } from 'lucide-react';
+
+interface TopBarProps {
+  showBack?: boolean;
+  title?: string;
+  subtitle?: string;
+  onBack?: () => void;
+}
+
+export const TopBar: React.FC<TopBarProps> = ({ showBack = false, title, subtitle, onBack }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { avatarUrl, displayName } = useAuthStore();
+  const isProfilePage = location.pathname === '/profile';
+
+  return (
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-3 border-b border-slate-200/80 transition-colors shadow-xs">
+      <div className="flex items-center justify-between">
+        {showBack ? (
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={onBack || (() => navigate(-1))}
+              className="p-2 -ml-2 rounded-xl hover:bg-slate-100 active:scale-95 transition-transform tap-target flex items-center justify-center text-slate-800"
+              aria-label="Quay lại"
+            >
+              <ArrowLeft className="w-5 h-5 stroke-[2]" />
+            </button>
+            {title && (
+              <div>
+                <h1 className="font-heading font-bold text-base text-slate-900 leading-tight">{title}</h1>
+                {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+              </div>
+            )}
+          </div>
+        ) : title ? (
+          <div>
+            <h1 className="font-heading font-bold text-lg text-slate-900 leading-tight tracking-tight">{title}</h1>
+            {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 cursor-pointer active:opacity-80 transition-opacity" onClick={() => navigate('/')}>
+            <img src={FRIGO_ASSETS.brand.logoPrimary} alt="Frigo" className="h-7 w-auto object-contain" />
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/notifications')}
+            className="w-9 h-9 rounded-xl hover:bg-slate-100 active:scale-95 flex items-center justify-center relative text-slate-700 transition-colors border border-slate-200/60"
+            aria-label="Thông báo"
+          >
+            <Bell className="w-5 h-5 stroke-[2]" />
+            <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white" />
+          </button>
+
+          {isProfilePage ? (
+            <button
+              onClick={() => navigate('/settings')}
+              className="w-9 h-9 rounded-xl hover:bg-slate-100 active:scale-95 flex items-center justify-center text-slate-700 transition-colors border border-slate-200/60"
+              aria-label="Cài đặt"
+            >
+              <Settings className="w-5 h-5 stroke-[2]" />
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/profile')}
+              className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100 active:scale-95 transition-all flex items-center justify-center overflow-hidden"
+              aria-label="Tài khoản cá nhân"
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-4 h-4 stroke-[2]" />
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+};

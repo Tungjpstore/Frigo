@@ -1,0 +1,128 @@
+export const FRIGO_ASSETS = {
+  "base": "/frigo",
+  "brand": {
+    "logoPrimary": "/frigo/brand/logo-primary.png",
+    "wordmark": "/frigo/brand/wordmark.png",
+    "logoCompact": "/frigo/brand/logo-compact.png",
+    "mark": "/frigo/brand/mark.png"
+  },
+  "appIcons": {
+    "icon512": "/frigo/app-icons/icon-512.png",
+    "icon192": "/frigo/app-icons/icon-192.png",
+    "maskable512": "/frigo/app-icons/icon-maskable-512.png"
+  },
+  "uiIcons": {
+    "home": "/frigo/ui-icons/home.png",
+    "fridge": "/frigo/ui-icons/fridge.png",
+    "camera": "/frigo/ui-icons/camera.png",
+    "chef": "/frigo/ui-icons/chef.png",
+    "profile": "/frigo/ui-icons/profile.png",
+    "search": "/frigo/ui-icons/search.png",
+    "filter": "/frigo/ui-icons/filter.png",
+    "list": "/frigo/ui-icons/list.png",
+    "plus": "/frigo/ui-icons/plus.png",
+    "minus": "/frigo/ui-icons/minus.png",
+    "edit": "/frigo/ui-icons/edit.png",
+    "delete": "/frigo/ui-icons/delete.png",
+    "favorite": "/frigo/ui-icons/favorite.png",
+    "notification": "/frigo/ui-icons/notification.png",
+    "clock": "/frigo/ui-icons/clock.png",
+    "sparkles": "/frigo/ui-icons/sparkles.png",
+    "cart": "/frigo/ui-icons/cart.png",
+    "gallery": "/frigo/ui-icons/gallery.png",
+    "refresh": "/frigo/ui-icons/refresh.png",
+    "settings": "/frigo/ui-icons/settings.png",
+    "calendar": "/frigo/ui-icons/calendar.png",
+    "hot": "/frigo/ui-icons/hot.png",
+    "globe": "/frigo/ui-icons/globe.png",
+    "check": "/frigo/ui-icons/check.png"
+  },
+  "illustrations": {
+    "scan-fridge": "/frigo/illustrations/scan-fridge.png",
+    "empty-fridge": "/frigo/illustrations/empty-fridge.png",
+    "no-recipes": "/frigo/illustrations/no-recipes.png",
+    "shopping-ready": "/frigo/illustrations/shopping-ready.png",
+    "delicious-meal": "/frigo/illustrations/delicious-meal.png",
+    "use-soon": "/frigo/illustrations/use-soon.png",
+    "world-cuisines": "/frigo/illustrations/world-cuisines.png",
+    "frigo-plus": "/frigo/illustrations/frigo-plus.png"
+  },
+  "ingredients": {
+    "vegetables": {
+      "tomato": "/frigo/ingredients/vegetables/tomato.png",
+      "onion": "/frigo/ingredients/vegetables/onion.png",
+      "garlic": "/frigo/ingredients/vegetables/garlic.png",
+      "scallion": "/frigo/ingredients/vegetables/scallion.png",
+      "cabbage": "/frigo/ingredients/vegetables/cabbage.png",
+      "spinach": "/frigo/ingredients/vegetables/spinach.png",
+      "lettuce": "/frigo/ingredients/vegetables/lettuce.png",
+      "carrot": "/frigo/ingredients/vegetables/carrot.png",
+      "cucumber": "/frigo/ingredients/vegetables/cucumber.png",
+      "red-bell-pepper": "/frigo/ingredients/vegetables/red-bell-pepper.png",
+      "chili": "/frigo/ingredients/vegetables/chili.png",
+      "potato": "/frigo/ingredients/vegetables/potato.png",
+      "eggplant": "/frigo/ingredients/vegetables/eggplant.png",
+      "mushroom": "/frigo/ingredients/vegetables/mushroom.png",
+      "broccoli": "/frigo/ingredients/vegetables/broccoli.png",
+      "corn": "/frigo/ingredients/vegetables/corn.png",
+      "pumpkin": "/frigo/ingredients/vegetables/pumpkin.png",
+      "ginger": "/frigo/ingredients/vegetables/ginger.png",
+      "lime": "/frigo/ingredients/vegetables/lime.png",
+      "lemon": "/frigo/ingredients/vegetables/lemon.png",
+      "basil": "/frigo/ingredients/vegetables/basil.png",
+      "water-spinach": "/frigo/ingredients/vegetables/water-spinach.png",
+      "bok-choy": "/frigo/ingredients/vegetables/bok-choy.png",
+      "avocado": "/frigo/ingredients/vegetables/avocado.png"
+    },
+    "pantry": {
+      "egg": "/frigo/ingredients/pantry/egg.png",
+      "milk": "/frigo/ingredients/pantry/milk.png",
+      "cheese": "/frigo/ingredients/pantry/cheese.png",
+      "yogurt": "/frigo/ingredients/pantry/yogurt.png",
+      "butter": "/frigo/ingredients/pantry/butter.png",
+      "pork-belly": "/frigo/ingredients/pantry/pork-belly.png",
+      "chicken-breast": "/frigo/ingredients/pantry/chicken-breast.png",
+      "beef": "/frigo/ingredients/pantry/beef.png",
+      "shrimp": "/frigo/ingredients/pantry/shrimp.png",
+      "salmon": "/frigo/ingredients/pantry/salmon.png",
+      "white-fish": "/frigo/ingredients/pantry/white-fish.png",
+      "sausage": "/frigo/ingredients/pantry/sausage.png",
+      "cooked-rice": "/frigo/ingredients/pantry/cooked-rice.png",
+      "rice": "/frigo/ingredients/pantry/rice.png",
+      "noodles": "/frigo/ingredients/pantry/noodles.png",
+      "pasta": "/frigo/ingredients/pantry/pasta.png",
+      "bread": "/frigo/ingredients/pantry/bread.png",
+      "tofu": "/frigo/ingredients/pantry/tofu.png",
+      "beans": "/frigo/ingredients/pantry/beans.png",
+      "cooking-oil": "/frigo/ingredients/pantry/cooking-oil.png",
+      "fish-sauce": "/frigo/ingredients/pantry/fish-sauce.png",
+      "soy-sauce": "/frigo/ingredients/pantry/soy-sauce.png",
+      "sugar": "/frigo/ingredients/pantry/sugar.png",
+      "kimchi": "/frigo/ingredients/pantry/kimchi.png"
+    }
+  },
+  "recipes": {
+    "vietnam": {
+      "thit-kho-trung": "/frigo/recipes/vietnam/thit-kho-trung.webp",
+      "dau-phu-sot-ca-chua": "/frigo/recipes/vietnam/dau-phu-sot-ca-chua.webp",
+      "rau-muong-xao-toi": "/frigo/recipes/vietnam/rau-muong-xao-toi.webp",
+      "canh-chua-ca": "/frigo/recipes/vietnam/canh-chua-ca.webp",
+      "com-chien-trung": "/frigo/recipes/vietnam/com-chien-trung.webp",
+      "ga-kho-gung": "/frigo/recipes/vietnam/ga-kho-gung.webp"
+    },
+    "global": {
+      "kimchi-fried-rice": "/frigo/recipes/global/kimchi-fried-rice.webp",
+      "oyakodon": "/frigo/recipes/global/oyakodon.webp",
+      "pad-krapow": "/frigo/recipes/global/pad-krapow.webp",
+      "tomato-egg-stir-fry": "/frigo/recipes/global/tomato-egg-stir-fry.webp",
+      "pasta-pomodoro": "/frigo/recipes/global/pasta-pomodoro.webp",
+      "mapo-tofu": "/frigo/recipes/global/mapo-tofu.webp"
+    }
+  },
+  "references": {
+    "brand": "/frigo/reference/brand_board.png",
+    "screens": "/frigo/reference/screen_reference.png",
+    "components": "/frigo/reference/ui_components_board.png",
+    "assets": "/frigo/reference/frontend_assets_board.png"
+  }
+} as const;

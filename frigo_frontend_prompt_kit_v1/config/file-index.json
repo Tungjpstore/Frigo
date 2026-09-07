@@ -1,0 +1,682 @@
+[
+  {
+    "path": "PROMPT_FOR_AI_AGENT.md",
+    "bytes": 124,
+    "sha256": "ea8934809f219c2c99246980a04bbe0c250efcda7efe8786407dbf6538ad7e47"
+  },
+  {
+    "path": "README.md",
+    "bytes": 1461,
+    "sha256": "9223e435bebd907dc7c66b2b93357ade7beeae91ebbf29c20291101e046e897b"
+  },
+  {
+    "path": "config/asset-manifest.json",
+    "bytes": 6066,
+    "sha256": "ea6afaeeeb53ebe9162f3b8b491610a6c21666c6c373dad348e95081c889d557"
+  },
+  {
+    "path": "config/copy.vi.json",
+    "bytes": 1494,
+    "sha256": "198edb81ebb62b7225dc0138b00ded8e463cdf5cd8767a7458fc7d7b7ae1e144"
+  },
+  {
+    "path": "config/design-tokens.css",
+    "bytes": 530,
+    "sha256": "574173f5be2a9127d33b5db6050c01ac35e4acd432c1540fd59070e001521231"
+  },
+  {
+    "path": "config/design-tokens.json",
+    "bytes": 853,
+    "sha256": "424948dcaebfdbfd789ee1588889ce16f82edaf7714e8992e0b37c1f6f171923"
+  },
+  {
+    "path": "config/routes.json",
+    "bytes": 220,
+    "sha256": "7a1bd069cb9b83630f2b1463bbec5362f86c7804503f69996a3c98dbb2934e96"
+  },
+  {
+    "path": "docs/ASSET_PROVENANCE.md",
+    "bytes": 220,
+    "sha256": "0b9ae2a157b0fee9fb6c63cd91e0be407c109a7438ea9006b59c467db2c4d0a0"
+  },
+  {
+    "path": "docs/ASSET_USAGE.md",
+    "bytes": 968,
+    "sha256": "5b99b2a4c5e41187d2e5f702b8bec4d856ad6fa035cf9c2d3831a9ee4d216dc7"
+  },
+  {
+    "path": "docs/BRAND_GUIDE.md",
+    "bytes": 469,
+    "sha256": "c63cf8af878c2c06c1b36b062fd20ad172af50d95ce5a4300c9b0ebf5160d7bc"
+  },
+  {
+    "path": "docs/FRONTEND_AGENT_PROMPT.md",
+    "bytes": 3729,
+    "sha256": "f554fc5905ec1b7c145c9ec3692d3f56ca44572dea5a7b6e5b6b39ee19ccbc8a"
+  },
+  {
+    "path": "docs/QA_CHECKLIST.md",
+    "bytes": 708,
+    "sha256": "e1f6fa1718d66e539aac319347f250129b8f9257198a58c2a3e9455f627ffece"
+  },
+  {
+    "path": "docs/SCREEN_SPEC.md",
+    "bytes": 1078,
+    "sha256": "568814ffdf4ea28633b3cb569076497a27175294079de143dfef8cb5c2ac3369"
+  },
+  {
+    "path": "masters/app_icon_master.png",
+    "bytes": 903483,
+    "sha256": "86d7bc4c8ff4cb24d8a92c512516b807b680869f4254e558a2b9e0f17c0ad1fa"
+  },
+  {
+    "path": "masters/brand_board.png",
+    "bytes": 1598233,
+    "sha256": "8e388b64bad2e09110de20798079993ee4a6c21e2ad944e5f85535bb0d7152d0"
+  },
+  {
+    "path": "masters/frontend_assets_board.png",
+    "bytes": 1742964,
+    "sha256": "ff8790f6f372d058f69764e8529e112d17c593d36d0b727844e1bfed9439e381"
+  },
+  {
+    "path": "masters/illustration_master.png",
+    "bytes": 1663000,
+    "sha256": "1e68c58081b56beb42bd729ba0e0f9461a1b1640d9faccac62b41ed0073d9eb7"
+  },
+  {
+    "path": "masters/logo_master.png",
+    "bytes": 822520,
+    "sha256": "23ee47911c66957f94520f310c050245b5ddb9cb64e64ef8a82e743c93dad4bd"
+  },
+  {
+    "path": "masters/pantry_master.png",
+    "bytes": 1605175,
+    "sha256": "10ca2cd3fdb98c24672f231b564aabc79578c1922a31a5700ec331b5449b6f83"
+  },
+  {
+    "path": "masters/recipe_global_master.png",
+    "bytes": 2360679,
+    "sha256": "dcce4e5cf4aa526c4ae1276e7a16083ffa4db247749c8427c5465459cd5dfe63"
+  },
+  {
+    "path": "masters/recipe_vi_master.png",
+    "bytes": 2458044,
+    "sha256": "32c51caa1126d32e00d3b253e6f094bad59d5d0997ae3990a1b07635735abaa8"
+  },
+  {
+    "path": "masters/screen_reference.png",
+    "bytes": 1769701,
+    "sha256": "a9cd65e314525b90976051377fec0df6ae39962130f2068cafe422b5b85da15a"
+  },
+  {
+    "path": "masters/ui_components_board.png",
+    "bytes": 1588966,
+    "sha256": "eef30b588621c4b2ed544d16aa96edda2f54b57ad0a5f6f701057e8448bda064"
+  },
+  {
+    "path": "masters/vegetable_master.png",
+    "bytes": 1923527,
+    "sha256": "c6e6d03233906ea523473fa9aabd1cf275b2a3edb20a1610783079da6a355d09"
+  },
+  {
+    "path": "repo-ready/public/frigo/app-icons/icon-128.png",
+    "bytes": 12596,
+    "sha256": "66363a9e18d660f42059b5582058abdf23917a9ddf20db675d199ae02a6c1343"
+  },
+  {
+    "path": "repo-ready/public/frigo/app-icons/icon-16.png",
+    "bytes": 717,
+    "sha256": "539f58c744476c26a6bf27436d74c74e9303a99a6ff0c101d216560203135e26"
+  },
+  {
+    "path": "repo-ready/public/frigo/app-icons/icon-180.png",
+    "bytes": 21615,
+    "sha256": "90f692efd32e6137d8b1abd98b2025501b940f111d84185dac2824b9a6111363"
+  },
+  {
+    "path": "repo-ready/public/frigo/app-icons/icon-192.png",
+    "bytes": 24003,
+    "sha256": "2bb20af08591d9d55c6e4b0e03786b0a502eb548bb81c38c89d68a18c147b724"
+  },
+  {
+    "path": "repo-ready/public/frigo/app-icons/icon-256.png",
+    "bytes": 38551,
+    "sha256": "84fa4be4f1e575865d023e9b09067b98fff4b8a4e1d90c04f6cd1f57dc32aea3"
+  },
+  {
+    "path": "repo-ready/public/frigo/app-icons/icon-32.png",
+    "bytes": 1794,
+    "sha256": "a06703f3daa007d67419f5b58256e26314944052e35a7a926b0efda3a524aa83"
+  },
+  {
+    "path": "repo-ready/public/frigo/app-icons/icon-48.png",
+    "bytes": 3020,
+    "sha256": "a11d3024299a321758603d09aecbe50b6f068d4004740c172fda549c544b04bd"
+  },
+  {
+    "path": "repo-ready/public/frigo/app-icons/icon-512.png",
+    "bytes": 112671,
+    "sha256": "449182ba3b28406f7dcc60194bf334f437a6829eac913e8fda376ba3f71e53c1"
+  },
+  {
+    "path": "repo-ready/public/frigo/app-icons/icon-64.png",
+    "bytes": 4520,
+    "sha256": "e8bc8307629ea5b1098cd90fe0854cbe79377921e5d68614ecfb29e8aa9257e6"
+  },
+  {
+    "path": "repo-ready/public/frigo/app-icons/icon-maskable-512.png",
+    "bytes": 75324,
+    "sha256": "dc1f97d10742888810ab33da999b1bd335776f7b53614f45591df8b235070ac8"
+  },
+  {
+    "path": "repo-ready/public/frigo/brand/logo-compact.png",
+    "bytes": 108175,
+    "sha256": "b82c0b0d017f6b9de86192702d8b536182ac11fe7937a49f03b43e03305ef4cc"
+  },
+  {
+    "path": "repo-ready/public/frigo/brand/logo-primary.png",
+    "bytes": 169046,
+    "sha256": "15ae681604ac1593885077946b3f6cdc006dcaae0f2faa7ea7d73b72b0e83eb3"
+  },
+  {
+    "path": "repo-ready/public/frigo/brand/mark.png",
+    "bytes": 65262,
+    "sha256": "dac102217412baed55d88d0a1c2539c5d25be1fb1fe4061c7d4b2de789546cad"
+  },
+  {
+    "path": "repo-ready/public/frigo/brand/wordmark.png",
+    "bytes": 101566,
+    "sha256": "b20fd6254cf3332997901674bde7c449ceb06681caad49fd5f4a4042e15c8115"
+  },
+  {
+    "path": "repo-ready/public/frigo/illustrations/delicious-meal.png",
+    "bytes": 216750,
+    "sha256": "fc8cd3b94aa6d192f36dd735e13228c9e1ca1ceafdc36ada72caf5580a3c04b4"
+  },
+  {
+    "path": "repo-ready/public/frigo/illustrations/empty-fridge.png",
+    "bytes": 156537,
+    "sha256": "0e6bec2dd3e79648b16b8d7b8aa1b3abf970d67bce3a181281256bfe507b260d"
+  },
+  {
+    "path": "repo-ready/public/frigo/illustrations/frigo-plus.png",
+    "bytes": 191307,
+    "sha256": "26ad044323808275220921c06efe4a3a80e02609071f40411f7b5c678c3c11ff"
+  },
+  {
+    "path": "repo-ready/public/frigo/illustrations/no-recipes.png",
+    "bytes": 185524,
+    "sha256": "cd378b36df3a72513f3dea756c89b6c4d6aa9756faa2ca028f0c9e1405151d5f"
+  },
+  {
+    "path": "repo-ready/public/frigo/illustrations/scan-fridge.png",
+    "bytes": 214297,
+    "sha256": "436ecb188c081f40f3643b32bee90439fc606b73781ae0c7665fc6ca0361f0fd"
+  },
+  {
+    "path": "repo-ready/public/frigo/illustrations/shopping-ready.png",
+    "bytes": 204435,
+    "sha256": "a295fcf29a254f563b6269c8e3cd8b056e26350b85976d27b940977c3aced8dd"
+  },
+  {
+    "path": "repo-ready/public/frigo/illustrations/use-soon.png",
+    "bytes": 188030,
+    "sha256": "77567c646ecc0c450490c95d9a7f3b02beb972f7629c64e2a4867652435a25e6"
+  },
+  {
+    "path": "repo-ready/public/frigo/illustrations/world-cuisines.png",
+    "bytes": 256733,
+    "sha256": "a438f177f403b9404e71dae7898032b4ace6e0a65846fe696369926a47f3ea0d"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/beans.png",
+    "bytes": 76490,
+    "sha256": "5b4b570245a3e17d16f147a7d4b003591d6f6afcea8d3639f0d3a0b5acfc5f26"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/beef.png",
+    "bytes": 90794,
+    "sha256": "f5173cf6518180e94c327adda827dcc80a93b6ee41d71e9c0dad81cd425fda08"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/bread.png",
+    "bytes": 74800,
+    "sha256": "ec4ab05160fa73ef8262a69efbf28a82a382435d7e9976471c6a436e5e4bb14f"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/butter.png",
+    "bytes": 52514,
+    "sha256": "fd6c40c421a022191de29a22a8a5d00deaa6dbfe741edabd11832e7ee3e91136"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/cheese.png",
+    "bytes": 45103,
+    "sha256": "cfd463e4a368d7b531dfe277d05884cca1755441707932165240c0d0a5187a85"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/chicken-breast.png",
+    "bytes": 63814,
+    "sha256": "50ca7a72fdf223eadadd65060a6dcfe6e9977accc4b6ec66b531be6d67ea5c44"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/cooked-rice.png",
+    "bytes": 60535,
+    "sha256": "6e6da51c420a3db283ab4e81684e2aac0b16a67c5897fb795f5d8b404d204e68"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/cooking-oil.png",
+    "bytes": 63565,
+    "sha256": "11de55598ba1f1d2489ed5c69ee8c3dd4133a415bb639ae448a8927661be20ba"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/egg.png",
+    "bytes": 48121,
+    "sha256": "6b4ad3fc2ac1b71e933674dffa532a8a52c0dd4b8f74773b08c147a490e2e9ff"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/fish-sauce.png",
+    "bytes": 48170,
+    "sha256": "3d3a4d59573efb2909cb12009c7d7fada994edd61f14b90c7021eb00773b3081"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/kimchi.png",
+    "bytes": 93306,
+    "sha256": "d16805ef90e60d2804e9d43451b32394885f14bd305204dac36a3133728d8d33"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/milk.png",
+    "bytes": 38593,
+    "sha256": "21e929e10ddce8e551cda6aa65c3593897dcdc328e07e74940d0837dea0fd416"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/noodles.png",
+    "bytes": 76898,
+    "sha256": "4446ef3bd477a4fdc94864bff19f8df1cb75fac27cb75c09bbe19c520b58f3ed"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/pasta.png",
+    "bytes": 70295,
+    "sha256": "eded980a59e75cb6fe992ab76c5eb9ffa301e7808c7e0f558473bb322f51a05e"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/pork-belly.png",
+    "bytes": 64777,
+    "sha256": "bf18441aa6e85736c1f63805864bda061f4316e1aacdb6969df8b8e02f888340"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/rice.png",
+    "bytes": 76998,
+    "sha256": "7bb53b24c1c65321b76c1d399dbfdc3ff461cd1c30bb19df18acab168be71448"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/salmon.png",
+    "bytes": 79383,
+    "sha256": "4c79f3f0f8689ac830a177817ba558f64fb0cde8e0508f4ba3c9f292fd27ec2c"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/sausage.png",
+    "bytes": 61595,
+    "sha256": "2be93a7847595cb75031356eb52484d6c7a0d044a529bd9dbd9307e3ad17222f"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/shrimp.png",
+    "bytes": 76369,
+    "sha256": "651d6fe2403c5cb2e0c87b84d29dbafd051767d4834c8f47f9474263b99f2b29"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/soy-sauce.png",
+    "bytes": 52927,
+    "sha256": "5e5e4c32aded610aaa4d84b59cfef1ca951c038a023f947811d960178a576fa3"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/sugar.png",
+    "bytes": 76341,
+    "sha256": "c2b50df02f0635948c1eb2751fb642a3d2a560272aaf546e136a5bdbc65743d5"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/tofu.png",
+    "bytes": 52576,
+    "sha256": "046c55a00f2a37d8c239dbb3d7cc8a7d1c63cf4bd4bf811a3964af332e4ecee3"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/white-fish.png",
+    "bytes": 68815,
+    "sha256": "5bda454d8bf02deab27e5580d29f454b316efea4dfa4a269dc216f95f08d2ae3"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/pantry/yogurt.png",
+    "bytes": 55181,
+    "sha256": "89b90976be4b4af1fc92ea51cdae365d4d2816965c1b04db4b2859387260b76d"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/avocado.png",
+    "bytes": 83656,
+    "sha256": "698913f861b5b4a8790fa74ad9ebe72096c2215d11fcadf2c2eb6733201e5390"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/basil.png",
+    "bytes": 72498,
+    "sha256": "767edc4105de2caa3fd7ae33d1b917bd596f334a047760b5bf8cb4b2cfd8a248"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/bok-choy.png",
+    "bytes": 78398,
+    "sha256": "42e7c10f5b92a79c690ca424853c67d06804b1c9d19ae602033ac2b13885bb4d"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/broccoli.png",
+    "bytes": 97911,
+    "sha256": "154376c68b241895eb5f04e921efe2e6a6458fc4272c8719f89a63d899ee37f8"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/cabbage.png",
+    "bytes": 82223,
+    "sha256": "5cf1a4858fd6e07066b6f97eb4d41d6795fc91966cb0ca45e2bad82beda9172f"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/carrot.png",
+    "bytes": 83810,
+    "sha256": "93c493f1a192eeb255696fe60ab80319b3b34ea80051979d8dc3927e45707845"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/chili.png",
+    "bytes": 66939,
+    "sha256": "acea092e9807ac981af752a66a9fdf5cfab155393b9f7268797fd83bf3972aa6"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/corn.png",
+    "bytes": 96308,
+    "sha256": "fe3640eb4fcb8cb8db09d6078d1573282bfd0705e0a43ebabb078703c475858b"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/cucumber.png",
+    "bytes": 91910,
+    "sha256": "574b54336980c59a4bf37fd07cd2fb807b1a1072d1f0d2045bdd571b1fd7eace"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/eggplant.png",
+    "bytes": 67784,
+    "sha256": "3895b87ba4715dbb269f31a6a1d4322d4291a7049de67d4717390b819a9aa40e"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/garlic.png",
+    "bytes": 51465,
+    "sha256": "7cbb78428d65d37a0ede71b4c852c4330beaa8ba64ea19d76f8dd4fc313a31ec"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/ginger.png",
+    "bytes": 95014,
+    "sha256": "7908231b3779de7be40624be48a1f6157899962396d5203c1625e6a898ebace5"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/lemon.png",
+    "bytes": 75168,
+    "sha256": "2b8f7fb168b7bcb73056e97e640c6bbe9a568cb67a7681e466e39a8765da2966"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/lettuce.png",
+    "bytes": 107518,
+    "sha256": "3209cc0a9ecacd40d003169a807a432aa0f29c386c4d0e67be6a4a85f392a04b"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/lime.png",
+    "bytes": 84322,
+    "sha256": "a5552f6822a4007e169239515df77589af04071226a5b87df0123067b983c873"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/mushroom.png",
+    "bytes": 84127,
+    "sha256": "e4d7b2ea3449dada2a378648f1592f0e2f9f38c0990fe76e57201f58eb56a477"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/onion.png",
+    "bytes": 55640,
+    "sha256": "42cfa6f193b4e4424fa744d63145e1bb4e6a167042adf173100ac34c67794f03"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/potato.png",
+    "bytes": 74084,
+    "sha256": "d4270aa6334a15b577673ef1fa0af2862212bb90a2e3198d51dac42757556da5"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/pumpkin.png",
+    "bytes": 101797,
+    "sha256": "16a519996ddddde8002cf3fbb170eb0e20d417fd7519e0fc541a4d50e29ed0e1"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/red-bell-pepper.png",
+    "bytes": 77603,
+    "sha256": "3aeecade8d8cfe0db2fad0b76679c03797bc51243cc97ff7b983ee35810de1b4"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/scallion.png",
+    "bytes": 56524,
+    "sha256": "7338fd177e2f1cd2876ee32a7b56663d969697d0d5864843b28e9619139b52b0"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/spinach.png",
+    "bytes": 79957,
+    "sha256": "56036c1a1b191ac63fe780d005e53765634a1eb51556ca8c6a4f754a17a9df65"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/tomato.png",
+    "bytes": 58890,
+    "sha256": "95878907ce88f26315fb5153d97732dd1e5e7feec1a9adeda17953c97c9154c0"
+  },
+  {
+    "path": "repo-ready/public/frigo/ingredients/vegetables/water-spinach.png",
+    "bytes": 105008,
+    "sha256": "ef51912cb7d205fd7598209e6d77ccc10e24b3d89b16a3a239caa70e23f89cbe"
+  },
+  {
+    "path": "repo-ready/public/frigo/recipes/global/kimchi-fried-rice.webp",
+    "bytes": 63902,
+    "sha256": "b4ed63ff715c6eb3b183e49a0c15f30e32a2522c288184b6353482bef612ca8d"
+  },
+  {
+    "path": "repo-ready/public/frigo/recipes/global/mapo-tofu.webp",
+    "bytes": 65846,
+    "sha256": "bfa6e099a8c3c289e248a3f19d36bc96d6e47f195277239a481603bb24bfbd4a"
+  },
+  {
+    "path": "repo-ready/public/frigo/recipes/global/oyakodon.webp",
+    "bytes": 55662,
+    "sha256": "f6fa1e79ed329871c6461a7bacafe35d594d05a00f1ff7a7b06c458d7013735b"
+  },
+  {
+    "path": "repo-ready/public/frigo/recipes/global/pad-krapow.webp",
+    "bytes": 61312,
+    "sha256": "518d62f283dbae4959e04d06dd8a9b9e2a195388aeb57e8da39e2114eebd6b2e"
+  },
+  {
+    "path": "repo-ready/public/frigo/recipes/global/pasta-pomodoro.webp",
+    "bytes": 65518,
+    "sha256": "82a23e835f15733dee11df7061364b53a7f94fb75014fd1f703c25668448b842"
+  },
+  {
+    "path": "repo-ready/public/frigo/recipes/global/tomato-egg-stir-fry.webp",
+    "bytes": 52622,
+    "sha256": "2f1889cec34e84000cfb2f9c826f9927c738ec62ac776a81ed2a8f83b5786743"
+  },
+  {
+    "path": "repo-ready/public/frigo/recipes/vietnam/canh-chua-ca.webp",
+    "bytes": 66390,
+    "sha256": "72e90eb0479f0a7983a68b54a069f2798bd714eaf68b8333afc9d856f82ee82d"
+  },
+  {
+    "path": "repo-ready/public/frigo/recipes/vietnam/com-chien-trung.webp",
+    "bytes": 58848,
+    "sha256": "2267ff4ed1181ea870ed27d45c7b418f0dfcb443a0b4f38d9b8c85eccd9e0fba"
+  },
+  {
+    "path": "repo-ready/public/frigo/recipes/vietnam/dau-phu-sot-ca-chua.webp",
+    "bytes": 68598,
+    "sha256": "8bbe363b887201473cc660e3f0be7f2ea56136b412bd7009e93511d5d1f4f3fc"
+  },
+  {
+    "path": "repo-ready/public/frigo/recipes/vietnam/ga-kho-gung.webp",
+    "bytes": 65934,
+    "sha256": "f28da1bbc42ae2371601d1386c5a4c6157962f27fc21e3afd3870ca6d7448c8f"
+  },
+  {
+    "path": "repo-ready/public/frigo/recipes/vietnam/rau-muong-xao-toi.webp",
+    "bytes": 65824,
+    "sha256": "763373595603fe577c9621467e3c45fbb3c46712a58e3fb5febff34abc0dcce0"
+  },
+  {
+    "path": "repo-ready/public/frigo/recipes/vietnam/thit-kho-trung.webp",
+    "bytes": 65130,
+    "sha256": "04b9811468b01a81e504085341c3ddd2c9eb77afbebe51790c42be624acf6569"
+  },
+  {
+    "path": "repo-ready/public/frigo/reference/brand_board.png",
+    "bytes": 1598233,
+    "sha256": "8e388b64bad2e09110de20798079993ee4a6c21e2ad944e5f85535bb0d7152d0"
+  },
+  {
+    "path": "repo-ready/public/frigo/reference/frontend_assets_board.png",
+    "bytes": 1742964,
+    "sha256": "ff8790f6f372d058f69764e8529e112d17c593d36d0b727844e1bfed9439e381"
+  },
+  {
+    "path": "repo-ready/public/frigo/reference/screen_reference.png",
+    "bytes": 1769701,
+    "sha256": "a9cd65e314525b90976051377fec0df6ae39962130f2068cafe422b5b85da15a"
+  },
+  {
+    "path": "repo-ready/public/frigo/reference/ui_components_board.png",
+    "bytes": 1588966,
+    "sha256": "eef30b588621c4b2ed544d16aa96edda2f54b57ad0a5f6f701057e8448bda064"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/calendar.png",
+    "bytes": 20220,
+    "sha256": "4c13fe93e538b6e8fd4cbfff459afadedc8338b4f519c93219820d891959fa69"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/camera.png",
+    "bytes": 24879,
+    "sha256": "074b461856def20c892cecfd880a7b0f873bd5a890ebf2ff360fb4d13ea64f9e"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/cart.png",
+    "bytes": 16646,
+    "sha256": "5ff6dbd5796073a34055d713c551cd942c2ed5a18bc605c905f0eadd33beedce"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/check.png",
+    "bytes": 19972,
+    "sha256": "d5ba06d3f9c5544180c52ddafb50c4a5efbfcc9a98d83beecd4a302cd5e6566a"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/chef.png",
+    "bytes": 22041,
+    "sha256": "4ad235f58e012a7a2555f0e41255b2de6455fa5949a72b8a6c662a8809ca0a6d"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/clock.png",
+    "bytes": 21277,
+    "sha256": "a6919e93c61089b187832783f213c4e3d65009225e0639c2757d9c3334b07c66"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/delete.png",
+    "bytes": 17265,
+    "sha256": "83d7370aac2af87856763253a44efc773a7a14188a9c7dca4c718bf05cad8253"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/edit.png",
+    "bytes": 15799,
+    "sha256": "d9cd68553ecddd6a17c551c9b4d0c21168c57854af58ef4360b33c5ff3d5ca45"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/favorite.png",
+    "bytes": 17195,
+    "sha256": "c8a0f557c57661599780c6571075474f7182c4508edfbee178ccb518549a4f51"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/filter.png",
+    "bytes": 14942,
+    "sha256": "63930dab4a6f99e6b0047add64cd317a8a08aa1f2860af5dd1e72e336c1c5f98"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/fridge.png",
+    "bytes": 20073,
+    "sha256": "cab32707a6a36830de18876cef82908c0d477e8d3eb7bd9d1e19ab6e70ace0ac"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/gallery.png",
+    "bytes": 19102,
+    "sha256": "fbc24704fc04c929da1090491b179008dbbc1d939ff88cce406e8bb9493353a5"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/globe.png",
+    "bytes": 28599,
+    "sha256": "47dc7ec8f058bca9a89e5fcb0f76befe4419358d9970f218f174323fb534ac7b"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/home.png",
+    "bytes": 15963,
+    "sha256": "7720fadd8fa6f1e61e6000a62b47a296cd57921638c0d65c5494558ed84436e5"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/hot.png",
+    "bytes": 18520,
+    "sha256": "54ae210ba718f2802a70fa09526d96d0476b085f157cf620118dff7fd64e8efe"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/list.png",
+    "bytes": 18157,
+    "sha256": "48142e7e863cd8fe5b13b482faeaed6dd843e70a344397959118cf4c3711dfa3"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/minus.png",
+    "bytes": 16797,
+    "sha256": "479a0fceb56021428b8702c62e512e47f3adce07353ebc1b3675915a4e9e46f5"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/notification.png",
+    "bytes": 17437,
+    "sha256": "2b71df37e954b8b08a5ea8bb22221616d02fb26b48f8043d305fb265dabd0f3b"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/plus.png",
+    "bytes": 19024,
+    "sha256": "b2d6c4cc27ad9627f1e97147fef2c637453bcfabc1db0d36d57e72f1b78ecdb7"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/profile.png",
+    "bytes": 20459,
+    "sha256": "11af76d89ca5a5f91d6b8b8af677e19c24c0a41d3ec45f82c31f553f48cd457c"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/refresh.png",
+    "bytes": 24623,
+    "sha256": "2c4d03d0115d3b0b39fa28a922a0e9fedbedf4b5b6841b7f08b36d830199f43d"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/search.png",
+    "bytes": 17303,
+    "sha256": "74cc55e6b9b09c7476247eb570e26d929f9ccb04d68f1f4906a642cc87f6427a"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/settings.png",
+    "bytes": 24623,
+    "sha256": "fcbbe9d09a93e4a2de4664126cd099c683204fb4bdefa525f017c93136892505"
+  },
+  {
+    "path": "repo-ready/public/frigo/ui-icons/sparkles.png",
+    "bytes": 16249,
+    "sha256": "3ac5d19805ea3904fa4f4b817db3d6a9c43430642593a000dbf7634f42ff3762"
+  },
+  {
+    "path": "repo-ready/src/lib/frigo-assets.ts",
+    "bytes": 6105,
+    "sha256": "c641a223647e273c2c5f69d2e5adfe8e366bb9ac3b97d87a46f16ce49d4aff4f"
+  },
+  {
+    "path": "repo-ready/src/styles/frigo-tokens.css",
+    "bytes": 530,
+    "sha256": "574173f5be2a9127d33b5db6050c01ac35e4acd432c1540fd59070e001521231"
+  }
+]

@@ -1,0 +1,1109 @@
+import { Hono } from 'hono';
+import { Env, AuthContext } from '../types';
+import { AIRouter } from '@frigo/ai';
+import { SQL } from '@frigo/db';
+import {
+  areUnitsCompatible,
+  computeFreshness,
+  convertUnit,
+  findCanonicalIngredient,
+  StandardUnit,
+} from '@frigo/domain';
+import { tenancyGuard } from '../middleware/tenancy';
+import { rateLimiter } from '../middleware/rate-limit';
+import { ScanConfirmSchema } from '../validation/schemas';
+import { fetchHouseholdInventoryFromDb } from './inventory';
+
+export const scanRoutes = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
+
+function assertBatchSucceeded(results: any[] | undefined): void {
+  if (results?.some((result) => result && result.success === false)) {
+    throw new Error('D1 batch reported an unsuccessful statement');
+  }
+}
+
+const STANDARD_UNITS = new Set<StandardUnit>([
+  'g',
+  'kg',
+  'ml',
+  'l',
+  'piece',
+  'pack',
+  'bunch',
+  'slice',
+]);
+
+function isStandardUnit(value: unknown): value is StandardUnit {
+  return typeof value === 'string' && STANDARD_UNITS.has(value as StandardUnit);
+}
+
+/** Error raised while reconciling client review data with persisted scan rows. */
+export class ScanConfirmationError extends Error {
+  constructor(
+    readonly code: 'INVALID_SCAN_ITEM' | 'DUPLICATE_SCAN_ITEM' | 'UNIT_MISMATCH' | 'INVALID_QUANTITY',
+    message: string,
+    readonly status = code === 'UNIT_MISMATCH' ? 422 : 400
+  ) {
+    super(message);
+    this.name = 'ScanConfirmationError';
+  }
+}
+
+export interface PersistedScanItem {
+  id: string;
+  raw_name: string;
+  canonical_id?: string | null;
+  estimated_quantity: number;
+  unit: string;
+  category?: string | null;
+  storage?: string | null;
+  is_confirmed?: number | boolean | null;
+  unit_price_vnd?: number | null;
+  total_price_vnd?: number | null;
+}
+
+export interface ResolvedScanItem {
+  /** ID of the persisted prediction; undefined for a user-added row. */
+  sourceId?: string;
+  /** Stable client ID for a manual row, when supplied. */
+  clientId?: string;
+  name: string;
+  quantity: number;
+  unit: StandardUnit;
+  canonicalId: string | null;
+  category: string;
+  storage: 'fridge' | 'freezer' | 'pantry';
+  expiryDate?: string;
+  isManual: boolean;
+}
+
+/**
+ * Convert a reviewed scan quantity into the unit used by an existing stock
+ * row.  Returning the original number for incompatible units would silently
+ * corrupt inventory (for example, treating 500g as 500 pieces), so this
+ * helper fails closed instead.
+ */
+export function convertScanQuantity(quantity: number, from: StandardUnit, to: StandardUnit): number {
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    throw new ScanConfirmationError('INVALID_QUANTITY', 'Số lượng nguyên liệu không hợp lệ');
+  }
+  if (!areUnitsCompatible(from, to)) {
+    throw new ScanConfirmationError(
+      'UNIT_MISMATCH',
+      `Không thể quy đổi đơn vị ${from} sang ${to}`
+    );
+  }
+  const converted = convertUnit(quantity, from, to);
+  if (!Number.isFinite(converted) || converted <= 0) {
+    throw new ScanConfirmationError('INVALID_QUANTITY', 'Số lượng nguyên liệu không hợp lệ');
+  }
+  return converted;
+}
+
+function normalizeStorage(value: unknown): 'fridge' | 'freezer' | 'pantry' {
+  return value === 'freezer' || value === 'pantry' ? value : 'fridge';
+}
+
+/**
+ * Hydrate a confirmation payload against the scan snapshot.  AI rows must use
+ * an ID belonging to this scan; only explicit draft IDs (or rows without an
+ * ID) are treated as manual additions.  This prevents a caller from smuggling
+ * arbitrary scan IDs into another scan while retaining the review UI's
+ * add-manual-item affordance.
+ */
+export function resolveScanConfirmationItems(
+  persistedItems: readonly PersistedScanItem[],
+  submittedItems: readonly any[]
+): ResolvedScanItem[] {
+  const byId = new Map(persistedItems.map((item) => [item.id, item]));
+  const seenIds = new Set<string>();
+
+  return submittedItems.map((submitted, index) => {
+    const submittedId = typeof submitted?.id === 'string' ? submitted.id.trim() : '';
+    if (submittedId && seenIds.has(submittedId)) {
+      throw new ScanConfirmationError(
+        'DUPLICATE_SCAN_ITEM',
+        `Nguyên liệu bị lặp trong yêu cầu xác nhận: ${submittedId}`
+      );
+    }
+    if (submittedId) seenIds.add(submittedId);
+
+    const persisted = submittedId ? byId.get(submittedId) : undefined;
+    const isManual = !persisted;
+    if (submittedId && !persisted && !submittedId.startsWith('draft_')) {
+      throw new ScanConfirmationError(
+        'INVALID_SCAN_ITEM',
+        'Nguyên liệu xác nhận không thuộc bản quét này'
+      );
+    }
+    const alreadyConfirmed =
+      persisted?.is_confirmed === true || Number(persisted?.is_confirmed) === 1;
+    if (alreadyConfirmed) {
+      throw new ScanConfirmationError(
+        'INVALID_SCAN_ITEM',
+        'Nguyên liệu trong bản quét đã được xác nhận trước đó',
+        409
+      );
+    }
+
+    const name = String(
+      submitted?.rawName ?? submitted?.name ?? persisted?.raw_name ?? ''
+    ).trim();
+    if (!name) {
+      throw new ScanConfirmationError('INVALID_SCAN_ITEM', `Nguyên liệu thứ ${index + 1} cần có tên`);
+    }
+
+    const canonicalFromName = findCanonicalIngredient(name);
+    const canonicalFromPayload = submitted?.canonicalId
+      ? findCanonicalIngredient(String(submitted.canonicalId))
+      : null;
+    const canonicalFromScan = persisted?.canonical_id
+      ? findCanonicalIngredient(String(persisted.canonical_id))
+      : null;
+    // A user-edited name is authoritative; otherwise retain the scan's
+    // canonical mapping, then accept a valid explicit canonicalId.
+    const canonical = canonicalFromName || canonicalFromScan || canonicalFromPayload;
+
+    const rawQuantity = submitted?.estimatedQuantity ?? submitted?.quantity ?? persisted?.estimated_quantity ?? 1;
+    const quantity = Number(rawQuantity);
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      throw new ScanConfirmationError('INVALID_QUANTITY', `Số lượng của ${name} không hợp lệ`);
+    }
+
+    const candidateUnit = submitted?.unit ?? persisted?.unit ?? canonical?.defaultUnit ?? 'piece';
+    if (!isStandardUnit(candidateUnit)) {
+      throw new ScanConfirmationError('INVALID_SCAN_ITEM', `Đơn vị của ${name} không hợp lệ`);
+    }
+
+    const category = String(
+      submitted?.category ?? persisted?.category ?? canonical?.category ?? 'other'
+    ).trim() || 'other';
+
+    return {
+      sourceId: persisted?.id,
+      clientId: submittedId || undefined,
+      name,
+      quantity,
+      unit: candidateUnit,
+      canonicalId: canonical?.id || null,
+      category,
+      storage: normalizeStorage(submitted?.storage ?? persisted?.storage),
+      expiryDate: submitted?.expiryDate,
+      isManual,
+    };
+  });
+}
+
+function hashScanPart(value: string): string {
+  // Small deterministic hash keeps generated D1 IDs stable across retries
+  // without embedding user-controlled names or relying on random IDs.
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function stableScanPart(item: ResolvedScanItem, index: number): string {
+  const source = item.sourceId || item.clientId;
+  if (source) {
+    const safe = source.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 80);
+    if (safe) return safe;
+  }
+  return `manual_${index}_${hashScanPart(`${item.name}|${item.quantity}|${item.unit}`)}`;
+}
+
+// Enforce multi-tenancy on all scan routes
+scanRoutes.use('/scans*', tenancyGuard);
+
+// Rate limit AI vision operations (max 12 per minute)
+scanRoutes.use('/scans/fridge', rateLimiter({ maxRequests: 12, windowSeconds: 60, prefix: 'rl_scan' }));
+scanRoutes.use('/scans/receipt', rateLimiter({ maxRequests: 12, windowSeconds: 60, prefix: 'rl_receipt' }));
+
+// Helper to init AI Router with Cloudflare Workers AI GPU binding
+function getAIRouter(env: Env) {
+  return new AIRouter({
+    aiMockMode: env.AI_MOCK_MODE === 'true',
+    aiBinding: env.AI,
+    qwenApiKey: env.QWEN_API_KEY,
+    qwenBaseUrl: env.QWEN_BASE_URL,
+    groqApiKey: env.GROQ_API_KEY,
+    groqBaseUrl: env.GROQ_BASE_URL,
+    groqVisionModel: env.GROQ_VISION_MODEL,
+    zaiApiKey: env.ZAI_API_KEY,
+    zaiBaseUrl: env.ZAI_BASE_URL,
+    deepseekApiKey: env.DEEPSEEK_API_KEY,
+    deepseekBaseUrl: env.DEEPSEEK_BASE_URL,
+  });
+}
+
+// Helper: validate base64 size (max 5MB)
+function validateBase64Payload(base64: string): { valid: boolean; error?: string } {
+  if (!base64) return { valid: true };
+  // Approximate size in bytes: length * (3/4)
+  const estimatedBytes = (base64.length * 3) / 4;
+  if (estimatedBytes > 5 * 1024 * 1024) {
+    return { valid: false, error: 'Dung lượng ảnh vượt quá giới hạn cho phép (tối đa 5MB)' };
+  }
+  return { valid: true };
+}
+
+function imageMimeType(base64: string): string {
+  return base64.match(/^data:(image\/[A-Za-z0-9.+-]+);base64,/)?.[1] || 'image/jpeg';
+}
+
+// POST /api/v1/scans/fridge
+scanRoutes.post('/scans/fridge', async (c) => {
+  const auth = c.get('auth');
+  const db = c.env.DB;
+  const body = await c.req.json().catch(() => ({}));
+  const imageBase64 = body.imageBase64 || '';
+  const scanType = body.scanType || 'fridge';
+
+  if (scanType !== 'fridge' && scanType !== 'food') {
+    return c.json({ error: 'Loại bản quét không hợp lệ', code: 'INVALID_SCAN_TYPE' }, 400);
+  }
+
+  if (!db) {
+    return c.json({ error: 'Database service unavailable', code: 'DATABASE_UNAVAILABLE' }, 503);
+  }
+
+  // SEC-08 FIX: Check payload size limit
+  const sizeCheck = validateBase64Payload(imageBase64);
+  if (!sizeCheck.valid) {
+    return c.json({ error: sizeCheck.error, code: 'PAYLOAD_TOO_LARGE' }, 413);
+  }
+
+  const scanId = `scan_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const imageKey = `users/${auth.userId}/scans/${scanId}/original.webp`;
+  const mimeType = imageMimeType(imageBase64);
+  let imageStored = false;
+
+  // R2 upload if configured
+  if (c.env.IMAGES && imageBase64) {
+    try {
+      const buffer = Uint8Array.from(atob(imageBase64.replace(/^data:image\/\w+;base64,/, '')), (ch) =>
+        ch.charCodeAt(0)
+      );
+      await c.env.IMAGES.put(imageKey, buffer, {
+        httpMetadata: { contentType: mimeType },
+      });
+      imageStored = true;
+    } catch (err) {
+      console.warn('R2 upload failed:', err);
+    }
+  }
+
+  // Optional async canary: persist a pending scan and let the durable queue
+  // perform vision processing. The default remains synchronous to preserve the
+  // existing client response contract until the canary is explicitly enabled.
+  if (c.env.SCAN_QUEUE_MODE === 'async' && c.env.SCAN_QUEUE) {
+    if (!imageBase64) {
+      return c.json({ error: 'Scan queue requires an image payload', code: 'IMAGE_UNAVAILABLE' }, 400);
+    }
+    if (c.env.IMAGES && !imageStored) {
+      return c.json({ error: 'Không thể lưu ảnh để xử lý nền', code: 'IMAGE_STORAGE_FAILED' }, 503);
+    }
+    // Cloudflare Queue messages are intentionally kept small; production has
+    // R2 configured, while local canary environments may not. Avoid enqueueing
+    // a multi-megabyte base64 body that would be rejected by the platform.
+    if (!c.env.IMAGES && imageBase64.length > 120_000) {
+      return c.json({ error: 'Môi trường xử lý nền cần R2 để lưu ảnh lớn', code: 'QUEUE_PAYLOAD_TOO_LARGE' }, 413);
+    }
+    try {
+      const statements = [
+        db.prepare('INSERT OR IGNORE INTO households (id, name, created_by) VALUES (?, ?, ?)')
+          .bind(auth.householdId, 'Tủ lạnh gia đình', auth.userId),
+        db.prepare(SQL.CREATE_SCAN)
+          .bind(scanId, auth.userId, auth.householdId, imageKey, 'pending', scanType),
+      ];
+      const results = await db.batch(statements);
+      assertBatchSucceeded(results);
+      await c.env.SCAN_QUEUE.send({
+        type: 'scan.process.v1',
+        jobId: `scan_job_${scanId}`,
+        scanId,
+        userId: auth.userId,
+        householdId: auth.householdId,
+        scanType: scanType === 'food' ? 'food' : 'fridge',
+        imageKey: c.env.IMAGES ? imageKey : undefined,
+        imageBase64: c.env.IMAGES ? undefined : imageBase64,
+        mimeType,
+        idempotencyKey: `scan:${scanId}:v1`,
+      });
+      return c.json({
+        success: true,
+        queued: true,
+        scan: { id: scanId, userId: auth.userId, householdId: auth.householdId, imageKey, scanType, status: 'pending', items: [], createdAt: new Date().toISOString() },
+      }, 202);
+    } catch (err) {
+      console.error('Scan queue enqueue failed:', err);
+      await db.prepare(`UPDATE scans SET status = 'failed', updated_at = datetime('now') WHERE id = ? AND status = 'pending'`)
+        .bind(scanId).run().catch(() => undefined);
+      return c.json({ error: 'Không thể xếp hàng bản quét', code: 'QUEUE_UNAVAILABLE' }, 503);
+    }
+  }
+
+  // Call Real Vision AI (B4: 25s timeout — Workers free tier CPU limit is 30s;
+  // without a timeout a hung AI call blocks the request until platform kill)
+  const aiRouter = getAIRouter(c.env);
+  const visionResult = await Promise.race([
+    aiRouter.vision({
+      imageBase64OrUrl: imageBase64 || 'mock-image',
+      mimeType,
+    }),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('AI_SCAN_TIMEOUT: Phân tích ảnh quá lâu. Vui lòng thử lại.')), 25000)
+    ),
+  ]);
+
+  const scanItems = visionResult.items.map((item, idx) => {
+    const canonical = findCanonicalIngredient(item.raw_name);
+    const providerCanonical = item.canonical_id
+      ? findCanonicalIngredient(item.canonical_id)
+      : null;
+    return {
+      id: `scan_item_${scanId}_${idx}`,
+      scanId,
+      rawName: item.raw_name,
+      canonicalId: canonical?.id || providerCanonical?.id || null,
+      estimatedQuantity: item.estimated_quantity,
+      unit: item.unit as StandardUnit,
+      confidence: item.confidence,
+      category: canonical?.category || item.category || 'other',
+      storage: (item.storage || 'fridge') as 'fridge' | 'freezer' | 'pantry',
+    };
+  });
+
+  const scanRecord = {
+    id: scanId,
+    userId: auth.userId,
+    householdId: auth.householdId,
+    imageKey,
+    scanType,
+    status: 'ready',
+    items: scanItems,
+    createdAt: new Date().toISOString(),
+  };
+
+  // Persist to D1 with batch operations
+  try {
+    const statements = [
+      db
+        .prepare('INSERT OR IGNORE INTO households (id, name, created_by) VALUES (?, ?, ?)')
+        .bind(auth.householdId, 'Tủ lạnh gia đình', auth.userId),
+      db
+        .prepare(SQL.CREATE_SCAN)
+        .bind(scanId, auth.userId, auth.householdId, imageKey, 'ready', scanType),
+    ];
+
+    for (const item of scanItems) {
+      statements.push(
+        db
+          .prepare(SQL.INSERT_SCAN_ITEM)
+          .bind(
+            item.id,
+            scanId,
+            item.rawName,
+            item.canonicalId,
+            item.estimatedQuantity,
+            item.unit,
+            item.confidence,
+            item.category,
+            item.storage
+          )
+      );
+    }
+
+    const batchResults = await db.batch(statements);
+    assertBatchSucceeded(batchResults);
+  } catch (err) {
+    console.error('D1 CREATE_SCAN batch failed:', err);
+    return c.json({ error: 'Không thể lưu kết quả quét', code: 'DATABASE_ERROR' }, 500);
+  }
+
+  return c.json({
+    success: true,
+    scan: scanRecord,
+  });
+});
+
+// POST /api/v1/scans/receipt
+scanRoutes.post('/scans/receipt', async (c) => {
+  const auth = c.get('auth');
+  const db = c.env.DB;
+  const body = await c.req.json().catch(() => ({}));
+  const imageBase64 = body.imageBase64 || '';
+
+  if (!db) {
+    return c.json({ error: 'Database service unavailable', code: 'DATABASE_UNAVAILABLE' }, 503);
+  }
+
+  // SEC-08 FIX: Check payload size limit
+  const sizeCheck = validateBase64Payload(imageBase64);
+  if (!sizeCheck.valid) {
+    return c.json({ error: sizeCheck.error, code: 'PAYLOAD_TOO_LARGE' }, 413);
+  }
+
+  const scanId = `receipt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const imageKey = `users/${auth.userId}/scans/${scanId}/original.webp`;
+  const mimeType = imageMimeType(imageBase64);
+  let imageStored = false;
+
+  if (c.env.IMAGES && imageBase64) {
+    try {
+      const buffer = Uint8Array.from(atob(imageBase64.replace(/^data:image\/\w+;base64,/, '')), (ch) =>
+        ch.charCodeAt(0)
+      );
+      await c.env.IMAGES.put(imageKey, buffer, {
+        httpMetadata: { contentType: mimeType },
+      });
+      imageStored = true;
+    } catch (err) {
+      console.warn('R2 receipt upload failed:', err);
+    }
+  }
+
+  if (c.env.SCAN_QUEUE_MODE === 'async' && c.env.SCAN_QUEUE) {
+    if (!imageBase64) {
+      return c.json({ error: 'Scan queue requires an image payload', code: 'IMAGE_UNAVAILABLE' }, 400);
+    }
+    if (c.env.IMAGES && !imageStored) {
+      return c.json({ error: 'Không thể lưu ảnh để xử lý nền', code: 'IMAGE_STORAGE_FAILED' }, 503);
+    }
+    if (!c.env.IMAGES && imageBase64.length > 120_000) {
+      return c.json({ error: 'Môi trường xử lý nền cần R2 để lưu ảnh lớn', code: 'QUEUE_PAYLOAD_TOO_LARGE' }, 413);
+    }
+
+    try {
+      const statements = [
+        db.prepare('INSERT OR IGNORE INTO households (id, name, created_by) VALUES (?, ?, ?)')
+          .bind(auth.householdId, 'Tủ lạnh gia đình', auth.userId),
+        db.prepare(SQL.CREATE_SCAN)
+          .bind(scanId, auth.userId, auth.householdId, imageKey, 'pending', 'receipt'),
+      ];
+      const results = await db.batch(statements);
+      assertBatchSucceeded(results);
+      await c.env.SCAN_QUEUE.send({
+        type: 'scan.process.v1',
+        jobId: `scan_job_${scanId}`,
+        scanId,
+        userId: auth.userId,
+        householdId: auth.householdId,
+        scanType: 'receipt',
+        imageKey: c.env.IMAGES ? imageKey : undefined,
+        imageBase64: c.env.IMAGES ? undefined : imageBase64,
+        mimeType,
+        idempotencyKey: `scan:${scanId}:v1`,
+      });
+      return c.json({
+        success: true,
+        queued: true,
+        receipt: {
+          id: scanId,
+          userId: auth.userId,
+          householdId: auth.householdId,
+          imageKey,
+          scanType: 'receipt',
+          status: 'pending',
+          items: [],
+          createdAt: new Date().toISOString(),
+        },
+      }, 202);
+    } catch (err) {
+      console.error('Receipt queue enqueue failed:', err);
+      await db.prepare(`UPDATE scans SET status = 'failed', updated_at = datetime('now') WHERE id = ? AND status = 'pending'`)
+        .bind(scanId).run().catch(() => undefined);
+      return c.json({ error: 'Không thể xếp hàng hóa đơn', code: 'QUEUE_UNAVAILABLE' }, 503);
+    }
+  }
+
+  const aiRouter = getAIRouter(c.env);
+
+  const receiptResult = await Promise.race([
+    aiRouter.receiptScan({
+      imageBase64OrUrl: imageBase64 || 'mock-receipt',
+      mimeType,
+    }),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('AI_SCAN_TIMEOUT: Đọc hóa đơn quá lâu. Vui lòng thử lại.')), 25000)
+    ),
+  ]);
+
+  const receiptRecord = {
+    id: scanId,
+    userId: auth.userId,
+    householdId: auth.householdId,
+    imageKey,
+    scanType: 'receipt',
+    status: 'ready',
+    merchantName: receiptResult.merchant_name,
+    invoiceNumber: receiptResult.invoice_number,
+    purchaseDate: receiptResult.purchase_date,
+    totalAmountVnd: receiptResult.total_amount_vnd,
+    items: receiptResult.items.map((item, idx) => {
+      const canonical = findCanonicalIngredient(item.raw_name);
+      const providerCanonical = item.canonical_id
+        ? findCanonicalIngredient(item.canonical_id)
+        : null;
+      return {
+        id: `receipt_item_${scanId}_${idx}`,
+        rawName: item.raw_name,
+        canonicalId: canonical?.id || providerCanonical?.id || null,
+        estimatedQuantity: item.estimated_quantity,
+        unit: item.unit as StandardUnit,
+        unitPriceVnd: item.unit_price_vnd,
+        totalPriceVnd: item.total_price_vnd,
+        category: item.category || 'other',
+        storage: item.storage || 'fridge',
+        confidence: item.confidence,
+      };
+    }),
+    createdAt: new Date().toISOString(),
+  };
+
+  try {
+    const statements = [
+      db
+        .prepare('INSERT OR IGNORE INTO households (id, name, created_by) VALUES (?, ?, ?)')
+        .bind(auth.householdId, 'Tủ lạnh gia đình', auth.userId),
+      db
+        .prepare(`INSERT INTO scans
+          (id, user_id, household_id, image_key, status, scan_type, merchant_name, invoice_number, purchase_date, total_amount_vnd)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .bind(
+          scanId,
+          auth.userId,
+          auth.householdId,
+          imageStored ? imageKey : null,
+          'ready',
+          'receipt',
+          receiptRecord.merchantName ?? null,
+          receiptRecord.invoiceNumber ?? null,
+          receiptRecord.purchaseDate ?? null,
+          receiptRecord.totalAmountVnd ?? null,
+        ),
+    ];
+
+    for (const item of receiptRecord.items) {
+      statements.push(
+        db
+          .prepare(SQL.INSERT_RECEIPT_SCAN_ITEM)
+          .bind(
+            item.id,
+            scanId,
+            item.rawName,
+            item.canonicalId,
+            item.estimatedQuantity,
+            item.unit,
+            item.confidence,
+            item.category,
+            item.storage,
+            item.unitPriceVnd ?? null,
+            item.totalPriceVnd ?? null,
+          )
+      );
+    }
+
+    const batchResults = await db.batch(statements);
+    assertBatchSucceeded(batchResults);
+  } catch (err) {
+    console.error('D1 receipt scan batch save failed:', err);
+    return c.json({ error: 'Không thể lưu kết quả hóa đơn', code: 'DATABASE_ERROR' }, 500);
+  }
+
+  return c.json({
+    success: true,
+    receipt: receiptRecord,
+  });
+});
+
+// GET /api/v1/scans/:id
+scanRoutes.get('/scans/:id', async (c) => {
+  const auth = c.get('auth');
+  const id = c.req.param('id');
+  const db = c.env.DB;
+
+  if (!db) {
+    return c.json({ error: 'Database service unavailable' }, 503);
+  }
+
+  try {
+    // SEC-05 FIX: Enforce tenancy check - only owner of scan can read it
+    const scan = await db
+      .prepare('SELECT * FROM scans WHERE id = ? AND household_id = ?')
+      .bind(id, auth.householdId)
+      .first<any>();
+
+    if (!scan) {
+      return c.json({ error: 'Bản quét không tồn tại hoặc bạn không có quyền xem', code: 'NOT_FOUND' }, 404);
+    }
+
+    const itemsRes = await db.prepare(SQL.GET_SCAN_ITEMS).bind(id).all();
+    const items = (itemsRes.results || []).map((row: any) => ({
+      id: row.id,
+      scanId: row.scan_id,
+      rawName: row.raw_name,
+      canonicalId: row.canonical_id,
+      estimatedQuantity: row.estimated_quantity,
+      unit: row.unit,
+      confidence: row.confidence,
+      category: row.category,
+      storage: row.storage,
+      isConfirmed: Boolean(row.is_confirmed),
+      unitPriceVnd: row.unit_price_vnd == null ? undefined : Number(row.unit_price_vnd),
+      totalPriceVnd: row.total_price_vnd == null ? undefined : Number(row.total_price_vnd),
+    }));
+
+    return c.json({
+      scan: {
+        id: scan.id,
+        userId: scan.user_id,
+        householdId: scan.household_id,
+        imageKey: scan.image_key,
+        scanType: scan.scan_type,
+        status: scan.status,
+        merchantName: scan.merchant_name ?? undefined,
+        invoiceNumber: scan.invoice_number ?? undefined,
+        purchaseDate: scan.purchase_date ?? undefined,
+        totalAmountVnd: scan.total_amount_vnd == null ? undefined : Number(scan.total_amount_vnd),
+        items,
+        createdAt: scan.created_at,
+      },
+    });
+  } catch (err) {
+    console.error('D1 GET_SCAN failed:', err);
+    return c.json({ error: 'Lỗi truy vấn bản quét', code: 'DATABASE_ERROR' }, 500);
+  }
+});
+
+// POST /api/v1/scans/:id/confirm
+scanRoutes.post('/scans/:id/confirm', async (c) => {
+  const auth = c.get('auth');
+  const db = c.env.DB;
+  const kv = c.env.CACHE;
+  const id = c.req.param('id');
+
+  const rawBody = await c.req.json().catch(() => ({}));
+  const parseResult = ScanConfirmSchema.safeParse(rawBody);
+
+  if (!parseResult.success) {
+    return c.json(
+      {
+        error: parseResult.error.errors[0]?.message || 'Dữ liệu xác nhận không hợp lệ',
+        code: 'VALIDATION_ERROR',
+      },
+      400
+    );
+  }
+
+  const confirmedItems = parseResult.data.items;
+
+  if (!db) {
+    return c.json({ error: 'Database service unavailable', code: 'DATABASE_UNAVAILABLE' }, 503);
+  }
+
+  try {
+    // SEC-05 FIX: Verify that the scan belongs to this household
+    const scan = await db
+      .prepare('SELECT id, status FROM scans WHERE id = ? AND household_id = ?')
+      .bind(id, auth.householdId)
+      .first<any>();
+
+    if (!scan) {
+      return c.json({ error: 'Bản quét không tồn tại hoặc không thuộc hộ gia đình của bạn', code: 'NOT_FOUND' }, 404);
+    }
+
+    if (scan.status === 'confirmed') {
+      const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+      return c.json({
+        success: true,
+        idempotentReplay: true,
+        message: 'Bản quét này đã được xác nhận trước đó',
+        inventoryCount: updatedList.length,
+        items: updatedList,
+      });
+    }
+    if (scan.status !== 'ready') {
+      return c.json(
+        { error: 'Bản quét chưa sẵn sàng để xác nhận', code: 'INVALID_SCAN_STATE' },
+        409
+      );
+    }
+
+    // Hydrate the review payload from the server-side scan snapshot. This
+    // both preserves fields omitted by older clients (notably the unit) and
+    // ensures an AI row from another scan cannot be smuggled into this command.
+    const scanItemsResult = await db
+      .prepare(
+        `SELECT id, raw_name, canonical_id, estimated_quantity, unit, category, storage, is_confirmed
+         FROM scan_items WHERE scan_id = ?`
+      )
+      .bind(id)
+      .all();
+    const persistedItems = (scanItemsResult.results || []) as PersistedScanItem[];
+    const resolvedItems = resolveScanConfirmationItems(persistedItems, confirmedItems);
+
+    type ResolvedGroup = {
+      key: string;
+      items: ResolvedScanItem[];
+      existing?: {
+        id: string;
+        quantity: number;
+        unit: string;
+        ingredient_id?: string | null;
+        name?: string;
+        expiry_date?: string | null;
+      };
+    };
+
+    // Group rows that refer to the same canonical ingredient/name before
+    // querying inventory. D1 does not expose uncommitted batch inserts to the
+    // later SELECTs, so without grouping two tomatoes in one scan could create
+    // two inventory rows instead of one aggregated projection.
+    const groups = new Map<string, ResolvedGroup>();
+    for (const item of resolvedItems) {
+      const key = item.canonicalId
+        ? `canonical:${item.canonicalId}`
+        : `name:${item.name.toLocaleLowerCase()}`;
+      const group = groups.get(key);
+      if (group) {
+        group.items.push(item);
+      } else {
+        groups.set(key, { key, items: [item] });
+      }
+    }
+
+    type InventoryUpdate = {
+      id: string;
+      quantityDelta: number;
+      unit: StandardUnit;
+      expiryDate: string | null;
+      freshness: string;
+      ingredientId: string | null;
+    };
+    type InventoryInsert = {
+      id: string;
+      quantity: number;
+      unit: StandardUnit;
+      expiryDate: string;
+      freshness: string;
+      ingredientId: string | null;
+      name: string;
+      category: string;
+      storage: 'fridge' | 'freezer' | 'pantry';
+    };
+
+    const updates = new Map<string, InventoryUpdate>();
+    const inserts: InventoryInsert[] = [];
+    const events: Array<{
+      id: string;
+      itemId: string;
+      quantity: number;
+      unit: StandardUnit;
+      metadata: string;
+    }> = [];
+
+    let groupIndex = 0;
+    for (const group of groups.values()) {
+      const first = group.items[0];
+      const existingResult = await db
+        .prepare(
+          `SELECT id, quantity, unit, ingredient_id, name, expiry_date
+           FROM inventory_items
+           WHERE household_id = ?
+             AND ((? IS NOT NULL AND ingredient_id = ?) OR LOWER(name) = LOWER(?))
+           ORDER BY updated_at ASC`
+        )
+        .bind(auth.householdId, first.canonicalId, first.canonicalId, first.name)
+        .all();
+      const candidates = (existingResult.results || []) as Array<NonNullable<ResolvedGroup['existing']>>;
+      const exactCandidate = candidates.find((candidate) => candidate.unit === first.unit);
+      const compatibleCandidate = candidates.find(
+        (candidate) =>
+          isStandardUnit(candidate.unit) && areUnitsCompatible(first.unit, candidate.unit)
+      );
+      const existing = exactCandidate || compatibleCandidate;
+      if (!existing && candidates.length > 0) {
+        throw new ScanConfirmationError(
+          'UNIT_MISMATCH',
+          `Không thể quy đổi đơn vị ${first.unit} sang đơn vị tồn kho của ${first.name}`
+        );
+      }
+      group.existing = existing || undefined;
+
+      const targetUnitValue = existing?.unit || first.unit;
+      if (!isStandardUnit(targetUnitValue)) {
+        throw new ScanConfirmationError(
+          'INVALID_SCAN_ITEM',
+          `Đơn vị tồn kho của ${first.name} không hợp lệ`
+        );
+      }
+      const targetUnit = targetUnitValue;
+
+      let totalDelta = 0;
+      const deltas: number[] = [];
+      for (const item of group.items) {
+        const delta = convertScanQuantity(item.quantity, item.unit, targetUnit);
+        totalDelta += delta;
+        deltas.push(delta);
+      }
+      if (!Number.isFinite(totalDelta) || totalDelta <= 0) {
+        throw new ScanConfirmationError('INVALID_QUANTITY', `Số lượng của ${first.name} không hợp lệ`);
+      }
+
+      const shelfLife = findCanonicalIngredient(first.canonicalId || first.name)?.defaultShelfLifeDays || 7;
+      const submittedExpiries = group.items
+        .map((item) => item.expiryDate)
+        .filter((value): value is string => Boolean(value));
+      const existingExpiry = existing?.expiry_date || null;
+      const expiryDate = [...submittedExpiries, ...(existingExpiry ? [existingExpiry] : [])]
+        .sort()[0] || new Date(Date.now() + shelfLife * 86400000).toISOString().split('T')[0];
+      const freshness = computeFreshness(expiryDate, undefined, shelfLife);
+
+      let itemId: string;
+      if (existing) {
+        const currentQuantity = Number(existing.quantity);
+        if (!Number.isFinite(currentQuantity) || currentQuantity < 0) {
+          throw new ScanConfirmationError('INVALID_QUANTITY', `Tồn kho của ${first.name} không hợp lệ`);
+        }
+        itemId = existing.id;
+        const previous = updates.get(itemId);
+        updates.set(itemId, {
+          id: itemId,
+          quantityDelta: (previous?.quantityDelta || 0) + totalDelta,
+          unit: targetUnit,
+          expiryDate,
+          freshness,
+          ingredientId: existing.ingredient_id || first.canonicalId,
+        });
+        if (!Number.isFinite(currentQuantity + totalDelta)) {
+          throw new ScanConfirmationError('INVALID_QUANTITY', `Số lượng của ${first.name} quá lớn`);
+        }
+      } else {
+        itemId = `item_${id}_${stableScanPart(first, groupIndex)}`;
+        inserts.push({
+          id: itemId,
+          quantity: totalDelta,
+          unit: targetUnit,
+          expiryDate,
+          freshness,
+          ingredientId: first.canonicalId,
+          name: first.name,
+          category: first.category,
+          storage: first.storage,
+        });
+      }
+
+      group.items.forEach((item, itemIndex) => {
+        const sourceKey = stableScanPart(item, itemIndex);
+        events.push({
+          id: `evt_scan_${id}_${sourceKey}`,
+          itemId,
+          quantity: deltas[itemIndex],
+          unit: targetUnit,
+          metadata: JSON.stringify({
+            scanId: id,
+            scanItemId: item.sourceId || null,
+            sourceQuantity: item.quantity,
+            sourceUnit: item.unit,
+          }),
+        });
+      });
+      groupIndex += 1;
+    }
+
+    const selectedItems = resolvedItems.filter(
+      (item): item is ResolvedScanItem & { sourceId: string } => Boolean(item.sourceId)
+    );
+    const selectedIds = selectedItems.map((item) => item.sourceId);
+    // Every mutation below is guarded by the same READY predicate. The scan
+    // status transition is deliberately the final statement; a concurrent
+    // confirmation therefore turns all stale mutations into no-ops.
+    const readyScanPredicate =
+      `EXISTS (SELECT 1 FROM scans WHERE id = ? AND household_id = ? AND status = 'ready')`;
+    const batchStatements: any[] = [];
+    if (selectedItems.length > 0) {
+      // Persist the user's reviewed values alongside the confirmation flag so
+      // a later GET of the scan reflects exactly what was imported. Omitted
+      // predictions remain unconfirmed and retain their original AI values.
+      for (const item of selectedItems) {
+        batchStatements.push(
+          db
+            .prepare(
+              `UPDATE scan_items
+               SET raw_name = ?, canonical_id = ?, estimated_quantity = ?, unit = ?,
+                   category = ?, storage = ?, is_confirmed = 1
+               WHERE id = ? AND scan_id = ? AND ${readyScanPredicate}`
+            )
+            .bind(
+              item.name,
+              item.canonicalId,
+              item.quantity,
+              item.unit,
+              item.category,
+              item.storage,
+              item.sourceId,
+              id,
+              id,
+              auth.householdId
+            )
+        );
+      }
+    }
+
+    for (const update of updates.values()) {
+      batchStatements.push(
+        db
+          .prepare(
+            `UPDATE inventory_items
+             SET quantity = quantity + ?, unit = ?, ingredient_id = COALESCE(ingredient_id, ?),
+                 expiry_date = ?, freshness = ?, version = version + 1, updated_at = datetime('now')
+             WHERE id = ? AND household_id = ? AND ${readyScanPredicate}`
+          )
+          .bind(
+            update.quantityDelta,
+            update.unit,
+            update.ingredientId,
+            update.expiryDate,
+            update.freshness,
+            update.id,
+            auth.householdId,
+            id,
+            auth.householdId
+          )
+      );
+    }
+
+    for (const insert of inserts) {
+      batchStatements.push(
+        db
+          .prepare(
+            `INSERT INTO inventory_items
+             (id, household_id, ingredient_id, name, quantity, unit, category, storage,
+              expiry_date, added_date, freshness, data_source)
+             SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+             WHERE ${readyScanPredicate}`
+          )
+          .bind(
+            insert.id,
+            auth.householdId,
+            insert.ingredientId,
+            insert.name,
+            insert.quantity,
+            insert.unit,
+            insert.category,
+            insert.storage,
+            insert.expiryDate,
+            new Date().toISOString(),
+            insert.freshness,
+            'scan',
+            id,
+            auth.householdId
+          )
+      );
+    }
+
+    for (const event of events) {
+      batchStatements.push(
+        db
+          .prepare(
+            `INSERT INTO inventory_events
+             (id, household_id, inventory_item_id, event_type, quantity_delta, unit, reason, metadata)
+             SELECT ?, ?, ?, ?, ?, ?, ?, ?
+             WHERE ${readyScanPredicate}`
+          )
+          .bind(
+            event.id,
+            auth.householdId,
+            event.itemId,
+            'SCAN_CONFIRM',
+            event.quantity,
+            event.unit,
+            'Xác nhận từ nhận diện thông minh',
+            event.metadata,
+            id,
+            auth.householdId
+          )
+      );
+    }
+
+    batchStatements.push(
+      db
+        .prepare(
+          `UPDATE scans SET status = 'confirmed', updated_at = datetime('now')
+           WHERE id = ? AND household_id = ? AND status = 'ready'`
+        )
+        .bind(id, auth.householdId)
+    );
+
+    // D1 batch executes the state transition, projection, and audit events as
+    // one transaction. A failed event insert therefore rolls back the status.
+    const batchResults = await db.batch(batchStatements);
+    assertBatchSucceeded(batchResults);
+    const statusResult = batchResults?.[batchResults.length - 1] as any;
+    if (statusResult?.meta?.changes !== 1) {
+      const committed = await db
+        .prepare('SELECT status FROM scans WHERE id = ? AND household_id = ?')
+        .bind(id, auth.householdId)
+        .first<{ status: string }>();
+      if (committed?.status === 'confirmed') {
+        const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+        return c.json({
+          success: true,
+          idempotentReplay: true,
+          message: 'Bản quét này đã được xác nhận trước đó',
+          inventoryCount: updatedList.length,
+          items: updatedList,
+        });
+      }
+      throw new Error('Scan confirmation state transition did not commit');
+    }
+
+    if (kv) {
+      await kv.delete(`inv_${auth.householdId}`).catch(() => {});
+    }
+
+    // Fetch fresh updated inventory from D1
+    const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+
+    return c.json({
+      success: true,
+      message: 'Đã cập nhật nguyên liệu vào tủ lạnh thành công',
+      inventoryCount: updatedList.length,
+      items: updatedList,
+      confirmedItemIds: selectedIds,
+    });
+  } catch (err: any) {
+    if (err instanceof ScanConfirmationError) {
+      return c.json(
+        { error: err.message, code: err.code },
+        err.status as 400 | 409 | 422
+      );
+    }
+    // If another request confirmed this scan between our state read and the
+    // batch, the unique event IDs make this batch fail atomically. Re-read the
+    // state and expose the committed result as an idempotent replay.
+    try {
+      const committed = await db
+        .prepare('SELECT status FROM scans WHERE id = ? AND household_id = ?')
+        .bind(id, auth.householdId)
+        .first<{ status: string }>();
+      if (committed?.status === 'confirmed') {
+        const updatedList = await fetchHouseholdInventoryFromDb(db, auth.householdId, kv, { strict: true });
+        return c.json({
+          success: true,
+          idempotentReplay: true,
+          message: 'Bản quét này đã được xác nhận trước đó',
+          inventoryCount: updatedList.length,
+          items: updatedList,
+        });
+      }
+    } catch {
+      // Fall through to the database error response.
+    }
+    console.error('D1 confirmScan items insert failed:', err);
+    return c.json({ error: 'Lỗi xác nhận đưa nguyên liệu vào tủ lạnh', code: 'DATABASE_ERROR' }, 500);
+  }
+});

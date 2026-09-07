@@ -1,0 +1,60 @@
+import { D1DatabaseBinding } from '@frigo/db';
+import type {
+  Fetcher,
+  KVNamespace,
+  Queue,
+  R2Bucket,
+  SendEmail,
+} from '@cloudflare/workers-types';
+
+export type WeekSchemaMode = 'legacy' | 'dual';
+
+export interface Env {
+  DB: D1DatabaseBinding;
+  AI?: any;
+  IMAGES?: R2Bucket;
+  CACHE?: KVNamespace;
+  SCAN_QUEUE?: Queue<any>;
+  SCAN_QUEUE_MODE?: 'sync' | 'async';
+  ASSETS?: Fetcher;
+  // B1: native Workers email (Paid plan). Present when send_email binding is
+  // configured in wrangler.jsonc.
+  SEND_EMAIL?: SendEmail;
+
+  ENVIRONMENT?: string;
+  WEEK_SCHEMA_MODE?: WeekSchemaMode;
+  APP_URL?: string;
+  AI_MOCK_MODE?: string;
+
+  QWEN_API_KEY?: string;
+  QWEN_BASE_URL?: string;
+
+  GROQ_API_KEY?: string;
+  GROQ_BASE_URL?: string;
+  GROQ_VISION_MODEL?: string;
+
+  ZAI_API_KEY?: string;
+  ZAI_BASE_URL?: string;
+
+  DEEPSEEK_API_KEY?: string;
+  DEEPSEEK_BASE_URL?: string;
+
+  AI_GATEWAY_URL?: string;
+  TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SECRET_KEY?: string;
+  JWT_SECRET?: string;
+  RESEND_API_KEY?: string;
+  // S2: server-held code required to manually/back-office grant Frigo Plus.
+  // Never exposed to the client; acts as the payment-verification hook until a
+  // real NAPAS callback reconciles transfers.
+  PLUS_GRANT_SECRET?: string;
+}
+
+export interface AuthContext {
+  userId: string;
+  householdId: string;
+  isGuest: boolean;
+  email?: string;
+  role?: string;
+  sessionId?: string;
+}

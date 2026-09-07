@@ -1,0 +1,16 @@
+[
+  "/",
+  "/onboarding",
+  "/scan",
+  "/scan/:id/review",
+  "/fridge",
+  "/ingredients/:id",
+  "/recipes",
+  "/recipes/:slug",
+  "/cook/:slug",
+  "/shopping",
+  "/notifications",
+  "/profile",
+  "/settings",
+  "/plus"
+]
