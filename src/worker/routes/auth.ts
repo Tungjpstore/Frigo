@@ -3,11 +3,12 @@ import { Env, AuthContext } from '../types';
 import { SQL } from '@frigo/db';
 import { hashPassword, generateSalt, verifyPassword } from '../utils/password';
 import { signJwt, verifyJwt } from '../utils/jwt';
+import { generateSessionToken, hmacSha256Hex, sha256Hex, SESSION_COOKIE } from '../utils/session';
 import { verifyGoogleToken } from '../utils/oauth';
 import { verifyTurnstileToken } from '../utils/turnstile';
 import { getJwtSecret } from '../middleware/auth';
 import { sendEmail, buildOtpEmail } from '../services/email';
-import { isOtpProtectionAvailable, shouldConsumeOtpOnVerify } from '../utils/otp';
+import { shouldConsumeOtpOnVerify } from '../utils/otp';
 
 // OTP-B1: Persist code then deliver via email. Fire-and-log: a failed send
 // never blocks the flow (code is in D1; dev surfaces it via devOtp).
@@ -21,9 +22,12 @@ async function issueAndSendOtp(
   const otpId = `otp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
+  const otpSecret = env.OTP_HASH_SECRET;
+  if (!otpSecret) throw new Error('OTP_HASH_SECRET is not configured');
+  const digest = await hmacSha256Hex(otpCode, otpSecret);
   await db
-    .prepare('INSERT INTO auth_otps (id, email, code, purpose, expires_at, used) VALUES (?, ?, ?, ?, ?, 0)')
-    .bind(otpId, email, otpCode, purpose, expiresAt)
+    .prepare('INSERT INTO auth_otps (id, email, code_digest, digest_version, purpose, expires_at, used, attempt_count) VALUES (?, ?, ?, 1, ?, ?, 0, 0)')
+    .bind(otpId, email, digest, purpose, expiresAt)
     .run();
 
   const { subject, html, text } = buildOtpEmail(otpCode, purpose);
@@ -56,39 +60,43 @@ function generateOtp(): string {
   return String(100000 + (array[0] % 900000));
 }
 
+function setSessionCookie(c: any, token: string): void {
+  c.header('Set-Cookie', `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${7 * 86400}`);
+}
+
 const OTP_MAX_FAILURES = 5;
 const OTP_LOCK_SECONDS = 15 * 60;
 const OTP_RESEND_COOLDOWN_SECONDS = 60;
 
-function otpAttemptKey(email: string, purpose: string): string {
-  return `otp_att_${email}_${purpose}`;
-}
-
-async function getOtpAttempts(env: Env, email: string, purpose: string): Promise<number> {
-  if (!env.CACHE) return 0;
-  return Number((await env.CACHE.get(otpAttemptKey(email, purpose))) || 0);
-}
-
-async function recordOtpFailure(env: Env, email: string, purpose: string): Promise<number> {
-  if (!env.CACHE) return 1;
-  const attempts = (await getOtpAttempts(env, email, purpose)) + 1;
-  await env.CACHE.put(otpAttemptKey(email, purpose), String(attempts), {
-    expirationTtl: OTP_LOCK_SECONDS,
-  });
-  return attempts;
-}
-
-async function clearOtpFailures(env: Env, email: string, purpose: string): Promise<void> {
-  if (env.CACHE) await env.CACHE.delete(otpAttemptKey(email, purpose));
-}
-
-async function enforceOtpLockout(
-  env: Env,
+async function getLatestOtp(
+  db: any,
   email: string,
   purpose: string
-): Promise<{ locked: boolean; attempts: number }> {
-  const attempts = await getOtpAttempts(env, email, purpose);
-  return { locked: attempts >= OTP_MAX_FAILURES, attempts };
+): Promise<any | null> {
+  return db.prepare(
+    `SELECT id, expires_at, used, used_at, code_digest, attempt_count, locked_until
+       FROM auth_otps
+      WHERE email = ? AND purpose = ? AND used = 0
+      ORDER BY created_at DESC LIMIT 1`
+  ).bind(email, purpose).first();
+}
+
+async function markOtpFailure(db: any, otp: any): Promise<number> {
+  const result: any = await db.prepare(
+    `UPDATE auth_otps
+        SET attempt_count = attempt_count + 1,
+            locked_until = CASE WHEN attempt_count + 1 >= ? THEN datetime('now', '+15 minutes') ELSE locked_until END
+      WHERE id = ? AND used = 0 AND (locked_until IS NULL OR datetime(locked_until) <= datetime('now'))`
+  ).bind(OTP_MAX_FAILURES, otp.id).run();
+  if (result?.meta?.changes !== 1) return OTP_MAX_FAILURES;
+  const row: any = await db.prepare('SELECT attempt_count FROM auth_otps WHERE id = ?').bind(otp.id).first();
+  return Number(row?.attempt_count || 0);
+}
+
+async function verifyOtpDigest(code: string, digestHex: string, secret: string): Promise<boolean> {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+  const sig = new Uint8Array((digestHex.match(/.{2}/g) || []).map((x) => parseInt(x, 16)));
+  return crypto.subtle.verify('HMAC', key, sig, new TextEncoder().encode(code));
 }
 
 // Issue cryptographically signed JWT and persist session to D1
@@ -97,22 +105,9 @@ async function createSessionAndToken(
   env: Env,
   user: { id: string; email: string; householdId: string; role?: string; isGuest?: boolean }
 ): Promise<string> {
-  const jwtSecret = getJwtSecret(env);
-  const nowSec = Math.floor(Date.now() / 1000);
-  const expSec = nowSec + 7 * 86400; // 7 days
-
-  const token = await signJwt(
-    {
-      sub: user.id,
-      hid: user.householdId,
-      typ: 'access',
-      email: user.email,
-      role: user.role || 'user',
-      isGuest: false,
-      exp: expSec,
-    },
-    jwtSecret
-  );
+  const token = generateSessionToken();
+  const tokenHash = await sha256Hex(token);
+  const expSec = Math.floor(Date.now() / 1000) + 7 * 86400;
 
   // Persist session to D1 if available
   if (db) {
@@ -120,11 +115,12 @@ async function createSessionAndToken(
       const sessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       const expiresAt = new Date(expSec * 1000).toISOString();
       await db
-        .prepare('INSERT INTO sessions (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)')
-        .bind(sessionId, user.id, token, expiresAt)
+        .prepare('INSERT INTO sessions_v2 (id, user_id, household_id, token_hash, expires_at) VALUES (?, ?, ?, ?, ?)')
+        .bind(sessionId, user.id, user.householdId, tokenHash, expiresAt)
         .run();
     } catch (err) {
-      console.warn('Failed inserting session to D1:', err);
+      console.error('Failed inserting session to D1:', err);
+      throw new Error('SESSION_PERSIST_FAILED');
     }
   }
 
@@ -365,19 +361,10 @@ authRoutes.post('/auth/verify-otp', async (c) => {
     return c.json({ error: 'Database service unavailable', code: 'DATABASE_UNAVAILABLE' }, 503);
   }
 
-  if (!isOtpProtectionAvailable(c.env)) {
-    return c.json(
-      {
-        error: 'Dịch vụ xác thực OTP tạm thời không khả dụng. Vui lòng thử lại sau.',
-        code: 'OTP_PROTECTION_UNAVAILABLE',
-      },
-      503
-    );
-  }
-
   try {
-    const lock = await enforceOtpLockout(c.env, normalizedEmail, purpose);
-    if (lock.locked) {
+    const otpRow: any = await getLatestOtp(db, normalizedEmail, purpose);
+    if (!otpRow) return c.json({ error: 'Mã OTP không chính xác hoặc đã được sử dụng' }, 400);
+    if (otpRow.locked_until && new Date(otpRow.locked_until).getTime() > Date.now()) {
       c.header('Retry-After', String(OTP_LOCK_SECONDS));
       return c.json(
         { error: 'Bạn đã nhập sai quá 5 lần. Vui lòng đợi 15 phút rồi thử lại.' },
@@ -385,15 +372,11 @@ authRoutes.post('/auth/verify-otp', async (c) => {
       );
     }
 
-    const otpRow: any = await db
-      .prepare(
-        'SELECT id, expires_at, used FROM auth_otps WHERE email = ? AND code = ? AND purpose = ? AND used = 0 ORDER BY created_at DESC LIMIT 1'
-      )
-      .bind(normalizedEmail, cleanCode, purpose)
-      .first();
-
-    if (!otpRow) {
-      const attempts = await recordOtpFailure(c.env, normalizedEmail, purpose);
+    const secret = c.env.OTP_HASH_SECRET;
+    if (!secret) return c.json({ error: 'Dịch vụ OTP chưa được cấu hình', code: 'OTP_PROTECTION_UNAVAILABLE' }, 503);
+    const valid = Boolean(secret && otpRow.code_digest && (await verifyOtpDigest(cleanCode, otpRow.code_digest, secret)));
+    if (!valid) {
+      const attempts = await markOtpFailure(db, otpRow);
       if (attempts >= OTP_MAX_FAILURES) {
         c.header('Retry-After', String(OTP_LOCK_SECONDS));
         return c.json(
@@ -405,17 +388,15 @@ authRoutes.post('/auth/verify-otp', async (c) => {
     }
 
     if (new Date(otpRow.expires_at).getTime() < Date.now()) {
-      await recordOtpFailure(c.env, normalizedEmail, purpose);
+      await markOtpFailure(db, otpRow);
       return c.json({ error: 'Mã OTP đã hết hạn. Vui lòng bấm gửi lại mã mới.' }, 400);
     }
 
     // Only a valid, unexpired OTP clears the shared attempt counter.
-    await clearOtpFailures(c.env, normalizedEmail, purpose);
-
     // Registration/login OTPs are consumed here. Password-reset OTPs must stay
     // available for /auth/reset-password, which performs the final consume.
     if (shouldConsumeOtpOnVerify(purpose)) {
-      await db.prepare('UPDATE auth_otps SET used = 1 WHERE id = ? AND used = 0').bind(otpRow.id).run();
+      await db.prepare("UPDATE auth_otps SET used = 1, used_at = datetime('now') WHERE id = ? AND used = 0").bind(otpRow.id).run();
     }
 
     if (purpose === 'register') {
@@ -540,11 +521,11 @@ authRoutes.post('/auth/verify-otp', async (c) => {
         householdId,
         role: 'owner',
       });
+      setSessionCookie(c, token);
 
       return c.json({
         success: true,
         message: 'Xác thực tài khoản thành công!',
-        token,
         user: {
           id: userId,
           email: userRow?.email,
@@ -751,10 +732,10 @@ authRoutes.post('/auth/login', async (c) => {
       householdId,
       role: 'owner',
     });
+    setSessionCookie(c, token);
 
     return c.json({
       success: true,
-      token,
       user: {
         id: account.user_id,
         email: normalizedEmail,
@@ -853,20 +834,11 @@ authRoutes.post('/auth/reset-password', async (c) => {
     return c.json({ error: 'Database service unavailable', code: 'DATABASE_UNAVAILABLE' }, 503);
   }
 
-  if (!isOtpProtectionAvailable(c.env)) {
-    return c.json(
-      {
-        error: 'Dịch vụ đặt lại mật khẩu tạm thời không khả dụng. Vui lòng thử lại sau.',
-        code: 'OTP_PROTECTION_UNAVAILABLE',
-      },
-      503
-    );
-  }
-
   try {
     const otpPurpose = 'forgot_password';
-    const lock = await enforceOtpLockout(c.env, normalizedEmail, otpPurpose);
-    if (lock.locked) {
+    const otpRow: any = await getLatestOtp(db, normalizedEmail, otpPurpose);
+    if (!otpRow) return c.json({ error: 'Mã OTP không chính xác hoặc đã được sử dụng' }, 400);
+    if (otpRow.locked_until && new Date(otpRow.locked_until).getTime() > Date.now()) {
       c.header('Retry-After', String(OTP_LOCK_SECONDS));
       return c.json(
         { error: 'Bạn đã nhập sai quá 5 lần. Vui lòng đợi 15 phút rồi thử lại.' },
@@ -874,15 +846,11 @@ authRoutes.post('/auth/reset-password', async (c) => {
       );
     }
 
-    const otpRow: any = await db
-      .prepare(
-        'SELECT id, expires_at, used FROM auth_otps WHERE email = ? AND code = ? AND purpose = ? AND used = 0 ORDER BY created_at DESC LIMIT 1'
-      )
-      .bind(normalizedEmail, cleanCode, otpPurpose)
-      .first();
-
-    if (!otpRow) {
-      const attempts = await recordOtpFailure(c.env, normalizedEmail, otpPurpose);
+    const secret = c.env.OTP_HASH_SECRET;
+    if (!secret) return c.json({ error: 'Dịch vụ OTP chưa được cấu hình', code: 'OTP_PROTECTION_UNAVAILABLE' }, 503);
+    const valid = Boolean(secret && otpRow.code_digest && (await verifyOtpDigest(cleanCode, otpRow.code_digest, secret)));
+    if (!valid) {
+      const attempts = await markOtpFailure(db, otpRow);
       if (attempts >= OTP_MAX_FAILURES) {
         c.header('Retry-After', String(OTP_LOCK_SECONDS));
         return c.json(
@@ -894,15 +862,13 @@ authRoutes.post('/auth/reset-password', async (c) => {
     }
 
     if (new Date(otpRow.expires_at).getTime() < Date.now()) {
-      await recordOtpFailure(c.env, normalizedEmail, otpPurpose);
+      await markOtpFailure(db, otpRow);
       return c.json({ error: 'Mã OTP đã hết hạn. Vui lòng thử lại.' }, 400);
     }
 
-    await clearOtpFailures(c.env, normalizedEmail, otpPurpose);
-
     // Consume atomically so concurrent reset requests cannot both succeed.
     const consumeResult: any = await db
-      .prepare('UPDATE auth_otps SET used = 1 WHERE id = ? AND used = 0')
+      .prepare("UPDATE auth_otps SET used = 1, used_at = datetime('now') WHERE id = ? AND used = 0")
       .bind(otpRow.id)
       .run();
     if (consumeResult?.meta && consumeResult.meta.changes !== 1) {
@@ -931,9 +897,9 @@ authRoutes.post('/auth/reset-password', async (c) => {
         email: normalizedEmail,
         householdId: `hh_${account.user_id}`,
       });
+      setSessionCookie(c, token);
       return c.json({
         success: true,
-        token,
         user: {
           id: account.user_id,
           email: normalizedEmail,
@@ -1092,10 +1058,10 @@ authRoutes.post('/auth/google', async (c) => {
       householdId,
       role: 'owner',
     });
+    setSessionCookie(c, token);
 
     return c.json({
       success: true,
-      token,
       user: {
         id: userId,
         email,
@@ -1169,21 +1135,17 @@ authRoutes.post('/auth/guest', async (c) => {
     );
   }
 
-  const token = await signJwt(
-    {
-      sub: newGuestId,
-      hid: householdId,
-      typ: 'guest',
-      email,
-      isGuest: true,
-      exp: Math.floor(Date.now() / 1000) + 30 * 86400, // 30 days for guests
-    },
-    getJwtSecret(c.env)
-  );
+  const token = await createSessionAndToken(c.env.DB, c.env, {
+    id: newGuestId,
+    email,
+    householdId,
+    role: 'owner',
+    isGuest: true,
+  });
+  setSessionCookie(c, token);
 
   return c.json({
     success: true,
-    token,
     user: {
       id: newGuestId,
       email,
@@ -1197,29 +1159,20 @@ authRoutes.post('/auth/guest', async (c) => {
 
 // 10. POST /auth/logout — Sign out and revoke session
 authRoutes.post('/auth/logout', async (c) => {
-  const auth = c.get('auth');
-  const authHeader = c.req.header('authorization');
   const db = c.env.DB;
-  const kv = c.env.CACHE;
-
-  if (authHeader) {
-    const token = authHeader.replace('Bearer ', '').trim();
-    if (kv) {
-      try {
-        await kv.put(`revoked_${token}`, '1', { expirationTtl: 604800 });
-      } catch {
-        // pass
-      }
-    }
-    if (db) {
-      try {
-        await db.prepare('DELETE FROM sessions WHERE token = ? OR user_id = ?').bind(token, auth.userId).run();
-      } catch {
-        // pass
-      }
+  const cookieHeader = c.req.header('cookie') || '';
+  const cookieToken = cookieHeader.split(';').map((v) => v.trim()).find((v) => v.startsWith(`${SESSION_COOKIE}=`))?.slice(SESSION_COOKIE.length + 1);
+  if (!db) return c.json({ error: 'Không thể đăng xuất lúc này', code: 'LOGOUT_FAILED' }, 503);
+  if (cookieToken) {
+    try {
+      const tokenHash = await sha256Hex(decodeURIComponent(cookieToken));
+      const result: any = await db.prepare("UPDATE sessions_v2 SET revoked_at = datetime('now') WHERE token_hash = ? AND revoked_at IS NULL").bind(tokenHash).run();
+      if (result?.success === false) return c.json({ error: 'Không thể đăng xuất lúc này', code: 'LOGOUT_FAILED' }, 503);
+    } catch {
+      return c.json({ error: 'Không thể đăng xuất lúc này', code: 'LOGOUT_FAILED' }, 503);
     }
   }
-
+  c.header('Set-Cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
   return c.json({ success: true, message: 'Đăng xuất thành công' });
 });
 

@@ -18,6 +18,8 @@ const STORAGE_KEY = 'frigo_sync_outbox_v1';
 
 export interface PendingOp {
   id: string;
+  /** Stable operation identifier used for server idempotency/audit. */
+  operationId?: string;
   ts: number;
   /** API path relative to BASE_URL, e.g. "/inventory" */
   path: string;
@@ -74,9 +76,11 @@ function emit(): void {
 }
 
 export function pushOp(op: Omit<PendingOp, 'id' | 'ts'>): PendingOp {
+  const operationId = op.operationId || `op_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const full: PendingOp = {
     ...op,
-    id: `op_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    operationId,
+    id: operationId,
     ts: Date.now(),
   };
   const ops = load();

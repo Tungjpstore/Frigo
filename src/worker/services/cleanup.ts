@@ -57,12 +57,11 @@ export async function cleanupExpiredOtps(db: NonNullable<Env['DB']>, days: numbe
 
 /**
  * DEPENDENCY (post-Thread-2 integration): this runs against the current
- * `sessions.expires_at` schema. Thread 2's session redesign may rename or
- * reshape the table; keep this one query aligned with that schema when
- * Thread 2 lands (docs/HOPLITE_HANDOFF.md).
+ * Opaque cookie sessions live in sessions_v2; legacy sessions are never used
+ * for authentication after the cutover.
  */
 export async function cleanupExpiredSessions(db: NonNullable<Env['DB']>, days: number): Promise<number> {
-  return deleteExpired(db, 'sessions', 'expires_at', days);
+  return deleteExpired(db, 'sessions_v2', 'expires_at', days);
 }
 
 /** Terminal (ready/failed) jobs only; pending/processing rows are never touched. */

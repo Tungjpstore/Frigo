@@ -17,6 +17,7 @@ import { preferencesRoutes } from './routes/preferences';
 import { notificationRoutes } from './routes/notifications';
 import { weekRoutes } from './routes/week';
 import { processScanJob, ScanQueueError } from './services/scan-queue';
+import { billingRoutes } from './routes/billing';
 
 type WorkerVariables = { auth: AuthContext; requestId: string };
 type WorkerApp = { Bindings: Env; Variables: WorkerVariables };
@@ -131,6 +132,7 @@ const api = new Hono<WorkerApp>();
 
 api.use('*', authMiddleware);
 api.route('/', authRoutes);
+api.route('/', billingRoutes);
 api.route('/', inventoryRoutes);
 api.route('/', scanRoutes);
 api.route('/', recipeRoutes);

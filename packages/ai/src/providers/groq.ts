@@ -8,9 +8,8 @@ import {
 import { findCanonicalIngredient } from '@frigo/domain';
 
 const DEFAULT_BASE_URL = 'https://api.groq.com/openai/v1';
-// Groq's currently supported multimodal model with JSON mode.
-// Qwen 3.6 27B is exposed as a vision model in the user's Groq project.
-const DEFAULT_VISION_MODEL = 'qwen/qwen3.6-27b';
+// Groq's supported multimodal Scout model for production vision requests.
+const DEFAULT_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const DEFAULT_CHAT_MODEL = 'llama-3.1-8b-instant';
 
 type ChatMessageContent = string | Array<{ type: string; text?: string; image_url?: { url: string } }>;

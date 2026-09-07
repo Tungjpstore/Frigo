@@ -2,6 +2,7 @@ import { Context, Next } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { Env, AuthContext } from '../types';
 import { verifyJwt, JwtPayload } from '../utils/jwt';
+import { sha256Hex, SESSION_COOKIE } from '../utils/session';
 
 // SEC-01: No default JWT secret. If JWT_SECRET is not configured as a Wrangler
 // secret, auth fails closed (503) instead of silently trusting a public key.
@@ -27,6 +28,8 @@ const PUBLIC_PATHS = [
   '/auth/reset-password',
   '/auth/google',
   '/auth/guest',
+  '/auth/logout',
+  '/billing/payos/webhook',
 ];
 
 export async function authMiddleware(
@@ -40,9 +43,46 @@ export async function authMiddleware(
     return await next();
   }
 
+  const cookieHeader = c.req.header('cookie') || '';
+  const cookieToken = cookieHeader.split(';').map((v) => v.trim()).find((v) => v.startsWith(`${SESSION_COOKIE}=`))?.slice(SESSION_COOKIE.length + 1);
   const authHeader = c.req.header('authorization');
-  const jwtSecret = getJwtSecret(c.env);
 
+  // Cookie-authenticated mutations must originate from the configured app.
+  // SameSite cookies provide a second layer, while this check blocks cross-site
+  // POST/PATCH/DELETE requests from browsers that relax cookie policy.
+  if (cookieToken && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(c.req.method)) {
+    const origin = c.req.header('origin') || c.req.header('referer');
+    const allowed = c.env.APP_URL;
+    if (origin && allowed && !origin.startsWith(allowed)) {
+      return c.json({ error: 'Cross-site request blocked', code: 'CSRF_ORIGIN_DENIED' }, 403);
+    }
+  }
+
+  // Cookie-only sessions are authoritative. Bearer JWTs are retained only for
+  // guest migration/reset compatibility and are never accepted for normal API access.
+  if (cookieToken && c.env.DB) {
+    try {
+      let tokenValue = '';
+      try { tokenValue = decodeURIComponent(cookieToken); } catch { tokenValue = ''; }
+      const tokenHash = await sha256Hex(tokenValue);
+      const row: any = await c.env.DB.prepare(
+        `SELECT s.id, s.user_id, s.household_id, u.email, u.is_guest, p.display_name
+           FROM sessions_v2 s JOIN users u ON u.id = s.user_id
+           LEFT JOIN profiles p ON p.user_id = s.user_id
+          WHERE s.token_hash = ? AND s.revoked_at IS NULL AND datetime(s.expires_at) > datetime('now') LIMIT 1`
+      ).bind(tokenHash).first();
+      if (row) {
+        c.set('auth', { userId: row.user_id, householdId: row.household_id, email: row.email, isGuest: Boolean(row.is_guest), sessionId: row.id });
+        await c.env.DB.prepare("UPDATE sessions_v2 SET last_seen_at = datetime('now') WHERE id = ?").bind(row.id).run().catch(() => {});
+        return await next();
+      }
+    } catch {
+      return c.json({ error: 'Authentication service unavailable', code: 'AUTH_UNAVAILABLE' }, 503);
+    }
+  }
+
+  // Legacy bearer JWTs are accepted only for guest migration and reset-free
+  // public compatibility; authenticated users must use the opaque cookie.
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     // If public recipe reading, allow guest browsing
     if (c.req.method === 'GET' && path.includes('/recipes')) {
@@ -65,27 +105,11 @@ export async function authMiddleware(
 
   const token = authHeader.replace('Bearer ', '').trim();
 
-  // Check KV token revocation list (instant logout)
-  if (c.env.CACHE) {
-    try {
-      const isRevoked = await c.env.CACHE.get(`revoked_${token}`);
-      if (isRevoked) {
-        return c.json(
-          {
-            error: 'Unauthorized: Session revoked',
-            code: 'SESSION_REVOKED',
-          },
-          401
-        );
-      }
-    } catch {
-      // ignore
-    }
-  }
+  const jwtSecret = getJwtSecret(c.env);
 
   // 1. Verify Cryptographic JWT
   const verification = await verifyJwt<JwtPayload>(token, jwtSecret);
-  if (verification.valid && verification.payload) {
+  if (verification.valid && verification.payload && c.env.ENVIRONMENT !== 'production') {
     const p = verification.payload;
     const isValidAccess = p.typ === 'access' && p.isGuest !== true;
     const isValidGuest = p.typ === 'guest' && p.isGuest === true;

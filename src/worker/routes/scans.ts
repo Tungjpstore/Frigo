@@ -13,6 +13,7 @@ import { tenancyGuard } from '../middleware/tenancy';
 import { rateLimiter } from '../middleware/rate-limit';
 import { ScanConfirmSchema } from '../validation/schemas';
 import { fetchHouseholdInventoryFromDb } from './inventory';
+import { reserveScanQuota, finalizeScanQuota } from '../services/scan-quota';
 
 export const scanRoutes = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
 
@@ -276,6 +277,13 @@ scanRoutes.post('/scans/fridge', async (c) => {
   }
 
   const scanId = `scan_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const idempotencyKey = c.req.header('Idempotency-Key') || `scan:${scanId}:v1`;
+  const quota = await reserveScanQuota(db, { userId: auth.userId, householdId: auth.householdId, scanId, idempotencyKey });
+  if (!quota.ok) {
+    const status = quota.reason === 'exceeded' ? 429 : quota.reason === 'conflict' ? 409 : 503;
+    return c.json({ error: quota.reason === 'exceeded' ? 'Đã vượt hạn mức quét trong tháng' : quota.reason === 'conflict' ? 'Idempotency key đã được sử dụng cho bản quét khác' : 'Không thể kiểm tra hạn mức quét', code: quota.reason === 'exceeded' ? 'SCAN_QUOTA_EXCEEDED' : quota.reason === 'conflict' ? 'IDEMPOTENCY_CONFLICT' : 'QUOTA_UNAVAILABLE' }, status);
+  }
+  const reservationId = quota.reservation.reservationId;
   const imageKey = `users/${auth.userId}/scans/${scanId}/original.webp`;
   const mimeType = imageMimeType(imageBase64);
   let imageStored = false;
@@ -300,15 +308,18 @@ scanRoutes.post('/scans/fridge', async (c) => {
   // existing client response contract until the canary is explicitly enabled.
   if (c.env.SCAN_QUEUE_MODE === 'async' && c.env.SCAN_QUEUE) {
     if (!imageBase64) {
+      await finalizeScanQuota(db, reservationId, 'released');
       return c.json({ error: 'Scan queue requires an image payload', code: 'IMAGE_UNAVAILABLE' }, 400);
     }
     if (c.env.IMAGES && !imageStored) {
+      await finalizeScanQuota(db, reservationId, 'released');
       return c.json({ error: 'Không thể lưu ảnh để xử lý nền', code: 'IMAGE_STORAGE_FAILED' }, 503);
     }
     // Cloudflare Queue messages are intentionally kept small; production has
     // R2 configured, while local canary environments may not. Avoid enqueueing
     // a multi-megabyte base64 body that would be rejected by the platform.
     if (!c.env.IMAGES && imageBase64.length > 120_000) {
+      await finalizeScanQuota(db, reservationId, 'released');
       return c.json({ error: 'Môi trường xử lý nền cần R2 để lưu ảnh lớn', code: 'QUEUE_PAYLOAD_TOO_LARGE' }, 413);
     }
     try {
@@ -330,8 +341,9 @@ scanRoutes.post('/scans/fridge', async (c) => {
         imageKey: c.env.IMAGES ? imageKey : undefined,
         imageBase64: c.env.IMAGES ? undefined : imageBase64,
         mimeType,
-        idempotencyKey: `scan:${scanId}:v1`,
+        idempotencyKey,
       });
+      await finalizeScanQuota(db, reservationId, 'consumed');
       return c.json({
         success: true,
         queued: true,
@@ -341,6 +353,7 @@ scanRoutes.post('/scans/fridge', async (c) => {
       console.error('Scan queue enqueue failed:', err);
       await db.prepare(`UPDATE scans SET status = 'failed', updated_at = datetime('now') WHERE id = ? AND status = 'pending'`)
         .bind(scanId).run().catch(() => undefined);
+      await finalizeScanQuota(db, reservationId, 'released');
       return c.json({ error: 'Không thể xếp hàng bản quét', code: 'QUEUE_UNAVAILABLE' }, 503);
     }
   }
@@ -348,15 +361,18 @@ scanRoutes.post('/scans/fridge', async (c) => {
   // Call Real Vision AI (B4: 25s timeout — Workers free tier CPU limit is 30s;
   // without a timeout a hung AI call blocks the request until platform kill)
   const aiRouter = getAIRouter(c.env);
-  const visionResult = await Promise.race([
-    aiRouter.vision({
-      imageBase64OrUrl: imageBase64 || 'mock-image',
-      mimeType,
-    }),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('AI_SCAN_TIMEOUT: Phân tích ảnh quá lâu. Vui lòng thử lại.')), 25000)
-    ),
-  ]);
+  let visionResult;
+  try {
+    visionResult = await Promise.race([
+      aiRouter.vision({ imageBase64OrUrl: imageBase64 || 'mock-image', mimeType }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('AI_SCAN_TIMEOUT: Phân tích ảnh quá lâu. Vui lòng thử lại.')), 25000)
+      ),
+    ]);
+  } catch (error) {
+    await finalizeScanQuota(db, reservationId, 'released');
+    throw error;
+  }
 
   const scanItems = visionResult.items.map((item, idx) => {
     const canonical = findCanonicalIngredient(item.raw_name);
@@ -420,8 +436,11 @@ scanRoutes.post('/scans/fridge', async (c) => {
     assertBatchSucceeded(batchResults);
   } catch (err) {
     console.error('D1 CREATE_SCAN batch failed:', err);
+    await finalizeScanQuota(db, reservationId, 'released');
     return c.json({ error: 'Không thể lưu kết quả quét', code: 'DATABASE_ERROR' }, 500);
   }
+
+  await finalizeScanQuota(db, reservationId, 'consumed');
 
   return c.json({
     success: true,
@@ -447,6 +466,13 @@ scanRoutes.post('/scans/receipt', async (c) => {
   }
 
   const scanId = `receipt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const idempotencyKey = c.req.header('Idempotency-Key') || `scan:${scanId}:v1`;
+  const quota = await reserveScanQuota(db, { userId: auth.userId, householdId: auth.householdId, scanId, idempotencyKey });
+  if (!quota.ok) {
+    const status = quota.reason === 'exceeded' ? 429 : quota.reason === 'conflict' ? 409 : 503;
+    return c.json({ error: quota.reason === 'exceeded' ? 'Đã vượt hạn mức quét trong tháng' : quota.reason === 'conflict' ? 'Idempotency key đã được sử dụng cho bản quét khác' : 'Không thể kiểm tra hạn mức quét', code: quota.reason === 'exceeded' ? 'SCAN_QUOTA_EXCEEDED' : quota.reason === 'conflict' ? 'IDEMPOTENCY_CONFLICT' : 'QUOTA_UNAVAILABLE' }, status);
+  }
+  const reservationId = quota.reservation.reservationId;
   const imageKey = `users/${auth.userId}/scans/${scanId}/original.webp`;
   const mimeType = imageMimeType(imageBase64);
   let imageStored = false;
@@ -467,12 +493,15 @@ scanRoutes.post('/scans/receipt', async (c) => {
 
   if (c.env.SCAN_QUEUE_MODE === 'async' && c.env.SCAN_QUEUE) {
     if (!imageBase64) {
+      await finalizeScanQuota(db, reservationId, 'released');
       return c.json({ error: 'Scan queue requires an image payload', code: 'IMAGE_UNAVAILABLE' }, 400);
     }
     if (c.env.IMAGES && !imageStored) {
+      await finalizeScanQuota(db, reservationId, 'released');
       return c.json({ error: 'Không thể lưu ảnh để xử lý nền', code: 'IMAGE_STORAGE_FAILED' }, 503);
     }
     if (!c.env.IMAGES && imageBase64.length > 120_000) {
+      await finalizeScanQuota(db, reservationId, 'released');
       return c.json({ error: 'Môi trường xử lý nền cần R2 để lưu ảnh lớn', code: 'QUEUE_PAYLOAD_TOO_LARGE' }, 413);
     }
 
@@ -495,8 +524,9 @@ scanRoutes.post('/scans/receipt', async (c) => {
         imageKey: c.env.IMAGES ? imageKey : undefined,
         imageBase64: c.env.IMAGES ? undefined : imageBase64,
         mimeType,
-        idempotencyKey: `scan:${scanId}:v1`,
+        idempotencyKey,
       });
+      await finalizeScanQuota(db, reservationId, 'consumed');
       return c.json({
         success: true,
         queued: true,
@@ -515,21 +545,25 @@ scanRoutes.post('/scans/receipt', async (c) => {
       console.error('Receipt queue enqueue failed:', err);
       await db.prepare(`UPDATE scans SET status = 'failed', updated_at = datetime('now') WHERE id = ? AND status = 'pending'`)
         .bind(scanId).run().catch(() => undefined);
+      await finalizeScanQuota(db, reservationId, 'released');
       return c.json({ error: 'Không thể xếp hàng hóa đơn', code: 'QUEUE_UNAVAILABLE' }, 503);
     }
   }
 
   const aiRouter = getAIRouter(c.env);
 
-  const receiptResult = await Promise.race([
-    aiRouter.receiptScan({
-      imageBase64OrUrl: imageBase64 || 'mock-receipt',
-      mimeType,
-    }),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('AI_SCAN_TIMEOUT: Đọc hóa đơn quá lâu. Vui lòng thử lại.')), 25000)
-    ),
-  ]);
+  let receiptResult;
+  try {
+    receiptResult = await Promise.race([
+      aiRouter.receiptScan({ imageBase64OrUrl: imageBase64 || 'mock-receipt', mimeType }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('AI_SCAN_TIMEOUT: Đọc hóa đơn quá lâu. Vui lòng thử lại.')), 25000)
+      ),
+    ]);
+  } catch (error) {
+    await finalizeScanQuota(db, reservationId, 'released');
+    throw error;
+  }
 
   const receiptRecord = {
     id: scanId,
@@ -610,8 +644,11 @@ scanRoutes.post('/scans/receipt', async (c) => {
     assertBatchSucceeded(batchResults);
   } catch (err) {
     console.error('D1 receipt scan batch save failed:', err);
+    await finalizeScanQuota(db, reservationId, 'released');
     return c.json({ error: 'Không thể lưu kết quả hóa đơn', code: 'DATABASE_ERROR' }, 500);
   }
+
+  await finalizeScanQuota(db, reservationId, 'consumed');
 
   return c.json({
     success: true,

@@ -14,18 +14,23 @@ import { pushOp, flush, rebindPendingOps, PendingScope } from '../lib/sync';
 
 const BASE_URL = '/api/v1';
 
-// SEC-03: Always attach the JWT Bearer token issued by /auth/* endpoints.
+// Authenticated users use the HttpOnly session cookie. Guests retain a short
+// lived signed token in sessionStorage for the guest-only compatibility flow.
 function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem('frigo_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const guestToken = sessionStorage.getItem('frigo_guest_token');
+  return guestToken ? { Authorization: `Bearer ${guestToken}` } : {};
 }
 
 // SEC-04: On 401 the session is invalid/expired — clear stale credentials so the
 // app returns to the auth screen instead of looping on silent fallbacks.
 function handleUnauthorized() {
+  const previousScope = getCurrentScope();
+  const previousMealKey = `frigo_cache_v2:${encodeURIComponent(previousScope.userId)}:${encodeURIComponent(previousScope.householdId)}:active_meal_plan`;
   localStorage.removeItem('frigo_token');
   localStorage.removeItem('frigo_user_id');
   localStorage.removeItem('frigo_household_id');
+  localStorage.removeItem('frigo_active_meal_plan');
+  localStorage.removeItem(previousMealKey);
 }
 
 // S3: distinguish transient/offline failures from authoritative server rejections.
@@ -59,20 +64,16 @@ function isNonRetryable(err: unknown): boolean {
 }
 
 async function fetchJson<T>(path: string, options?: RequestInit): Promise<T> {
-  const userId = localStorage.getItem('frigo_user_id') || 'demo_user_01';
-  const householdId = localStorage.getItem('frigo_household_id') || 'demo_household_01';
-
   let res: Response;
   try {
     res = await fetch(`${BASE_URL}${path}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        'x-user-id': userId,
-        'x-household-id': householdId,
         ...getAuthHeaders(),
         ...(options?.headers || {}),
       },
+      credentials: 'include',
     });
   } catch {
     // Network-level failure (no connectivity, DNS, aborted) => offline.
@@ -116,6 +117,22 @@ function getUserId(): string {
 
 function getCurrentScope(): PendingScope {
   return { userId: getUserId(), householdId: getHouseholdId() };
+}
+
+// Tenant-scoped cache keys prevent a shared browser from exposing the previous
+// account's meal plan after logout/account switch.
+function mealPlanCacheKey(): string {
+  const scope = getCurrentScope();
+  return `frigo_cache_v2:${encodeURIComponent(scope.userId)}:${encodeURIComponent(scope.householdId)}:active_meal_plan`;
+}
+
+export function clearTenantCaches(): void {
+  try {
+    localStorage.removeItem('frigo_active_meal_plan');
+    localStorage.removeItem(mealPlanCacheKey());
+  } catch {
+    // storage may be unavailable in private browsing
+  }
 }
 
 function createClientItemId(prefix = 'item'): string {
@@ -638,13 +655,13 @@ export const api = {
     try {
       const res = await fetchJson<{ plan: MealPlan }>('/week/current');
       if (res.plan) {
-        localStorage.setItem('frigo_active_meal_plan', JSON.stringify(res.plan));
+        localStorage.setItem(mealPlanCacheKey(), JSON.stringify(res.plan));
       }
       return res.plan;
     } catch (err) {
       if (!isOffline(err)) throw err;
       // Local fallback
-      const cached = localStorage.getItem('frigo_active_meal_plan');
+      const cached = localStorage.getItem(mealPlanCacheKey());
       if (cached) {
         try {
           return JSON.parse(cached);
@@ -670,14 +687,14 @@ export const api = {
         body,
         headers,
       });
-      localStorage.setItem('frigo_active_meal_plan', JSON.stringify(res.plan));
+      localStorage.setItem(mealPlanCacheKey(), JSON.stringify(res.plan));
       return res.plan;
     } catch (err) {
       if (!isOffline(err)) throw err;
       // Genuine offline: the deterministic domain engine can build the plan locally.
       const currentInv = await api.getInventory();
       const plan = generateWeeklyMealPlan(planInput, currentInv, ALL_RECIPES);
-      localStorage.setItem('frigo_active_meal_plan', JSON.stringify(plan));
+      localStorage.setItem(mealPlanCacheKey(), JSON.stringify(plan));
       queueWrite(
         '/week/plans',
         'POST',
@@ -696,7 +713,7 @@ export const api = {
       return res.plan;
     } catch (err) {
       if (!isOffline(err)) throw err;
-      const cached = localStorage.getItem('frigo_active_meal_plan');
+      const cached = localStorage.getItem(mealPlanCacheKey());
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
@@ -727,7 +744,7 @@ export const api = {
         }
       );
       if (res.plan) {
-        localStorage.setItem('frigo_active_meal_plan', JSON.stringify(res.plan));
+        localStorage.setItem(mealPlanCacheKey(), JSON.stringify(res.plan));
       }
       return res;
     } catch (err) {
@@ -745,7 +762,7 @@ export const api = {
         );
       }
       // Standalone client fallback (offline): apply the deterministic swap locally.
-      const cached = localStorage.getItem('frigo_active_meal_plan');
+      const cached = localStorage.getItem(mealPlanCacheKey());
       if (cached) {
         const plan: MealPlan = JSON.parse(cached);
         let targetSlot: any;
@@ -767,7 +784,7 @@ export const api = {
           if (newRec) {
             const currentInv = await api.getInventory();
             const updated = swapMealInPlan(plan, mealId, newRec, currentInv);
-            localStorage.setItem('frigo_active_meal_plan', JSON.stringify(updated));
+            localStorage.setItem(mealPlanCacheKey(), JSON.stringify(updated));
             return { plan: updated };
           }
         }
@@ -786,7 +803,7 @@ export const api = {
         body,
         headers,
       });
-      localStorage.setItem('frigo_active_meal_plan', JSON.stringify(res.plan));
+      localStorage.setItem(mealPlanCacheKey(), JSON.stringify(res.plan));
       return res.plan;
     } catch (err) {
       if (!isOffline(err)) throw err;
@@ -798,7 +815,7 @@ export const api = {
         `week-slot:${planId}:${mealId}:${commandId}`,
         headers
       );
-      const cached = localStorage.getItem('frigo_active_meal_plan');
+      const cached = localStorage.getItem(mealPlanCacheKey());
       if (cached) {
         const plan: MealPlan = JSON.parse(cached);
         for (const day of plan.days) {
@@ -809,7 +826,7 @@ export const api = {
             break;
           }
         }
-        localStorage.setItem('frigo_active_meal_plan', JSON.stringify(plan));
+        localStorage.setItem(mealPlanCacheKey(), JSON.stringify(plan));
         return plan;
       }
       return null;
@@ -821,7 +838,7 @@ export const api = {
       return await fetchJson<any>(`/week/plans/${planId}/shopping`);
     } catch (err) {
       if (!isOffline(err)) throw err;
-      const cached = localStorage.getItem('frigo_active_meal_plan');
+      const cached = localStorage.getItem(mealPlanCacheKey());
       if (cached) {
         const plan: MealPlan = JSON.parse(cached);
         return {
@@ -857,18 +874,18 @@ export const api = {
         headers
       );
       // Local storage fallback (offline)
-      const cached = localStorage.getItem('frigo_active_meal_plan');
+      const cached = localStorage.getItem(mealPlanCacheKey());
       if (cached) {
         const plan: MealPlan = JSON.parse(cached);
         const item = plan.shoppingItems.find((i) => i.ingredientId === itemId);
         if (item) item.checked = checked;
-        localStorage.setItem('frigo_active_meal_plan', JSON.stringify(plan));
+        localStorage.setItem(mealPlanCacheKey(), JSON.stringify(plan));
       }
     }
   },
 
   completeWeekShopping: async (planId: string, itemsToImport?: any[], commandId?: string) => {
-    const cached = localStorage.getItem('frigo_active_meal_plan');
+    const cached = localStorage.getItem(mealPlanCacheKey());
     let cachedPlan: MealPlan | null = null;
     if (cached) {
       try {
@@ -1142,6 +1159,13 @@ export const api = {
     return fetchJson('/auth/plus/activate', {
       method: 'POST',
       body: JSON.stringify({ cycle }),
+    });
+  },
+
+  createPaymentIntent: async (plan: 'monthly' | 'annual') => {
+    return fetchJson<{ success: boolean; payment: { id: string; orderCode: string; amountVnd: number; currency: string; plan: string; description: string; expiresAt: string } }>('/billing/payment-intents', {
+      method: 'POST',
+      body: JSON.stringify({ plan }),
     });
   },
 

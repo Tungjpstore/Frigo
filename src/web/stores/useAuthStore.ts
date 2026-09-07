@@ -99,7 +99,7 @@ export const useAuthStore = create<AuthState>((set) => {
       localStorage.setItem('frigo_email', user.email);
       localStorage.setItem('frigo_display_name', user.displayName);
       if (user.avatarUrl) localStorage.setItem('frigo_avatar_url', user.avatarUrl);
-      if (user.token) localStorage.setItem('frigo_token', user.token);
+      localStorage.removeItem('frigo_token');
       localStorage.setItem('frigo_is_guest', 'false');
 
       set({
@@ -127,7 +127,8 @@ export const useAuthStore = create<AuthState>((set) => {
           localStorage.setItem('frigo_user_id', id);
           localStorage.setItem('frigo_household_id', hid);
           localStorage.setItem('frigo_is_guest', 'true');
-          if (data.token) localStorage.setItem('frigo_token', data.token);
+          localStorage.removeItem('frigo_token');
+          if (data.token) sessionStorage.setItem('frigo_guest_token', data.token);
           set({
             userId: id,
             householdId: hid,
@@ -159,12 +160,16 @@ export const useAuthStore = create<AuthState>((set) => {
     },
 
     logout: () => {
+      void fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
       localStorage.removeItem('frigo_onboarded');
       localStorage.removeItem('frigo_token');
       localStorage.removeItem('frigo_email');
       localStorage.removeItem('frigo_display_name');
       localStorage.removeItem('frigo_avatar_url');
       localStorage.removeItem('frigo_is_plus');
+      localStorage.removeItem('frigo_user_id');
+      localStorage.removeItem('frigo_household_id');
+      sessionStorage.removeItem('frigo_guest_token');
       localStorage.setItem('frigo_is_guest', 'true');
       set({
         isOnboarded: false,
