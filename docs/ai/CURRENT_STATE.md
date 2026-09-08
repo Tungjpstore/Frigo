@@ -1,146 +1,145 @@
 # Current State — Recipe / Meal Planning Program
 
-Verified 2026-09-08. **T02 COMPLETE — T03 READY**. This completes the deterministic
-Recipe Engine packet, not the seven-task platform or a runtime/deployment cutover.
+Verified 2026-09-08. **T03 NOT READY — implementation verified locally; publication
+blocked by repository identity confirmation. T04 remains blocked.**
 
-## Checkpoint and repository assessment
+## Repository assessment and checkpoint
 
-Last verified implementation: `0051276f61445437d323ca318378e16fc0ad6967`
-(`feat(recipe-engine): add deterministic lot-aware candidates and bounded families`).
-Branch: `hoplite/olbia-borysthenes-fbc61adc-recipe-engine-t02`, based on `main` at
-`ae0ed794abacdb97792b0013f332e0ee67fb3270`. This state-only checkpoint follows that
-implementation; it does not attempt to name its own commit. Read live branch/PR
-state for publication and hosted checks. No T02 merge or manual deployment occurred.
+Implementation commit: `01f9d874c72f67dc8b414caab926aba8d4be2f68`
+(`feat(recipe-ranking): add scoped deterministic ranking and feedback`).
+Branch: `hoplite/stagiros-728cc726`, based on merged T02
+`db09fa0c4353ddf4840e04c10b96a33240de3497`. This state-only checkpoint follows the
+verified implementation and cannot name its own commit. No publication/PR/merge.
 
-Preflight read the required protocol/task documents and inspected Git, domain,
-recipes, inventory persistence, Week, migrations and tests. T01 was COMPLETE and
-T02 READY. T01 code/migrations matched implementation `a730da85967284afb2071140d51a3ea1c39dac9f`.
-One documentation-only mismatch was resolved before implementation continued:
-`tsconfig.json` includes TS/TSX tests, contrary to an older handoff note; confirmed
-with `tsc --listFilesOnly`. No compiler configuration changed.
+The user supplied `https://github.com/tun-vn/Frigo`; this workspace's configured
+origin is `https://github.com/ganghienteck-droid/Frigo.git`. The discrepancy was
+reported before implementation; no remotes were changed or pushes attempted.
+Confirm that the configured repository is the intended publication target, or
+reconnect the workspace through the authorized platform path. Do not silently
+publish to a different repository or bypass source-control boundaries.
 
-PR #5 was merged with explicit user authorization at `ae0ed79`, resolving a Git
-ref-prefix collision that prevented a stacked T02 branch. The independent T02
-branch was then allocated by the platform. T01's exact historical findings and
-checks remain in `ae0ed79:docs/ai/CURRENT_STATE.md`; those are not T02 results.
+Preflight read all required specifications, rules, T01–T03 packets and T02 engine
+contract; inspected Git, domain/recipe/inventory, preferences/favorites, profiles,
+households, cooked history, mutable Week slots, nutrition, DB helpers and tests.
+T02 code matched its checkpoint and all 106 T02 tests / 6 files passed again before
+T03 edits. Historical handoff said T02 was unmerged; live Git proved it merged at
+`db09fa0`. That stale documentation was corrected first; no T02 implementation
+inconsistency blocked the work. Historical T02 evidence remains at
+`db09fa0:docs/ai/{CURRENT_STATE,HANDOFF}.md`.
 
-## Implemented
+## Implemented T03
 
-- `domain/src/{availability,quantity,units}.ts`: reusable canonical lot index,
-  strict physical factors, rational intermediate arithmetic, validation/quarantine,
-  explicit expiry uncertainty and per-candidate quantity-reservation witnesses.
-  Existing unit exports/legacy fallback semantics remain available.
-- `recipes/src/requirements.ts`: aggregate repeated compatible demands before
-  serving scaling; separate required/optional and contextual lines; retain source
-  indices, units and explicit fractional-count policy.
-- `recipes/src/substitutions.ts`: reviewed, source-referenced, version-scoped,
-  per-call-approved one-hop substitutions. Every active constraint needs evidence.
-  Reserve all direct required demand before substitutes and optional ingredients.
-- `recipes/src/families.ts`: lazy binary-ordered DFS with 64-candidate/1024-state
-  upper bounds enforced during search. Rejected/partial states count; selected and
-  omitted slots remain traceable; measurable semantic duplicates are suppressed.
-  Contextual lines/slot identities remain distinct without package equivalence.
-- `recipes/src/candidates.ts`: deterministic cook-now/shopping-allowed candidates,
-  required/optional coverage, exact known shortages, unresolved evidence, exclusions,
-  source/version identities, independent lot witnesses and raw rescue-lot flags.
-  `eligibilityScope: 'quantity_only'` is not an allergy/nutrition certificate.
-- `recipes/src/catalog.ts` and `db/src/recipe-catalog.ts`: explicit validated static,
-  D1 or provided snapshots; D1 uses one read-only batch of eight SELECTs. Drift audit
-  includes duplicate requirement counts and review-only alias collision proposals.
-- New `RECIPE_ENGINE.md`, ADR-011/012, architecture/domain/task packet updates and
-  a precise T03 entry point. No T03 implementation or new persistence schema.
+- Pure separate hard eligibility, feature extraction, normalized profile weighting,
+  transparent components/contributions/reasons, completeness and stable tie-breaking.
+- T02 facts are consumed, not recomputed. Small candidate additions retain existing
+  family/prep metadata and private scope/fingerprint provenance. Ranking rejects
+  serialized/mutated candidates or mismatched household/as-of date.
+- Opaque server-provider evidence snapshots bind the exact T02 result and complete
+  candidate facts. Raw JSON claiming safety/review cannot be passed to ranking.
+  Providers themselves must remain trusted server code, not request-forwarding adapters.
+- Hard allergies/dietary conflicts and unknown required safety evidence exclude
+  before scores. Forbidden ingredients include actual replacements and conservative
+  original/optional demands. Dislike is soft; never-recommend is distinct and hard.
+- Nine bounded components: known quantity coverage, expiry witness shares, explicit
+  preference, partial nutrition, cooking-time fit, historical novelty, exact-meal
+  recency, structural shopping burden and actual substitution use. One balanced
+  default profile; finite nonnegative weights normalized internally.
+- Injected clock/date, linear decaying exact/family/cuisine recency, weak skipped/
+  swapped feedback and durable latest likes/dislikes. Cooking never implies liking.
+- Household owner defaults plus membership-scoped personal preferences. Soft user
+  snapshot replaces household defaults; hard policies accumulate. Only cooked
+  history is explicitly shared across members. Global preferences/favorites and
+  Week settings are not silently imported.
+- Reused `cooked_meals`; new append-only writer supports non-cooked feedback only.
+  Context loads in one six-SELECT D1 batch with live membership. Bulk nutrition uses
+  one query, current recipe versions and unambiguous serving profiles, unverified
+  unless a separately trusted reviewer provides authority. No per-candidate I/O.
+- Dedicated `RANKING_ENGINE.md`, ADR-013, architecture/domain and T02/T03 consumer
+  updates. T04 receives utility/facts, not a weekly plan decision.
 
-## Important contracts
+## Database and compatibility
 
-`generateRecipeCandidates` requires an explicit calendar `asOfDate`, positive
-safe-integer requested servings and an authorized inventory snapshot. Supplying
-`householdId` excludes mismatching/unscoped rows; unscoped mixed-household input
-throws. This library does not authenticate callers or read household permissions.
+Additive `0021_recipe_personalization.sql` creates:
+- `household_ranking_preferences`: owner-written versioned preference JSON.
+- `member_ranking_preferences`: household/user composite membership FK, cascading.
+- `recipe_feedback_events`: scoped explicit tastes/skips/swaps; canonical target
+  and replacement FKs; membership/target deletion cascades; idempotent event IDs.
+- Indexes for member lookup, recent/taste feedback and household cooked history.
 
-`satisfied` proves coverage; `partial` and `missing` carry numeric shortages;
-`unresolved` carries `missingQuantity: null`. 200 g + 0.15 kg yields 350 g and covers
-300 g. A pack cannot provide invented grams or prove equivalence to another pack.
-Optional shortages do not invalidate candidates. Shopping mode retains valid
-incomplete/unresolved recipes; cook-now requires all required demands satisfied.
+SQL guards require version-1 object envelopes and canonical UTC timestamps;
+application Zod schemas validate complete preference/event contents. Existing
+migrations 0001–0020 are byte-unchanged. Existing migration smoke/schema gates were
+extended; the old newest-migration assertion now correctly expects 0021, without
+weakening foundation coverage. Local D1 final bytes were freshly replayed after
+preserving earlier local state at `.wrangler/state-t03-before-final-7x8GEE/state`.
+No remote database, migration, deployment or catalog publication occurred.
 
-Identical lot IDs count once; conflicting duplicates and malformed related rows
-produce uncertainty. Past use-by is unavailable; past best-before is not treated
-as automatically unsafe; elapsed unknown/estimated dates need review. Lot-ID order
-is a feasibility witness, not FEFO or consumption. Each candidate starts afresh.
-One egg at two servings scales to 1.5 pieces at three with explicit flags, not hidden
-rounding. Unknown facts remain unknown; unsupported numeric ranges fail explicitly.
+## Final executed verification
 
-Budget-truncated family searches expose `truncated` and `exhaustive: false`; zero
-results are not proof that no feasible variant exists. See `RECIPE_ENGINE.md` for
-full field, substitution, scaling, allocation and T03 consumer semantics.
-
-## Verification — final implementation content
-
-Executed in the sandbox with Node v24.19.0 and pnpm 10.26.0. All source/test changes
-were included before the final full run; only state/handoff documentation follows.
+All source/test changes preceded these final gates; later edits are documentation.
+Logs are retained locally in ignored `.hoplite/artifacts/t03-checks/`.
 
 | Exact command | Result |
 | --- | --- |
+| `pnpm test` | PASS — **850 tests / 56 files** |
 | `pnpm lint` | PASS |
-| `pnpm typecheck` | PASS — web/packages/TS tests and Worker |
-| `pnpm test` | PASS — **774 tests / 53 files**; T02 adds **106 tests / 6 files** to T01's 668 / 47 |
+| `pnpm typecheck` | PASS — application/packages/TS tests and Worker |
 | `pnpm build` | PASS — Vite client and Worker TypeScript |
 | `pnpm check:migrations` | PASS — `migration-smoke=ok` |
-| `pnpm exec wrangler d1 migrations apply frigo-db --local` | PASS — no migrations to apply |
-| `pnpm schema:check:local` | PASS — required ledger/schema, foundation guards and foreign keys |
-| `pnpm exec vitest run tests/unit/recipe-families.test.ts` | PASS — 14 tests after contextual-slot fix |
+| `pnpm exec wrangler d1 migrations apply frigo-db --local` | PASS — fresh final migration chain through 0021 |
+| `pnpm schema:check:local` | PASS — required ledger/tables/foundation/foreign keys |
 | `git diff --check`, `git diff --cached --check` | PASS |
-| Protected-path/prior-migration diff against `ae0ed79` | Empty; source changes limited to the new library modules and barrel exports |
+| Protected/source-path diff against `db09fa0` | Empty for `src`, `packages/domain`, migrations 0001–0020 |
 
-Focused counts from the full run: availability 29, quantity 11, candidates 42,
-families 14, D1 catalog 7, D1 candidates 3. Tests cover A–O of the T02 request,
-including empty-fridge modes, repeated demand, optional priority, invalid rows,
-count scaling, approved/denied substitutions, huge/rejected family searches,
-determinism, static/D1 drift and read-only inventory-event preservation.
+T03 adds **76 tests / 3 files**: ranking 63, personalization persistence 7, nutrition
+reader 6. The 774-test T02 baseline remains covered. Scenarios include A–W and
+invariants: known partial coverage, urgent allocated fractions, unknown/past expiry,
+likes/dislikes/cuisine/ingredients, hard safety precedence, unknown safety/nutrition,
+recency decay/future feedback, family/cuisine variety, full/partial/unknown time,
+partial nutrition and estimates, cold start, ties/bounds, immutable T02 facts,
+truncation, substitutions, forged/stale evidence, and real persisted household
+isolation all the way through ranking.
 
-### Failures and corrections
+### Failures and repairs actually observed
 
-- The initial two availability regressions were written before the module existed;
-  their first run failed collection (missing module), not two executed assertions.
-  Do not misrepresent this historical red run. Both assertions now pass, including
-  persisted D1 recipe/inventory coverage for the same scenarios.
-- An integration fixture assumed `inventory_events` started empty; seed migrations
-  already contain events. Corrected to compare the full before/after event snapshot,
-  preserving the intended read-only assertion rather than weakening it.
-- Final review identified cross-slot contextual pooling/deduplication.
-  `pnpm exec vitest run tests/unit/recipe-families.test.ts -t 'keeps contextual demands'`
-  failed as intended (1 failed / 13 skipped: 2 variants instead of 3). Separate
-  contextual lines and slot-aware identities fixed it; the final full gates above
-  ran again after the fix. D1 snapshot coherence, multiset drift and callback-cap
-  regressions also remain covered.
-- Existing failure-injection/KV test warnings and the pinned Wrangler v3 upgrade
-  warning were nonfatal. No dependency/configuration upgrade was made.
+- Initial `pnpm exec vitest run tests/unit/recipe-ranking.test.ts` failed collection
+  because `ranking.ts` did not yet exist (1 failed suite, no tests). Do not call this
+  two executed failing assertions. Both initial safety tests passed once implemented.
+- Intermediate concurrent typecheck/build runs reported unfinished nutrition-row
+  typing or the old `indexRankingEvidence` import during the opaque-boundary change.
+  Those errors were fixed; the final complete five-gate run above passed afterward.
+- Self/independent review led to stronger opaque evidence provenance and complete
+  candidate binding, proportional known-partial coverage, expiry-kind shares,
+  explicit history ID namespace, SQL NULL-safe JSON checks and as-of taste selection
+  before latest-event reduction. Regression tests cover these corrections.
+- Platform setup tools incorrectly reported no `.hoplite/settings.json` despite its
+  presence. Ran its documented idempotent SQLite dependency check and
+  `pnpm install --frozen-lockfile` directly; reported the platform discrepancy.
+  No dependency upgrade or unrelated setup/configuration change.
+- Existing expected failure-injection/KV warnings and pinned Wrangler upgrade warning
+  are nonfatal; final commands passed. No hosted CI success is inferred.
 
-## Database, compatibility and limitations
+## Genuine remaining limitations
 
-- **No T02 migrations.** Files 0001–0020 are unchanged; local D1 was already current.
-  No remote D1, production credentials, migration or manual deployment was used.
-  Target-environment apply/schema verification remains an authorized release task.
-- `ALL_RECIPES`, static IDs and existing API/cooking/Week readers are unchanged.
-  Replay audit: 45 shared canonical IDs, 59 shared recipes, static-only
-  `gl-01`–`gl-12`; no requirement/unit drift among the shared baseline recipes.
-  No automatic alias promotion/import, synchronization or silent runtime cutover.
-- Legacy first/last-lot readers, dietary-string behavior and unsafe fallbacks are
-  still legacy paths, not silently repaired by a library addition. Integrations
-  must be reviewed in the relevant later task.
-- No authoritative package-size, nutrition/allergen/price catalog, inferred safety,
-  global substitute-assignment optimization, family cooking steps or persisted
-  substitution registry. Current greedy one-hop allocation is deterministic, not
-  an exhaustive search for every alternative feasible donor assignment.
-- No browser/UI checks: no UI/API behavior changed. Local success is not hosted CI
-  or deployment evidence. PayOS/payment/auth/production infrastructure is untouched.
+- Publication is blocked by repository identity confirmation; not by failing code
+  or local verification. T03 is not COMPLETE until the authorized branch is pushed.
+- No comprehensive safe-food review/catalog was invented. Active hard constraints
+  can legitimately yield no recommendations without trusted exact-dish evidence.
+- Expiry follows T02's ID-order witness, not FEFO or actual/cross-meal consumption.
+- Static-only recipe feedback needs reviewed D1 registration; family variant history
+  and automatic Week feedback capture remain future integration work.
+- Legacy missing prep time and unsupported/ambiguous nutrition remain unknown;
+  D1 observations alone cannot satisfy reviewed hard nutrient constraints.
+- Current preference snapshots are not historical versions. Household timezone,
+  private recipe publication and legacy runtime ranker issues remain as documented.
+- No UI changes, so browser/preview verification was NOT RUN. Remote D1, hosted CI,
+  production integrations and deployment were NOT RUN/not authorized.
 
 ## Next exact action
 
-T03 is ready for a separately authorized task; do not start it as T02 follow-up.
-Read the protocol and T03 packet, `RECIPE_ENGINE.md`, candidate/substitution contracts
-and existing preferences/ranker consumers. First add a failing regression proving
-that full quantity coverage does not pass an explicit allergen conflict or an
-unprovable hard safety constraint. Define a separate eligibility result before
-scores; preserve unresolved/truncated outcomes and reuse T02 arithmetic. T04–T07
-remain pending their dependencies. T02 review/merge requires its own authorization.
+Obtain confirmation of the intended repository. If configured origin is correct,
+publish the clean committed thread branch through the authorized source-control
+path, create/link a PR if requested and subscribe to auto-fix if creating one.
+Update publication state and only then mark T03 COMPLETE / T04 READY if no new
+blocker appears. If a different repository is required, reconnect through the
+platform; preserve local commits and do not change arbitrary remotes. Do not start T04.
