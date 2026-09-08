@@ -1,7 +1,6 @@
 # Current State — Recipe / Meal Planning Program
 
-Verified 2026-09-08. **T03 NOT READY — implementation verified locally; publication
-blocked by repository identity confirmation. T04 remains blocked.**
+Verified 2026-09-08. **T03 COMPLETE — T04 READY**. T04 has not been started.
 
 ## Repository assessment and checkpoint
 
@@ -9,14 +8,16 @@ Implementation commit: `01f9d874c72f67dc8b414caab926aba8d4be2f68`
 (`feat(recipe-ranking): add scoped deterministic ranking and feedback`).
 Branch: `hoplite/stagiros-728cc726`, based on merged T02
 `db09fa0c4353ddf4840e04c10b96a33240de3497`. This state-only checkpoint follows the
-verified implementation and cannot name its own commit. No publication/PR/merge.
+verified implementation and cannot name its own commit. The verified implementation
+and initial handoff were published at `c5695d3913f7ec3340ce1a261fc263243a1dddbe`;
+this documentation-only update follows that confirmed push. No PR or merge.
 
 The user supplied `https://github.com/tun-vn/Frigo`; this workspace's configured
 origin is `https://github.com/ganghienteck-droid/Frigo.git`. The discrepancy was
-reported before implementation; no remotes were changed or pushes attempted.
-Confirm that the configured repository is the intended publication target, or
-reconnect the workspace through the authorized platform path. Do not silently
-publish to a different repository or bypass source-control boundaries.
+reported before implementation. The user subsequently confirmed publication to
+the configured repository on 2026-09-08. The first-party publication tool confirmed
+the branch at `c5695d3913f7ec3340ce1a261fc263243a1dddbe`; no remotes were changed.
+Publication does not imply a merge, remote migration or deployment.
 
 Preflight read all required specifications, rules, T01–T03 packets and T02 engine
 contract; inspected Git, domain/recipe/inventory, preferences/favorites, profiles,
@@ -121,8 +122,6 @@ isolation all the way through ranking.
 
 ## Genuine remaining limitations
 
-- Publication is blocked by repository identity confirmation; not by failing code
-  or local verification. T03 is not COMPLETE until the authorized branch is pushed.
 - No comprehensive safe-food review/catalog was invented. Active hard constraints
   can legitimately yield no recommendations without trusted exact-dish evidence.
 - Expiry follows T02's ID-order witness, not FEFO or actual/cross-meal consumption.
@@ -137,9 +136,16 @@ isolation all the way through ranking.
 
 ## Next exact action
 
-Obtain confirmation of the intended repository. If configured origin is correct,
-publish the clean committed thread branch through the authorized source-control
-path, create/link a PR if requested and subscribe to auto-fix if creating one.
-Update publication state and only then mark T03 COMPLETE / T04 READY if no new
-blocker appears. If a different repository is required, reconnect through the
-platform; preserve local commits and do not change arbitrary remotes. Do not start T04.
+T03 is published on `hoplite/stagiros-728cc726` in `ganghienteck-droid/Frigo`.
+Create/link a PR if requested and subscribe to auto-fix if creating one; no merge
+or deployment is authorized. T04 is ready for a separately authorized task, beginning
+with its packet and the T02/T03 contracts. Do not start T04 in this publication task.
+
+### Publication-only follow-up verification
+
+No implementation, tests or migration bytes changed from the verified checkpoint.
+The 850-test result and full gates above are the prior executed results, not new
+test runs. This follow-up inspected clean Git status/history/diff and remote branch
+state, confirmed first-party publication, and ran diff checks on the documentation
+update. A shell remote-discovery command was denied before execution by source-control
+policy; repository-bound branch discovery and publication tools succeeded instead.

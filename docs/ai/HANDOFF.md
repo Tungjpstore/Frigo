@@ -4,8 +4,8 @@
 T03 — Recipe Ranking & Personalization
 
 ## Task Status
-**T03 NOT READY** — implementation and all local gates pass; publication is blocked
-pending confirmation of the intended repository. T04 remains blocked/not started.
+**T03 COMPLETE — T04 READY**. Implementation and all local gates pass; publication
+to the user-confirmed repository succeeded. T04 has not been started.
 
 ## Last Verified Commit
 `01f9d874c72f67dc8b414caab926aba8d4be2f68`
@@ -13,12 +13,15 @@ pending confirmation of the intended repository. T04 remains blocked/not started
 Branch `hoplite/stagiros-728cc726`; base is merged T02
 `db09fa0c4353ddf4840e04c10b96a33240de3497`. This following documentation checkpoint
 cannot name its own hash. Source/test changes passed final gates before the
-implementation commit. Inspect live Git for the documentation commit and clean state.
+implementation commit. Published implementation/handoff head:
+`c5695d3913f7ec3340ce1a261fc263243a1dddbe`. This state-only follow-up records that
+confirmed push; inspect live Git for its own hash and current clean state.
 
 User repository: `https://github.com/tun-vn/Frigo`.
 Configured origin: `https://github.com/ganghienteck-droid/Frigo.git`.
-No push, PR, merge, remote migration or deployment was attempted. Do not silently
-publish to the differently named repository or change remotes to bypass authorization.
+The user confirmed the configured repository on 2026-09-08. First-party publication
+confirmed the branch at `c5695d3913f7ec3340ce1a261fc263243a1dddbe`, without changing
+remotes. No PR, merge, remote migration or deployment was attempted.
 
 ## Completed
 - Read mandatory specs/rules/architecture/domain/decisions/state/board/handoff,
@@ -42,13 +45,11 @@ publish to the differently named repository or change remotes to bypass authoriz
   architecture/domain/T02/T03 documentation. No legacy runtime cutover.
 
 ## In Progress
-None in local implementation. Publication target confirmation is outstanding.
+None in T03 implementation. T04 is ready but not started.
 
 ## Remaining
-- Obtain user confirmation of configured origin or reconnect the intended repository.
-- Publish clean commits through authorized source-control tools; only then advance
-  T03 COMPLETE/T04 READY if no new blockers arise. If creating a PR, link/subscribe
-  to auto-fix and keep its holistic verification evidence current.
+- Create/link a PR if requested. If creating a PR, subscribe to auto-fix and keep
+  its holistic verification evidence current. Merge/deployment remain unauthorized.
 - T04 future planning, T05 optimization, T06 authenticated integration and T07
   hardening remain separate tasks. Do not start them under this handoff.
 
@@ -105,6 +106,11 @@ Final content, all source/test edits included:
 
 Ignored exact final logs: `.hoplite/artifacts/t03-checks/`.
 
+Publication-only follow-up: inspected clean Git status, history and diff; confirmed
+remote branch absence before first push and successful first-party publication;
+checked documentation diffs. Application gates were not rerun because implementation,
+tests and migration bytes are unchanged. The 850-test result above is the prior run.
+
 ### Failed / Corrected
 - Initial `pnpm exec vitest run tests/unit/recipe-ranking.test.ts`: missing-module
   collection failure, one failed suite/no tests. Both initial safety regressions
@@ -117,9 +123,11 @@ Ignored exact final logs: `.hoplite/artifacts/t03-checks/`.
 - Setup tools misreported missing repository settings. Used repository-documented
   idempotent SQLite/dependency setup directly and reported the platform fault.
   No dependency upgrades or project setup override changes were made.
+- Publication follow-up shell remote discovery was denied by source-control policy
+  before execution; first-party branch discovery/publication succeeded instead.
 
 ### Not Run
-- Push/PR/hosted CI: blocked pending repository identity confirmation.
+- PR/hosted CI: no PR requested/created; no hosted CI outcome claimed. Push succeeded.
 - Remote D1, migration, deployment, production integrations: not authorized.
 - Browser/preview checks: no UI/API behavior changed.
 
@@ -141,13 +149,13 @@ commands/idempotency/revisions, scan confirmation and Week compatibility.
 All protected implementation paths remain untouched.
 
 ## Next Task
-Finish authorized T03 publication. **Do not start T04.**
+T04 — Weekly Meal Planner (**READY**, not started). Separate authorization required.
 
 ## Next Exact Action
-1. Ask/obtain confirmation whether the intended target is configured
-   `ganghienteck-droid/Frigo` or requested `tun-vn/Frigo`.
-2. Preserve the local implementation and documentation commits. If reconnection is
-   needed, use the platform's authorized repository path, not arbitrary remote changes.
-3. Inspect clean Git state; publish the exact branch/commit through authorized tools.
-4. Update CURRENT_STATE/TASK_BOARD/HANDOFF publication evidence and only then mark
-   T03 COMPLETE — T04 READY when genuinely true. Subscribe to auto-fix if a PR is created.
+1. Keep T03 on published `hoplite/stagiros-728cc726` in `ganghienteck-droid/Frigo`.
+2. Create/link a review PR if requested and subscribe to auto-fix if creating one.
+   Do not merge or deploy without authorization.
+3. When T04 is separately authorized, read AGENT_RULES, required documents, its
+   task packet and RANKING_ENGINE/RECIPE_ENGINE contracts before editing.
+4. T03 supplies candidate utility; T04 owns sequential future planning. Do not
+   implement T04 in this publication follow-up.
