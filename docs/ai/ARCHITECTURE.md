@@ -1,4 +1,14 @@
-# Architecture — T01 foundation and T02 engine
+# Architecture — T01 foundation, T02 candidates and T03 ranking
+
+T03 adds pure `recipes/src/ranking*.ts` and scoped `personalization.ts` contracts.
+Hard eligibility precedes bounded component utility and deterministic ordering.
+The T02 result has private same-process scope/fingerprint provenance for ranking;
+it cannot be reconstructed from request JSON. Server-owned review evidence is a
+separate authority boundary. D1 personalization/feedback and bulk nutrition readers
+load snapshots before scoring; no query occurs in the candidate loop. Existing
+`cooked_meals` is reused rather than creating a second cooking command/history.
+No old ranker or live route is cut over. See `RANKING_ENGINE.md` for exact weights,
+unknown/safety behavior, ownership, persistence and the T04 utility contract.
 
 ## Stack and layout
 

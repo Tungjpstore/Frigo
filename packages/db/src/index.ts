@@ -30,3 +30,5 @@ export interface D1Response {
 export * from './queries';
 export * from './catalog';
 export * from './recipe-catalog';
+export * from './personalization';
+export * from './ranking-nutrition';

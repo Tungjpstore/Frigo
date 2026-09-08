@@ -1,4 +1,14 @@
-# Domain Model — T01 foundation and T02 calculations
+# Domain Model — T01 foundation, T02 calculations and T03 utility
+
+T03 adds `RankingPreferences`, `RecipeFeedback`, candidate-bound review evidence
+and `RankedRecipeCandidate`; see `RANKING_ENGINE.md`. Preferences are explicitly
+household defaults or household/current-user snapshots. Personal soft defaults
+replace household soft defaults, but all hard policies accumulate. Cooked history
+is household-shared; individual tastes/skips/swaps are not implicitly shared.
+`RankedRecipeCandidate` wraps unchanged deterministic T02 facts, eligibility,
+normalized utility/components/contributions, nutrition and data completeness.
+It is not a scheduled meal or consumption instruction. Existing global preferences
+and favorites are not silently imported into scoped ranking.
 
 Implemented SQL is `migrations/0019_recipe_domain_foundation.sql` plus append-only
 `0020_t01_foundation_hardening.sql`; validated inputs

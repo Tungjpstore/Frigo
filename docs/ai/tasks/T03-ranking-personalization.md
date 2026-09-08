@@ -47,6 +47,22 @@ Frigo already has a simple recipe score in `@frigo/recipes` and preference data,
 - Clear, configured/default component weights and deterministic tie-break order.
 - Documentation/ADR if preference ownership, data quality policy, or legacy-score migration changes accepted architecture.
 
+## Implemented Contract
+
+- `recipes/src/{personalization,ranking*,candidates}.ts`: scoped preference/event
+  contracts, original T02 snapshot provenance, opaque server-provider evidence,
+  hard gates, partial-data features, configured normalized utility and stable ties.
+- `db/src/{personalization,ranking-nutrition}.ts`: authorized snapshot loading,
+  owner/member preference writes, append-only non-cooked feedback and current-version
+  bulk nutrition. Existing `cooked_meals` remains actual cooking authority.
+- Additive `0021_recipe_personalization.sql`; no prior migration rewrite or runtime
+  route/ranker cutover. Explicit reviewed import is required for static-only targets.
+- `../RANKING_ENGINE.md` and ADR-013 document exact weights/ranges, scope precedence,
+  evidence/unknown semantics, expiry witness approximation and the T04 utility API.
+- Final local verification: 850 tests / 56 files (76 new tests / 3 files), all five
+  required gates plus fresh local D1 apply/schema check passed. Read CURRENT_STATE
+  and HANDOFF for publication status; local verification alone is not completion.
+
 ## Acceptance Criteria
 
 - A recipe or substitution with an explicit allergy conflict is rejected, not merely penalized.

@@ -147,4 +147,12 @@ consumption; T05 owns package context, global shopping/waste optimization; T06 o
 reviewed API/UI/static-to-D1 integration. Old first/last-lot runtime paths are still
 legacy paths, not secretly fixed by adding this library.
 
+T03 implementation now exists in `RANKING_ENGINE.md`. Candidate generation retains
+existing family/prep-time metadata and registers private same-process scope and
+fingerprint provenance for `getCandidateSnapshotContext`. Ranking requires the
+original unmodified server-generated result with explicit matching household/date;
+serialized/client results must be regenerated from authorized server inputs. This
+is an integration guard, not authentication or permission to accept client-owned
+substitution rules claiming review. T02 quantity/search behavior remains unchanged.
+
 D1 batch semantics: [Cloudflare D1 Database API](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch).

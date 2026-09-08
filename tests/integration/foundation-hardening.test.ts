@@ -332,6 +332,11 @@ describe('T01 foundation integrity hardening', () => {
       { issue: 'missing_migration', detail: '0020_t01_foundation_hardening.sql' },
     ]);
     db.seed("INSERT INTO d1_migrations VALUES ('0020_t01_foundation_hardening.sql')");
+    db.seed("DELETE FROM d1_migrations WHERE name = '0021_recipe_personalization.sql'");
+    expect(db.query(schemaGate)).toEqual([
+      { issue: 'missing_migration', detail: '0021_recipe_personalization.sql' },
+    ]);
+    db.seed("INSERT INTO d1_migrations VALUES ('0021_recipe_personalization.sql')");
     const triggers = [...hardeningMigration.matchAll(/CREATE TRIGGER (\w+)/g)].map(
       (match) => match[1],
     );

@@ -296,3 +296,33 @@ feasible variant exists. Family instructions/cuisine/times absent in T01 stay ab
 inventory math. D1/static catalog snapshots remain explicit internal read-only
 sources; drift/alias promotion proposals require review, not automatic writes or
 runtime cutover. No new persisted substitution or variant schema is needed.
+
+## ADR-013 — Scoped deterministic ranking, not legacy runtime cutover
+
+**Status:** Accepted 2026-09-08 (T03)
+
+**Decision:** Consume unmodified server-generated T02 snapshots, bound to household
+and explicit calendar date, before hard gates and normalized weighted utility.
+Keep T02 arithmetic untouched; add only existing family/prep metadata and a private
+scope/fingerprint guard rejecting serialized or mutated candidate inputs. Candidate
+review keys additionally bind demands, substitutions and lot witnesses. Review
+schemas validate structure, not authority; server-owned approval/review data remains
+mandatory. Unknown active hard safety/time/nutrition requirements fail closed.
+No safety policy requested is not a safe-food claim. See `RANKING_ENGINE.md` for
+exact scores, bounds, policy configuration, dates and nutrition source limitations.
+
+Persist ranking-specific household and member preferences/feedback because legacy
+global preferences/favorites cannot enforce household scope and Week settings are
+not ranking policy. Do not auto-import global/free-form intent. Personal soft
+defaults replace household defaults; hard restrictions union. Household defaults
+are owner-managed, personal data membership-bound. Existing `cooked_meals` remains
+the only cooking history authority; no new cooking events/commands or automatic
+Week skip/swap capture. Explicit latest tastes outrank weak behavioral feedback;
+cooked meals affect recency only. No separate taste aggregate or learned model.
+
+**Consequences:** Additive persistence with canonical FKs and bulk readers, no
+legacy route/ranker cutover. Static-only feedback targets require explicit reviewed
+D1 registration. No safety catalog is fabricated. Nutrition adapters preserve
+partial serving-basis observations as unverified; hard ranges require independently
+reviewed evidence. Expiry normalizes existing allocation shares, never reallocates
+stock. T04 receives candidate utility/components, not future meal decisions.

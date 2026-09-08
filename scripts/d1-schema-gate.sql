@@ -19,7 +19,8 @@ required_migrations(name) AS (
     ('0016_scan_quota_ledger.sql'),
     ('0017_auth_otps_remove_plaintext.sql'),
     ('0019_recipe_domain_foundation.sql'),
-    ('0020_t01_foundation_hardening.sql')
+    ('0020_t01_foundation_hardening.sql'),
+    ('0021_recipe_personalization.sql')
 ),
 required_tables(name) AS (
   VALUES
@@ -48,6 +49,9 @@ required_tables(name) AS (
     ,('recipe_family_options')
     ,('recipe_nutrition')
     ,('recipe_classifications')
+    ,('household_ranking_preferences')
+    ,('member_ranking_preferences')
+    ,('recipe_feedback_events')
 ),
 required_columns(table_name, column_name) AS (
   VALUES
