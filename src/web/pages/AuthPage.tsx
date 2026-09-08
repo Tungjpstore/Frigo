@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/useAuthStore';
 import { api } from '../services/api';
+import { capturePrivateSession } from '../lib/private-session';
 import { Button } from '../components/common/Button';
 import { TurnstileWidget } from '../components/common/TurnstileWidget';
 import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, ShieldCheck, CheckCircle2, AlertCircle, RefreshCw, KeyRound, Sparkles } from 'lucide-react';
@@ -41,6 +42,7 @@ export const AuthPage: React.FC = () => {
   // SEC-6: Turnstile bot protection (inactive when server has no site key)
   const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileGeneration, setTurnstileGeneration] = useState(0);
   const handleTurnstileToken = useCallback((token: string | null) => setTurnstileToken(token), []);
 
   useEffect(() => {
@@ -55,11 +57,15 @@ export const AuthPage: React.FC = () => {
 
   // Initialize Google Sign-In SDK
   useEffect(() => {
+    let active = true;
     const handleGoogleResponse = async (response: any) => {
+      if (!active) return;
+      const isCurrent = capturePrivateSession();
       setIsLoading(true);
       setErrorMessage(null);
       try {
         const res = await api.loginWithGoogle(response.credential);
+        if (!active || !isCurrent()) return;
         if (res.success && res.user) {
           setAuthSession({
             id: res.user.id,
@@ -70,7 +76,8 @@ export const AuthPage: React.FC = () => {
             token: res.token,
           });
           setSuccessMessage('Đăng nhập Google thành công!');
-          setTimeout(() => navigate('/onboarding'), 400);
+          const isNewSession = capturePrivateSession();
+          setTimeout(() => { if (isNewSession()) navigate('/onboarding'); }, 400);
         } else {
           setErrorMessage('Không thể xác thực tài khoản Google.');
         }
@@ -103,6 +110,7 @@ export const AuthPage: React.FC = () => {
         console.warn('Google Sign-In init error:', e);
       }
     }
+    return () => { active = false; };
   }, [mode]);
 
   // Resend OTP countdown timer
@@ -115,6 +123,7 @@ export const AuthPage: React.FC = () => {
 
   // Handle Login
   const handleLogin = async (e: React.FormEvent) => {
+    const isCurrent = capturePrivateSession();
     e.preventDefault();
     if (!email || !password) {
       setErrorMessage('Vui lòng nhập đầy đủ email và mật khẩu');
@@ -125,6 +134,7 @@ export const AuthPage: React.FC = () => {
 
     try {
       const res = await api.login(email, password, turnstileToken);
+      if (!isCurrent()) return;
       if (res.success && res.user) {
         setAuthSession({
           id: res.user.id,
@@ -146,6 +156,8 @@ export const AuthPage: React.FC = () => {
         setErrorMessage(err?.message || 'Email hoặc mật khẩu không chính xác');
       }
     } finally {
+      setTurnstileToken(null);
+      setTurnstileGeneration((value) => value + 1);
       setIsLoading(false);
     }
   };
@@ -177,6 +189,8 @@ export const AuthPage: React.FC = () => {
     } catch (err: any) {
       setErrorMessage(err?.message || 'Đăng ký thất bại. Email có thể đã tồn tại.');
     } finally {
+      setTurnstileToken(null);
+      setTurnstileGeneration((value) => value + 1);
       setIsLoading(false);
     }
   };
@@ -218,6 +232,7 @@ export const AuthPage: React.FC = () => {
 
   // Handle OTP Submit
   const handleVerifyOtp = async (e: React.FormEvent) => {
+    const isCurrent = capturePrivateSession();
     e.preventDefault();
     const code = otpDigits.join('');
     if (code.length < 6) {
@@ -237,6 +252,7 @@ export const AuthPage: React.FC = () => {
           ? authState.householdId
           : null;
       const res = await api.verifyOtp(email, code, otpPurpose, guestHouseholdId);
+      if (!isCurrent()) return;
       if (res.success) {
         if (otpPurpose === 'register') {
           if (res.user) {
@@ -250,7 +266,8 @@ export const AuthPage: React.FC = () => {
             });
           }
           setSuccessMessage('Xác thực tài khoản thành công!');
-          setTimeout(() => navigate('/onboarding'), 500);
+          const isNewSession = capturePrivateSession();
+          setTimeout(() => { if (isNewSession()) navigate('/onboarding'); }, 500);
         } else if (otpPurpose === 'forgot_password') {
           setSuccessMessage('Mã OTP chính xác. Hãy nhập mật khẩu mới.');
           // proceed to new password form
@@ -269,15 +286,17 @@ export const AuthPage: React.FC = () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const res = await api.resendOtp(email, otpPurpose);
+      const res = await api.resendOtp(email, otpPurpose, turnstileToken);
       if (res.success) {
         if (res.devOtp) setDevOtp(res.devOtp);
         setResendCountdown(60);
-        setSuccessMessage('Đã gửi lại mã OTP mới!');
+        setSuccessMessage(res.message);
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Không thể gửi lại OTP');
     } finally {
+      setTurnstileToken(null);
+      setTurnstileGeneration((value) => value + 1);
       setIsLoading(false);
     }
   };
@@ -301,17 +320,20 @@ export const AuthPage: React.FC = () => {
         setForgotOtpRequested(true);
         setOtpPurpose('forgot_password');
         setResendCountdown(60);
-        setSuccessMessage('Mã xác thực đặt lại mật khẩu đã được tạo!');
+        setSuccessMessage(res.message);
       }
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Không tìm thấy tài khoản với email này');
+      setErrorMessage(err?.message || 'Không thể tạo yêu cầu đặt lại mật khẩu lúc này');
     } finally {
+      setTurnstileToken(null);
+      setTurnstileGeneration((value) => value + 1);
       setIsLoading(false);
     }
   };
 
   // Handle Reset Password with OTP + New Password
   const handleResetPassword = async (e: React.FormEvent) => {
+    const isCurrent = capturePrivateSession();
     e.preventDefault();
     const code = otpDigits.join('');
     if (code.length < 6) {
@@ -327,7 +349,13 @@ export const AuthPage: React.FC = () => {
     setErrorMessage(null);
     try {
       const res = await api.resetPassword(email, code, newPassword);
+      if (!isCurrent()) return;
       if (res.success) {
+        if (res.user) {
+          setAuthSession(res.user);
+          navigate('/onboarding');
+          return;
+        }
         setSuccessMessage('Đặt lại mật khẩu thành công! Hãy đăng nhập với mật khẩu mới.');
         setPassword(newPassword);
         setDevOtp(null);
@@ -347,6 +375,7 @@ export const AuthPage: React.FC = () => {
 
   // Fallback Google Sign-In for simulation / dev
   const handleDirectGoogleSignIn = async () => {
+    const isCurrent = capturePrivateSession();
     setIsLoading(true);
     setErrorMessage(null);
     try {
@@ -355,6 +384,7 @@ export const AuthPage: React.FC = () => {
         name: name || 'Google User',
         picture: '/icons/favicon.svg',
       });
+      if (!isCurrent()) return;
       if (res.success && res.user) {
         setAuthSession({
           id: res.user.id,
@@ -400,8 +430,12 @@ export const AuthPage: React.FC = () => {
           {/* Quick Guest mode shortcut */}
           <button
             onClick={async () => {
-              await setGuestSession();
-              navigate('/onboarding');
+              try {
+                await setGuestSession();
+                navigate('/onboarding');
+              } catch (error) {
+                setErrorMessage(error instanceof Error ? error.message : 'Không thể khởi tạo phiên khách. Vui lòng thử lại.');
+              }
             }}
             className="text-xs font-semibold text-slate-500 hover:text-emerald-700 tap-target transition-colors"
           >
@@ -523,7 +557,7 @@ export const AuthPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleLogin} className="space-y-3">
-              {turnstileSiteKey && <TurnstileWidget siteKey={turnstileSiteKey} onToken={handleTurnstileToken} />}
+              {turnstileSiteKey && <TurnstileWidget key={turnstileGeneration} siteKey={turnstileSiteKey} onToken={handleTurnstileToken} />}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
                 <div className="relative">
@@ -588,7 +622,7 @@ export const AuthPage: React.FC = () => {
         {mode === 'register' && (
           <div className="mt-5 space-y-4">
             <form onSubmit={handleRegister} className="space-y-3">
-              {turnstileSiteKey && <TurnstileWidget siteKey={turnstileSiteKey} onToken={handleTurnstileToken} />}
+              {turnstileSiteKey && <TurnstileWidget key={turnstileGeneration} siteKey={turnstileSiteKey} onToken={handleTurnstileToken} />}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Họ và tên</label>
                 <div className="relative">
@@ -651,6 +685,7 @@ export const AuthPage: React.FC = () => {
         {/* ================= MODE 3: OTP VERIFICATION ================= */}
         {mode === 'otp_verify' && (
           <div className="mt-6 space-y-5">
+            {turnstileSiteKey && <TurnstileWidget key={turnstileGeneration} siteKey={turnstileSiteKey} onToken={handleTurnstileToken} />}
             <form onSubmit={handleVerifyOtp} className="space-y-4">
               {/* 6-box OTP input */}
               <div className="flex justify-center gap-2" onPaste={handleOtpPaste}>
@@ -694,7 +729,7 @@ export const AuthPage: React.FC = () => {
           <div className="mt-5 space-y-4">
             {!forgotOtpRequested && (
               <form onSubmit={handleRequestForgotOtp} className="space-y-3">
-                {turnstileSiteKey && <TurnstileWidget siteKey={turnstileSiteKey} onToken={handleTurnstileToken} />}
+                {turnstileSiteKey && <TurnstileWidget key={turnstileGeneration} siteKey={turnstileSiteKey} onToken={handleTurnstileToken} />}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Email đăng ký tài khoản</label>
                   <div className="relative">

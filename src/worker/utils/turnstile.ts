@@ -1,9 +1,6 @@
 import { Env } from '../types';
 
-// SEC-6: Cloudflare Turnstile verification for unauthenticated auth endpoints.
-// Opt-in: when TURNSTILE_SECRET_KEY is not configured the check passes so dev
-// and pre-Turnstile deployments keep working. Once the secret is set, every
-// register/login/forgot-password call must present a valid widget token.
+// Only explicit development/staging environments may disable bot protection.
 const VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
 export async function verifyTurnstileToken(
@@ -11,9 +8,12 @@ export async function verifyTurnstileToken(
   token: unknown,
   clientIp?: string
 ): Promise<{ ok: boolean; error?: string }> {
-  const secret = env.TURNSTILE_SECRET_KEY;
+  const secret = env.TURNSTILE_SECRET_KEY?.trim();
+  if (env.ENVIRONMENT === 'production' && (!secret || !env.TURNSTILE_SITE_KEY?.trim())) {
+    return { ok: false, error: 'Turnstile chưa được cấu hình' };
+  }
   if (!secret) {
-    return { ok: true }; // not configured — feature disabled
+    return { ok: env.ENVIRONMENT === 'development' || env.ENVIRONMENT === 'staging' };
   }
 
   if (!token || typeof token !== 'string') {
@@ -26,14 +26,14 @@ export async function verifyTurnstileToken(
     body.append('response', token);
     if (clientIp) body.append('remoteip', clientIp);
 
-    const res = await fetch(VERIFY_URL, { method: 'POST', body });
+    const res = await fetch(VERIFY_URL, { method: 'POST', body, signal: AbortSignal.timeout(8000) });
     const data = (await res.json()) as { success: boolean; 'error-codes'?: string[] };
 
-    if (data.success) return { ok: true };
+    if (res.ok && data.success === true) return { ok: true };
     return { ok: false, error: `Turnstile: ${(data['error-codes'] || ['unknown']).join(',')}` };
-  } catch (err: any) {
+  } catch {
     // Fail closed: if we cannot reach siteverify, reject rather than allow.
-    console.error('[Turnstile] verification error:', err?.message);
+    console.error(JSON.stringify({ event: 'turnstile_verification_failed' }));
     return { ok: false, error: 'Không thể xác minh Turnstile' };
   }
 }

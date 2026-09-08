@@ -54,11 +54,13 @@ export interface Env {
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET_KEY?: string;
   JWT_SECRET?: string;
+  OTP_HASH_SECRET?: string;
   RESEND_API_KEY?: string;
   // S2: server-held code required to manually/back-office grant Frigo Plus.
   // Never exposed to the client; acts as the payment-verification hook until a
   // real NAPAS callback reconciles transfers.
   PLUS_GRANT_SECRET?: string;
+  PAYOS_CHECKSUM_KEY?: string;
 }
 
 export interface AuthContext {

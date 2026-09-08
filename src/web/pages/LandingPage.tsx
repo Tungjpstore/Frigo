@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/useAuthStore';
 import { Button } from '../components/common/Button';
@@ -8,15 +8,20 @@ import { Camera, ChefHat, ArrowRight } from 'lucide-react';
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const setGuestSession = useAuthStore((s) => s.setGuestSession);
+  const [guestError, setGuestError] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
 
-  const handleStartGuest = async () => {
-    await setGuestSession();
-    navigate('/onboarding');
-  };
-
-  const handleQuickScan = async () => {
-    await setGuestSession();
-    navigate('/scan');
+  const startGuest = async (path: string) => {
+    setGuestError(null);
+    setIsStarting(true);
+    try {
+      await setGuestSession();
+      navigate(path);
+    } catch (error) {
+      setGuestError(error instanceof Error ? error.message : 'Không thể khởi tạo phiên khách. Vui lòng thử lại.');
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   return (
@@ -59,10 +64,12 @@ export const LandingPage: React.FC = () => {
 
       {/* Action Buttons */}
       <div className="relative z-10 space-y-3">
+        {guestError && <p role="alert" className="text-sm text-rose-700">{guestError}</p>}
         <Button
           fullWidth
           size="lg"
-          onClick={handleQuickScan}
+          onClick={() => startGuest('/scan')}
+          isLoading={isStarting}
           className="flex items-center justify-center gap-2 text-base"
         >
           <Camera className="w-5 h-5" />
@@ -73,7 +80,8 @@ export const LandingPage: React.FC = () => {
           fullWidth
           size="md"
           variant="secondary"
-          onClick={handleStartGuest}
+          onClick={() => startGuest('/onboarding')}
+          disabled={isStarting}
           className="flex items-center justify-center gap-2"
         >
           <ChefHat className="w-5 h-5 text-emerald-700" />

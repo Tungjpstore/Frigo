@@ -10,22 +10,25 @@ import {
   swapMealInPlan,
   getSwapAlternatives,
 } from '@frigo/domain';
-import { pushOp, flush, rebindPendingOps, PendingScope } from '../lib/sync';
+import { pushOp, flush, rebindPendingOps, pendingCount, getPendingOps, PendingScope } from '../lib/sync';
+import {
+  capturePrivateSession, clearPrivateIdentity, currentPrivateScope, LOGOUT_PENDING_KEY,
+  isOfflineGuestSession, privateCacheKey, privateSessionBlocked, removePrivateCaches,
+} from '../lib/private-session';
 
 const BASE_URL = '/api/v1';
 
-// SEC-03: Always attach the JWT Bearer token issued by /auth/* endpoints.
+// Web sessions, including new guests, use HttpOnly cookies. A legacy guest
+// token is retained only for the existing migration/development compatibility.
 function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem('frigo_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const guestToken = sessionStorage.getItem('frigo_guest_token');
+  return guestToken ? { Authorization: `Bearer ${guestToken}` } : {};
 }
 
 // SEC-04: On 401 the session is invalid/expired — clear stale credentials so the
 // app returns to the auth screen instead of looping on silent fallbacks.
 function handleUnauthorized() {
-  localStorage.removeItem('frigo_token');
-  localStorage.removeItem('frigo_user_id');
-  localStorage.removeItem('frigo_household_id');
+  clearPrivateIdentity();
 }
 
 // S3: distinguish transient/offline failures from authoritative server rejections.
@@ -58,29 +61,68 @@ function isNonRetryable(err: unknown): boolean {
   );
 }
 
-async function fetchJson<T>(path: string, options?: RequestInit): Promise<T> {
-  const userId = localStorage.getItem('frigo_user_id') || 'demo_user_01';
-  const householdId = localStorage.getItem('frigo_household_id') || 'demo_household_01';
+function guardPrivateSession(): () => void {
+  const isCurrent = capturePrivateSession();
+  const assertCurrent = () => {
+    if (!isCurrent()) throw new ApiError('auth', 'Phiên làm việc đã thay đổi. Vui lòng đăng nhập lại.');
+  };
+  assertCurrent();
+  return assertCurrent;
+}
 
+async function fetchJson<T>(path: string, options?: RequestInit): Promise<T> {
+  const assertCurrent = guardPrivateSession();
+  const scope = getCurrentScope();
+  if ((!scope.userId || !scope.householdId) && !path.startsWith('/auth/') && path !== '/config' &&
+    !(path.startsWith('/recipes') && (!options?.method || options.method === 'GET'))) {
+    throw new ApiError('auth', 'Vui lòng đăng nhập hoặc bắt đầu phiên khách.');
+  }
+  if (isOfflineGuestSession() && !path.startsWith('/auth/') && path !== '/config') {
+    throw new ApiError('offline', 'Phiên khách này chỉ lưu dữ liệu trên thiết bị.');
+  }
+  const authHeaders = getAuthHeaders();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...authHeaders,
+  };
+  const headerEntries = options?.headers instanceof Headers
+    ? options.headers.entries()
+    : Array.isArray(options?.headers) ? options.headers : Object.entries(options?.headers ?? {});
+  for (const [key, value] of headerEntries) {
+    const existingKey = Object.keys(headers).find((name) => name.toLowerCase() === key.toLowerCase());
+    if (existingKey) delete headers[existingKey];
+    headers[key] = value;
+  }
+  const pathname = path.split('?')[0];
+  const publicRead = (options?.method?.toUpperCase() || 'GET') === 'GET' &&
+    (pathname === '/recipes' || pathname.startsWith('/recipes/'));
+  if (!path.startsWith('/auth/') && !path.startsWith('/billing/') &&
+    pathname !== '/config' && pathname !== '/health' && !publicRead) {
+    // Fence reads and writes if another tab replaces the cookie before storage changes.
+    for (const key of Object.keys(headers)) {
+      if (['x-frigo-expected-user-id', 'x-frigo-expected-household-id'].includes(key.toLowerCase())) delete headers[key];
+    }
+    headers['X-Frigo-Expected-User-Id'] = scope.userId;
+    headers['X-Frigo-Expected-Household-Id'] = scope.householdId;
+  }
   let res: Response;
   try {
     res = await fetch(`${BASE_URL}${path}`, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-id': userId,
-        'x-household-id': householdId,
-        ...getAuthHeaders(),
-        ...(options?.headers || {}),
-      },
+      headers,
+      credentials: !path.startsWith('/auth/') && authHeaders.Authorization ? 'omit' : 'include',
     });
   } catch {
+    assertCurrent();
     // Network-level failure (no connectivity, DNS, aborted) => offline.
     throw new ApiError('offline', `Không có kết nối mạng khi gọi ${path}`);
   }
 
+  assertCurrent();
+
   if (!res.ok) {
     const text = await res.text().catch(() => '');
+    assertCurrent();
     if (res.status === 401) {
       handleUnauthorized();
       throw new ApiError('auth', `HTTP 401: ${text}`, 401);
@@ -91,7 +133,9 @@ async function fetchJson<T>(path: string, options?: RequestInit): Promise<T> {
     throw new ApiError('http', `HTTP ${res.status}: ${text}`, res.status);
   }
 
-  return await res.json();
+  const result = await res.json() as T;
+  assertCurrent();
+  return result;
 }
 
 // S3: record an unsynced write so it replays when the connection returns.
@@ -103,19 +147,35 @@ function queueWrite(
   dedupeKey?: string,
   headers?: Record<string, string>
 ): void {
+  if (privateSessionBlocked()) throw new ApiError('auth', 'Đồng bộ riêng tư đã tạm dừng.');
   pushOp({ path, method, body, label, dedupeKey, headers, ...getCurrentScope() });
 }
 
 function getHouseholdId(): string {
-  return localStorage.getItem('frigo_household_id') || 'demo_household_01';
+  return currentPrivateScope().householdId;
 }
 
 function getUserId(): string {
-  return localStorage.getItem('frigo_user_id') || 'demo_user_01';
+  return currentPrivateScope().userId;
 }
 
 function getCurrentScope(): PendingScope {
   return { userId: getUserId(), householdId: getHouseholdId() };
+}
+
+// Tenant-scoped cache keys prevent a shared browser from exposing the previous
+// account's meal plan after logout/account switch.
+function mealPlanCacheKey(): string {
+  localStorage.removeItem('frigo_active_meal_plan');
+  return privateCacheKey('active_meal_plan');
+}
+
+export function clearTenantCaches(): void {
+  try {
+    removePrivateCaches();
+  } catch {
+    // storage may be unavailable in private browsing
+  }
 }
 
 function createClientItemId(prefix = 'item'): string {
@@ -133,7 +193,8 @@ function createDeterministicKey(prefix: string, value: string): string {
 
 function readCachedInventory(householdId: string): any[] {
   try {
-    const raw = localStorage.getItem(`frigo_inventory_${householdId}`);
+    localStorage.removeItem(`frigo_inventory_${householdId}`);
+    const raw = localStorage.getItem(privateCacheKey('inventory', householdId));
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
@@ -198,7 +259,7 @@ function queueOfflineScanConfirmation(scanId: string, items: any[]) {
 
   const importedById = new Map(imported.map((item) => [item.id, item]));
   const updated = [...imported, ...current.filter((item) => !importedById.has(item.id))];
-  localStorage.setItem(`frigo_inventory_${householdId}`, JSON.stringify(updated));
+  localStorage.setItem(privateCacheKey('inventory', householdId), JSON.stringify(updated));
   return {
     success: true,
     items: updated,
@@ -209,18 +270,37 @@ function queueOfflineScanConfirmation(scanId: string, items: any[]) {
 
 export const api = {
   // Me & Auth
-  getMe: async () => {
+  logout: async (): Promise<void> => {
+    const response = await fetch(`${BASE_URL}/auth/logout`, {
+      method: 'POST', credentials: 'include', signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok || (await response.json() as { success?: boolean }).success !== true) {
+      throw new Error('Logout not confirmed');
+    }
+  },
+
+  getMe: async (options?: { requireServer?: boolean }) => {
+    const assertCurrent = guardPrivateSession();
     try {
-      return await fetchJson<any>('/me');
+      const result = await fetchJson<any>('/me');
+      assertCurrent();
+      const scope = getCurrentScope();
+      if (result.user?.id !== scope.userId || result.user?.household?.id !== scope.householdId) {
+        localStorage.setItem(LOGOUT_PENDING_KEY, 'true');
+        handleUnauthorized();
+        throw new ApiError('auth', 'Danh tính phiên máy chủ đã thay đổi. Vui lòng đăng xuất và đăng nhập lại.');
+      }
+      return result;
     } catch (err) {
-      if (!isOffline(err)) throw err;
+      assertCurrent();
+      if (options?.requireServer || !isOffline(err)) throw err;
       return {
         user: {
           id: getUserId(),
           displayName: 'Bạn mới của Frigo',
           isGuest: true,
           household: { id: getHouseholdId(), name: 'Tủ lạnh nhà tôi' },
-          subscription: { plan: 'free', maxScans: 5, scansUsed: 1 }
+          subscription: null,
         }
       };
     }
@@ -228,22 +308,26 @@ export const api = {
 
   // Inventory
   getInventory: async () => {
+    const assertCurrent = guardPrivateSession();
     const hhId = getHouseholdId();
     try {
       const res = await fetchJson<{ items: any[] }>('/inventory');
+      assertCurrent();
       if (res && Array.isArray(res.items)) {
-        localStorage.setItem(`frigo_inventory_${hhId}`, JSON.stringify(res.items));
+        localStorage.setItem(privateCacheKey('inventory', hhId), JSON.stringify(res.items));
         return res.items;
       }
     } catch (err) {
       if (!isOffline(err)) throw err;
       // offline fallback
     }
-    const saved = localStorage.getItem(`frigo_inventory_${hhId}`);
+    assertCurrent();
+    const saved = localStorage.getItem(privateCacheKey('inventory', hhId));
     return saved ? JSON.parse(saved) : [];
   },
 
   addInventoryItem: async (item: any) => {
+    const assertCurrent = guardPrivateSession();
     const hhId = getHouseholdId();
     const path = '/inventory';
     // Give the mutation a stable id before the first request. If the response
@@ -253,14 +337,17 @@ export const api = {
     const init = { method: 'POST', body: JSON.stringify(requestItem) };
     try {
       const res = await fetchJson<{ item: any }>(path, init);
+      assertCurrent();
       if (res && res.item) {
         const existing = await api.getInventory();
+        assertCurrent();
         const updated = [res.item, ...existing.filter((i: any) => i.id !== res.item.id)];
-        localStorage.setItem(`frigo_inventory_${hhId}`, JSON.stringify(updated));
+        localStorage.setItem(privateCacheKey('inventory', hhId), JSON.stringify(updated));
         return res.item;
       }
       return res as any;
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err; // surface real server errors, never fake success
       queueWrite(
         path,
@@ -281,13 +368,15 @@ export const api = {
         pendingSync: true,
       };
       const existing = await api.getInventory();
+      assertCurrent();
       const updated = [newItem, ...existing.filter((i: any) => i.id !== newItem.id)];
-      localStorage.setItem(`frigo_inventory_${hhId}`, JSON.stringify(updated));
+      localStorage.setItem(privateCacheKey('inventory', hhId), JSON.stringify(updated));
       return newItem;
     }
   },
 
   updateInventoryItem: async (id: string, updates: any, currentVersion: number) => {
+    const assertCurrent = guardPrivateSession();
     const hhId = getHouseholdId();
     const path = `/inventory/${id}`;
     const commandId = createClientItemId('inventory_update');
@@ -299,14 +388,17 @@ export const api = {
     };
     try {
       const res = await fetchJson<{ item: any }>(path, init);
+      assertCurrent();
       if (res && res.item) {
         const existing = await api.getInventory();
+        assertCurrent();
         const updated = existing.map((i: any) => (i.id === id ? res.item : i));
-        localStorage.setItem(`frigo_inventory_${hhId}`, JSON.stringify(updated));
+        localStorage.setItem(privateCacheKey('inventory', hhId), JSON.stringify(updated));
         return res.item;
       }
       return res as any;
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err;
       queueWrite(
         path,
@@ -317,17 +409,19 @@ export const api = {
         init.headers
       );
       const existing = await api.getInventory();
+      assertCurrent();
       const updated = existing.map((i: any) =>
         i.id === id
           ? { ...i, ...updates, version: expectedVersion + 1, pendingSync: true }
           : i
       );
-      localStorage.setItem(`frigo_inventory_${hhId}`, JSON.stringify(updated));
+      localStorage.setItem(privateCacheKey('inventory', hhId), JSON.stringify(updated));
       return updated.find((i: any) => i.id === id);
     }
   },
 
   deleteInventoryItem: async (id: string, currentVersion: number) => {
+    const assertCurrent = guardPrivateSession();
     const hhId = getHouseholdId();
     const path = `/inventory/${id}`;
     const commandId = createClientItemId('inventory_delete');
@@ -338,6 +432,7 @@ export const api = {
     try {
       await fetchJson(path, { method: 'DELETE', headers });
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err;
       queueWrite(
         path,
@@ -348,21 +443,24 @@ export const api = {
         headers
       );
     }
+    assertCurrent();
     const existing = await api.getInventory();
+    assertCurrent();
     const updated = existing.filter((i: any) => i.id !== id);
-    localStorage.setItem(`frigo_inventory_${hhId}`, JSON.stringify(updated));
+    localStorage.setItem(privateCacheKey('inventory', hhId), JSON.stringify(updated));
   },
 
   // Scan & AI Vision
-  scanFridge: async (imageBase64: string, scanType = 'fridge') => {
+  scanFridge: async (imageBase64: string, scanType = 'fridge', commandId?: string) => {
     try {
       const res = await fetchJson<{ scan: any }>('/scans/fridge', {
         method: 'POST',
+        headers: { 'Idempotency-Key': commandId || crypto.randomUUID() },
         body: JSON.stringify({ imageBase64, scanType }),
       });
       return res.scan;
     } catch (err) {
-      if (!isOffline(err)) throw err;
+      if (commandId || !isOffline(err)) throw err;
       // Offline-only fixture for local review while the write is queued.
       return {
         id: `scan_offline_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -379,17 +477,18 @@ export const api = {
     }
   },
 
-  scanReceipt: async (imageBase64: string) => {
+  scanReceipt: async (imageBase64: string, commandId?: string) => {
     try {
       const res = await fetchJson<{ receipt?: any; scan?: any }>('/scans/receipt', {
         method: 'POST',
+        headers: { 'Idempotency-Key': commandId || crypto.randomUUID() },
         body: JSON.stringify({ imageBase64 }),
       });
       // Async queue responses expose the same scan DTO under `scan`; keep
       // sync receipt responses backward compatible via `receipt`.
       return res.receipt || res.scan;
     } catch (err) {
-      if (!isOffline(err)) throw err;
+      if (commandId || !isOffline(err)) throw err;
       // Offline-only fixture for local review while the write is queued.
       return {
         id: `receipt_offline_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -416,6 +515,7 @@ export const api = {
   },
 
   confirmScan: async (scanId: string, items: any[]) => {
+    const assertCurrent = guardPrivateSession();
     const hhId = getHouseholdId();
 
     // Offline scans have no server-side scan row to confirm. Import their
@@ -429,11 +529,13 @@ export const api = {
     const init = { method: 'POST', body: JSON.stringify({ items }) };
     try {
       const res = await fetchJson<any>(path, init);
+      assertCurrent();
       if (res && res.items) {
-        localStorage.setItem(`frigo_inventory_${hhId}`, JSON.stringify(res.items));
+        localStorage.setItem(privateCacheKey('inventory', hhId), JSON.stringify(res.items));
       }
       return res;
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err;
       return queueOfflineScanConfirmation(scanId, items);
     }
@@ -479,6 +581,7 @@ export const api = {
   },
 
   completeCooking: async (recipeId: string, deductions: any[], commandId = createClientItemId('cook')) => {
+    const assertCurrent = guardPrivateSession();
     const hhId = getHouseholdId();
     const path = `/recipes/${recipeId}/cook/complete`;
     const init = {
@@ -488,11 +591,13 @@ export const api = {
     };
     try {
       const res = await fetchJson<any>(path, init);
+      assertCurrent();
       if (res && res.inventory) {
-        localStorage.setItem(`frigo_inventory_${hhId}`, JSON.stringify(res.inventory));
+        localStorage.setItem(privateCacheKey('inventory', hhId), JSON.stringify(res.inventory));
       }
       return res;
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err;
       queueWrite(
         path,
@@ -503,6 +608,7 @@ export const api = {
         init.headers
       );
       const inventory = await api.getInventory();
+      assertCurrent();
       const updated = inventory
         .map((item: any) => {
           const matches = deductions.filter((dec: any) => {
@@ -523,43 +629,50 @@ export const api = {
           return item;
         })
         .filter((i: any) => i.quantity > 0);
-      localStorage.setItem(`frigo_inventory_${hhId}`, JSON.stringify(updated));
+      localStorage.setItem(privateCacheKey('inventory', hhId), JSON.stringify(updated));
       return { success: true, inventory: updated, pendingSync: true };
     }
   },
 
   // Shopping list
   getShoppingList: async () => {
+    const assertCurrent = guardPrivateSession();
     const hhId = getHouseholdId();
     try {
       const res = await fetchJson<{ items: any[] }>('/shopping-list');
+      assertCurrent();
       if (res && Array.isArray(res.items)) {
-        localStorage.setItem(`frigo_shopping_list_${hhId}`, JSON.stringify(res.items));
+        localStorage.setItem(privateCacheKey('shopping_list', hhId), JSON.stringify(res.items));
         return res.items;
       }
     } catch (err) {
       if (!isOffline(err)) throw err;
       // offline fallback
     }
-    const saved = localStorage.getItem(`frigo_shopping_list_${hhId}`);
+    assertCurrent();
+    const saved = localStorage.getItem(privateCacheKey('shopping_list', hhId));
     return saved ? JSON.parse(saved) : [];
   },
 
   addShoppingItem: async (item: any) => {
+    const assertCurrent = guardPrivateSession();
     const hhId = getHouseholdId();
     const path = '/shopping-list/items';
     const requestItem = { ...item, id: item?.id || createClientItemId('shop') };
     const init = { method: 'POST', body: JSON.stringify(requestItem) };
     try {
       const res = await fetchJson<{ item: any }>(path, init);
+      assertCurrent();
       if (res && res.item) {
         const list = await api.getShoppingList();
+        assertCurrent();
         const updated = [res.item, ...list.filter((i: any) => i.id !== res.item.id)];
-        localStorage.setItem(`frigo_shopping_list_${hhId}`, JSON.stringify(updated));
+        localStorage.setItem(privateCacheKey('shopping_list', hhId), JSON.stringify(updated));
         return res.item;
       }
       return res as any;
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err;
       queueWrite(
         path,
@@ -569,40 +682,49 @@ export const api = {
         `shopping:${requestItem.id}`
       );
       const list = await api.getShoppingList();
+      assertCurrent();
       const newItem = { ...requestItem, isChecked: false, pendingSync: true };
       const updated = [newItem, ...list];
-      localStorage.setItem(`frigo_shopping_list_${hhId}`, JSON.stringify(updated));
+      localStorage.setItem(privateCacheKey('shopping_list', hhId), JSON.stringify(updated));
       return newItem;
     }
   },
 
   toggleShoppingItem: async (id: string, isChecked: boolean) => {
+    const assertCurrent = guardPrivateSession();
     const hhId = getHouseholdId();
     const path = `/shopping-list/items/${id}`;
     const init = { method: 'PATCH', body: JSON.stringify({ isChecked }) };
     try {
       await fetchJson(path, init);
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err;
       queueWrite(path, 'PATCH', init.body, 'Cập nhật danh sách đi chợ');
     }
+    assertCurrent();
     const list = await api.getShoppingList();
+    assertCurrent();
     const updated = list.map((i: any) => (i.id === id ? { ...i, isChecked } : i));
-    localStorage.setItem(`frigo_shopping_list_${hhId}`, JSON.stringify(updated));
+    localStorage.setItem(privateCacheKey('shopping_list', hhId), JSON.stringify(updated));
   },
 
   deleteShoppingItem: async (id: string) => {
+    const assertCurrent = guardPrivateSession();
     const hhId = getHouseholdId();
     const path = `/shopping-list/items/${id}`;
     try {
       await fetchJson(path, { method: 'DELETE' });
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err;
       queueWrite(path, 'DELETE', undefined, 'Xóa khỏi danh sách đi chợ');
     }
+    assertCurrent();
     const list = await api.getShoppingList();
+    assertCurrent();
     const updated = list.filter((i: any) => i.id !== id);
-    localStorage.setItem(`frigo_shopping_list_${hhId}`, JSON.stringify(updated));
+    localStorage.setItem(privateCacheKey('shopping_list', hhId), JSON.stringify(updated));
   },
 
   // Notifications
@@ -635,16 +757,21 @@ export const api = {
 
   // =================== FRIGO WEEK — THỰC ĐƠN TUẦN ===================
   getCurrentWeekPlan: async (): Promise<MealPlan | null> => {
+    const assertCurrent = guardPrivateSession();
     try {
       const res = await fetchJson<{ plan: MealPlan }>('/week/current');
+      assertCurrent();
       if (res.plan) {
-        localStorage.setItem('frigo_active_meal_plan', JSON.stringify(res.plan));
+        localStorage.setItem(mealPlanCacheKey(), JSON.stringify(res.plan));
+      } else {
+        localStorage.removeItem(mealPlanCacheKey());
       }
       return res.plan;
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err;
       // Local fallback
-      const cached = localStorage.getItem('frigo_active_meal_plan');
+      const cached = localStorage.getItem(mealPlanCacheKey());
       if (cached) {
         try {
           return JSON.parse(cached);
@@ -657,6 +784,7 @@ export const api = {
   },
 
   createWeekPlan: async (input: MealPlanSetupInput): Promise<MealPlan> => {
+    const assertCurrent = guardPrivateSession();
     const commandId = createClientItemId('week_plan');
     const planInput: MealPlanSetupInput = {
       ...input,
@@ -670,14 +798,17 @@ export const api = {
         body,
         headers,
       });
-      localStorage.setItem('frigo_active_meal_plan', JSON.stringify(res.plan));
+      assertCurrent();
+      localStorage.setItem(mealPlanCacheKey(), JSON.stringify(res.plan));
       return res.plan;
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err;
       // Genuine offline: the deterministic domain engine can build the plan locally.
       const currentInv = await api.getInventory();
+      assertCurrent();
       const plan = generateWeeklyMealPlan(planInput, currentInv, ALL_RECIPES);
-      localStorage.setItem('frigo_active_meal_plan', JSON.stringify(plan));
+      localStorage.setItem(mealPlanCacheKey(), JSON.stringify(plan));
       queueWrite(
         '/week/plans',
         'POST',
@@ -691,12 +822,15 @@ export const api = {
   },
 
   getWeekPlan: async (id: string): Promise<MealPlan | null> => {
+    const assertCurrent = guardPrivateSession();
     try {
       const res = await fetchJson<{ plan: MealPlan }>(`/week/plans/${id}`);
+      assertCurrent();
       return res.plan;
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err;
-      const cached = localStorage.getItem('frigo_active_meal_plan');
+      const cached = localStorage.getItem(mealPlanCacheKey());
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
@@ -714,6 +848,7 @@ export const api = {
     mealId: string,
     recipeId?: string
   ): Promise<{ plan?: MealPlan; alternatives?: MealSwapAlternative[] }> => {
+    const assertCurrent = guardPrivateSession();
     const commandId = recipeId ? createClientItemId('week_swap') : undefined;
     const body = JSON.stringify({ recipeId, ...(commandId ? { commandId } : {}) });
     const headers = commandId ? { 'Idempotency-Key': commandId } : undefined;
@@ -726,11 +861,13 @@ export const api = {
           headers,
         }
       );
+      assertCurrent();
       if (res.plan) {
-        localStorage.setItem('frigo_active_meal_plan', JSON.stringify(res.plan));
+        localStorage.setItem(mealPlanCacheKey(), JSON.stringify(res.plan));
       }
       return res;
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err; // surface real server errors
       if (recipeId) {
         // Preserve an offline user choice for the next reconnect. The plan
@@ -745,7 +882,7 @@ export const api = {
         );
       }
       // Standalone client fallback (offline): apply the deterministic swap locally.
-      const cached = localStorage.getItem('frigo_active_meal_plan');
+      const cached = localStorage.getItem(mealPlanCacheKey());
       if (cached) {
         const plan: MealPlan = JSON.parse(cached);
         let targetSlot: any;
@@ -766,8 +903,9 @@ export const api = {
           const newRec = ALL_RECIPES.find((r) => r.id === recipeId || r.slug === recipeId);
           if (newRec) {
             const currentInv = await api.getInventory();
+            assertCurrent();
             const updated = swapMealInPlan(plan, mealId, newRec, currentInv);
-            localStorage.setItem('frigo_active_meal_plan', JSON.stringify(updated));
+            localStorage.setItem(mealPlanCacheKey(), JSON.stringify(updated));
             return { plan: updated };
           }
         }
@@ -777,6 +915,7 @@ export const api = {
   },
 
   updateMealSlot: async (planId: string, mealId: string, updates: any): Promise<MealPlan | null> => {
+    const assertCurrent = guardPrivateSession();
     const commandId = createClientItemId('week_slot');
     const body = JSON.stringify(updates);
     const headers = { 'Idempotency-Key': commandId };
@@ -786,9 +925,11 @@ export const api = {
         body,
         headers,
       });
-      localStorage.setItem('frigo_active_meal_plan', JSON.stringify(res.plan));
+      assertCurrent();
+      localStorage.setItem(mealPlanCacheKey(), JSON.stringify(res.plan));
       return res.plan;
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err;
       queueWrite(
         `/week/plans/${planId}/meals/${mealId}`,
@@ -798,7 +939,7 @@ export const api = {
         `week-slot:${planId}:${mealId}:${commandId}`,
         headers
       );
-      const cached = localStorage.getItem('frigo_active_meal_plan');
+      const cached = localStorage.getItem(mealPlanCacheKey());
       if (cached) {
         const plan: MealPlan = JSON.parse(cached);
         for (const day of plan.days) {
@@ -809,7 +950,7 @@ export const api = {
             break;
           }
         }
-        localStorage.setItem('frigo_active_meal_plan', JSON.stringify(plan));
+        localStorage.setItem(mealPlanCacheKey(), JSON.stringify(plan));
         return plan;
       }
       return null;
@@ -817,11 +958,15 @@ export const api = {
   },
 
   getWeekShopping: async (planId: string) => {
+    const assertCurrent = guardPrivateSession();
     try {
-      return await fetchJson<any>(`/week/plans/${planId}/shopping`);
+      const result = await fetchJson<any>(`/week/plans/${planId}/shopping`);
+      assertCurrent();
+      return result;
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err;
-      const cached = localStorage.getItem('frigo_active_meal_plan');
+      const cached = localStorage.getItem(mealPlanCacheKey());
       if (cached) {
         const plan: MealPlan = JSON.parse(cached);
         return {
@@ -837,6 +982,7 @@ export const api = {
   },
 
   toggleWeekShoppingItem: async (planId: string, itemId: string, checked: boolean) => {
+    const assertCurrent = guardPrivateSession();
     const commandId = createClientItemId('week_shop_toggle');
     const body = JSON.stringify({ checked });
     const headers = { 'Idempotency-Key': commandId };
@@ -847,6 +993,7 @@ export const api = {
         headers,
       });
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err;
       queueWrite(
         `/week/plans/${planId}/shopping/items/${itemId}`,
@@ -857,18 +1004,19 @@ export const api = {
         headers
       );
       // Local storage fallback (offline)
-      const cached = localStorage.getItem('frigo_active_meal_plan');
+      const cached = localStorage.getItem(mealPlanCacheKey());
       if (cached) {
         const plan: MealPlan = JSON.parse(cached);
         const item = plan.shoppingItems.find((i) => i.ingredientId === itemId);
         if (item) item.checked = checked;
-        localStorage.setItem('frigo_active_meal_plan', JSON.stringify(plan));
+        localStorage.setItem(mealPlanCacheKey(), JSON.stringify(plan));
       }
     }
   },
 
   completeWeekShopping: async (planId: string, itemsToImport?: any[], commandId?: string) => {
-    const cached = localStorage.getItem('frigo_active_meal_plan');
+    const assertCurrent = guardPrivateSession();
+    const cached = localStorage.getItem(mealPlanCacheKey());
     let cachedPlan: MealPlan | null = null;
     if (cached) {
       try {
@@ -902,6 +1050,7 @@ export const api = {
         headers,
       });
     } catch (err) {
+      assertCurrent();
       if (!isOffline(err)) throw err;
       queueWrite(
         `/week/plans/${planId}/shopping/complete`,
@@ -961,7 +1110,7 @@ export const api = {
             nextInventory.unshift(projection);
           }
         });
-        localStorage.setItem(`frigo_inventory_${householdId}`, JSON.stringify(nextInventory));
+        localStorage.setItem(privateCacheKey('inventory', householdId), JSON.stringify(nextInventory));
       }
       return {
         success: true,
@@ -1042,8 +1191,9 @@ export const api = {
     purpose: 'register' | 'forgot_password',
     migrateFromHouseholdId?: string | null
   ) => {
+    const assertCurrent = guardPrivateSession();
     try {
-      const result = await fetchJson<{ success: boolean; token?: string; user?: any; resetToken?: string }>('/auth/verify-otp', {
+      const result = await fetchJson<{ success: boolean; token?: string; user?: any; resetToken?: string; migratedFromHouseholdId?: string }>('/auth/verify-otp', {
         method: 'POST',
         body: JSON.stringify({
           email,
@@ -1054,12 +1204,14 @@ export const api = {
             : {}),
         }),
       });
+      assertCurrent();
 
       // Preserve offline guest mutations when the same guest household is
       // migrated into the newly registered account.
       if (
         purpose === 'register' &&
         migrateFromHouseholdId &&
+        result.migratedFromHouseholdId === migrateFromHouseholdId &&
         result.success &&
         result.user?.id &&
         result.user?.householdId
@@ -1081,11 +1233,11 @@ export const api = {
     }
   },
 
-  resendOtp: async (email: string, purpose: string) => {
+  resendOtp: async (email: string, purpose: string, turnstileToken?: string | null) => {
     try {
       return await fetchJson<{ success: boolean; message: string; devOtp?: string }>('/auth/resend-otp', {
         method: 'POST',
-        body: JSON.stringify({ email, purpose }),
+        body: JSON.stringify({ email, purpose, turnstileToken }),
       });
     } catch (err: any) {
       // SEC-04: surface the real error instead of a fake OTP.
@@ -1122,7 +1274,7 @@ export const api = {
 
   resetPassword: async (email: string, code: string, newPassword: string) => {
     try {
-      return await fetchJson<{ success: boolean; message: string }>('/auth/reset-password', {
+      return await fetchJson<{ success: boolean; message: string; user?: { id: string; email: string; displayName: string; householdId: string } }>('/auth/reset-password', {
         method: 'POST',
         body: JSON.stringify({ email, code, newPassword }),
       });
@@ -1145,6 +1297,13 @@ export const api = {
     });
   },
 
+  createPaymentIntent: async (plan: 'monthly' | 'annual') => {
+    return fetchJson<{ success: boolean; payment: { id: string; orderCode: string; amountVnd: number; currency: string; plan: string; description: string; expiresAt: string } }>('/billing/payment-intents', {
+      method: 'POST',
+      body: JSON.stringify({ plan }),
+    });
+  },
+
   loginWithGoogle: async (credential?: string, userInfo?: any) => {
     try {
       return await fetchJson<{ success: boolean; token: string; user: any }>('/auth/google', {
@@ -1162,15 +1321,26 @@ export const api = {
   // local caches with authoritative server state. Returns how many ops synced and
   // how many remain queued.
   retryPendingWrites: async (): Promise<{ attempted: number; remaining: number }> => {
+    const scope = getCurrentScope();
+    if (privateSessionBlocked() || !scope.userId || !scope.householdId ||
+      !getPendingOps().some((op) => op.userId === scope.userId && op.householdId === scope.householdId)) {
+      return { attempted: 0, remaining: pendingCount() };
+    }
+    const isCurrent = capturePrivateSession();
     const result = await flush(
-      (op) =>
-        fetchJson(op.path, { method: op.method, body: op.body, headers: op.headers }).then(
-          () => undefined
-        ),
+      async (op) => {
+        if (!isCurrent()) throw new ApiError('auth', 'Đồng bộ riêng tư đã tạm dừng.');
+        // The cookie may have changed in another tab. Local storage is not authorization.
+        const me = await api.getMe({ requireServer: true });
+        if (!isCurrent() || me.user?.id !== op.userId || me.user?.household?.id !== op.householdId) {
+          throw new ApiError('auth', 'Chủ sở hữu thao tác không khớp với phiên máy chủ.');
+        }
+        await fetchJson(op.path, { method: op.method, body: op.body, headers: op.headers });
+      },
       isNonRetryable,
-      { scope: getCurrentScope }
+      { scope: getCurrentScope, canReplay: isCurrent }
     );
-    if (result.attempted > 0) {
+    if (result.attempted > 0 && isCurrent()) {
       try {
         await api.getInventory();
         await api.getShoppingList();

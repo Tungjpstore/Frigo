@@ -25,6 +25,7 @@ const SECRETS_IN_ENV: Partial<Env> = {
   RESEND_API_KEY: 're_sk_do_not_leak_1234567890',
   TURNSTILE_SECRET_KEY: '0xturnstile_secret_do_not_leak',
   JWT_SECRET: 'jwt_secret_do_not_leak_0123456789abcdef',
+  OTP_HASH_SECRET: 'otp_secret_do_not_leak_0123456789abcdef',
   PLUS_GRANT_SECRET: 'plus_grant_do_not_leak',
 };
 
@@ -68,6 +69,8 @@ describe('health endpoints', () => {
       WEEK_SCHEMA_MODE: 'dual',
       CACHE: {} as unknown as Env['CACHE'],
       JWT_SECRET: 's'.repeat(40),
+      OTP_HASH_SECRET: 'otp'.repeat(16),
+      APP_URL: 'https://frigo.example.com',
       TURNSTILE_SITE_KEY: '0xpublic_site_key_not_secret',
       ...SECRETS_IN_ENV,
     });
@@ -91,7 +94,11 @@ describe('health endpoints', () => {
       WEEK_SCHEMA_MODE: 'dual',
       CACHE: {} as unknown as Env['CACHE'],
       JWT_SECRET: 's'.repeat(40),
+      OTP_HASH_SECRET: 'otp'.repeat(16),
+      APP_URL: 'https://frigo.example.com',
       // No email provider and no Plus grant secret: warnings only, not fatal.
+      TURNSTILE_SITE_KEY: 'test-site-key',
+      TURNSTILE_SECRET_KEY: 'test-secret-key',
     });
     expect(response.status).toBe(200);
     const body = (await response.json()) as Record<string, unknown>;
@@ -126,6 +133,8 @@ describe('health endpoints', () => {
       WEEK_SCHEMA_MODE: 'dual',
       CACHE: {} as unknown as Env['CACHE'],
       JWT_SECRET: 's'.repeat(40),
+      OTP_HASH_SECRET: 'otp'.repeat(16),
+      APP_URL: 'https://frigo.example.com',
       ...SECRETS_IN_ENV,
     });
     const text = await response.text();
@@ -156,8 +165,29 @@ describe('health endpoints', () => {
       CACHE: {} as unknown as Env['CACHE'],
       DB: healthyDb(),
       JWT_SECRET: 's'.repeat(40),
+      OTP_HASH_SECRET: 'otp'.repeat(16),
+      APP_URL: 'https://frigo.example.com',
+      TURNSTILE_SITE_KEY: 'test-site-key',
+      TURNSTILE_SECRET_KEY: 'test-secret-key',
     });
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ status: 'ok' });
+  });
+
+  it.each([
+    [{ OTP_HASH_SECRET: undefined }, 'CONFIG_OTP_HASH_SECRET_MISSING'],
+    [{ APP_URL: undefined }, 'CONFIG_PRODUCTION_APP_URL'],
+    [{ APP_URL: 'https://' }, 'CONFIG_PRODUCTION_APP_URL'],
+  ] as const)('readiness fails closed for unusable auth configuration %j', async (overrides, code) => {
+    const response = await fetchReady(createApp(), {
+      ENVIRONMENT: 'production', APP_URL: 'https://frigo.example.com',
+      DB: healthyDb(), CACHE: {} as Env['CACHE'], AI: {},
+      SCAN_QUEUE: {} as Env['SCAN_QUEUE'], SCAN_QUEUE_MODE: 'async',
+      WEEK_SCHEMA_MODE: 'dual', AI_MOCK_MODE: 'false',
+      JWT_SECRET: 's'.repeat(40), OTP_HASH_SECRET: 'otp'.repeat(16),
+      ...overrides,
+    });
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ code: 'CONFIG_INVALID', issues: expect.arrayContaining([code]) });
   });
 });

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { StandardUnit } from '@frigo/domain';
+import { onPrivateSessionReset } from '../lib/private-session';
 
 export interface ScanDraftItem {
   id: string;
@@ -66,9 +67,12 @@ export const useScanStore = create<ScanState>((set) => ({
   reset: () => set({
     imagePreviewUrl: null,
     imageBase64: null,
+    scanType: 'fridge',
     isProcessing: false,
     statusText: '',
     scanId: null,
     items: [],
   }),
 }));
+
+onPrivateSessionReset(() => useScanStore.getState().reset());

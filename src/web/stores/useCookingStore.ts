@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Recipe } from '@frigo/recipes';
 import { areUnitsCompatible, convertUnit, StandardUnit } from '@frigo/domain';
+import { onPrivateSessionReset } from '../lib/private-session';
 
 export interface DeductionDraft {
   ingredientId: string;
@@ -111,3 +112,5 @@ export const useCookingStore = create<CookingState>((set, get) => ({
     deductions: [],
   })
 }));
+
+onPrivateSessionReset(() => useCookingStore.getState().resetCooking());

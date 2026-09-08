@@ -2,6 +2,9 @@ import { Context, Next } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { Env, AuthContext } from '../types';
 import { verifyJwt, JwtPayload } from '../utils/jwt';
+import { sha256Hex, SESSION_COOKIE } from '../utils/session';
+import { hasTrustedOrigin } from './csrf';
+import { SESSION_LAST_SEEN_INTERVAL_MINUTES } from '../config/sessions';
 
 // SEC-01: No default JWT secret. If JWT_SECRET is not configured as a Wrangler
 // secret, auth fails closed (503) instead of silently trusting a public key.
@@ -27,7 +30,20 @@ const PUBLIC_PATHS = [
   '/auth/reset-password',
   '/auth/google',
   '/auth/guest',
+  '/auth/logout',
+  '/billing/payos/webhook',
 ];
+
+function hasExpectedOwner(
+  c: Context<{ Bindings: Env; Variables: { auth: AuthContext } }>,
+  auth: Pick<AuthContext, 'userId' | 'householdId'>,
+): boolean {
+  const userId = c.req.header('X-Frigo-Expected-User-Id');
+  const householdId = c.req.header('X-Frigo-Expected-Household-Id');
+  // Legacy clients omit both; owner-bound reads and writes must match both exactly.
+  if (userId === undefined && householdId === undefined) return true;
+  return Boolean(userId && householdId && userId === auth.userId && householdId === auth.householdId);
+}
 
 export async function authMiddleware(
   c: Context<{ Bindings: Env; Variables: { auth: AuthContext } }>,
@@ -35,14 +51,52 @@ export async function authMiddleware(
 ) {
   const path = c.req.path;
 
-  // Allow public paths through without token
-  if (PUBLIC_PATHS.some((p) => path.endsWith(p))) {
-    return await next();
+  const cookieHeader = c.req.header('cookie') || '';
+  const cookieToken = cookieHeader.split(';').map((v) => v.trim()).find((v) => v.startsWith(`${SESSION_COOKIE}=`))?.slice(SESSION_COOKIE.length + 1);
+  const authHeader = c.req.header('authorization');
+
+  const isPublic = PUBLIC_PATHS.some((p) => path.endsWith(p));
+  if (cookieToken && (!isPublic || path.includes('/auth/')) && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(c.req.method)) {
+    if (!hasTrustedOrigin(c)) {
+      return c.json({ error: 'Cross-site request blocked', code: 'CSRF_ORIGIN_DENIED' }, 403);
+    }
   }
 
-  const authHeader = c.req.header('authorization');
-  const jwtSecret = getJwtSecret(c.env);
+  if (isPublic) return await next();
 
+  // Cookie-only sessions are authoritative. Bearer JWTs are retained only for
+  // guest migration/reset compatibility and are never accepted for normal API access.
+  if (cookieToken && c.env.DB) {
+    try {
+      let tokenValue = '';
+      try { tokenValue = decodeURIComponent(cookieToken); } catch { tokenValue = ''; }
+      const tokenHash = await sha256Hex(tokenValue);
+      const row: any = await c.env.DB.prepare(
+        `SELECT s.id, s.user_id, s.household_id, COALESCE(s.last_seen_at, s.created_at) AS last_seen_at, u.email, u.is_guest, p.display_name
+           FROM sessions_v2 s JOIN users u ON u.id = s.user_id
+           LEFT JOIN profiles p ON p.user_id = s.user_id
+          WHERE s.token_hash = ? AND s.revoked_at IS NULL AND datetime(s.expires_at) > datetime('now') LIMIT 1`
+      ).bind(tokenHash).first();
+      if (row) {
+        if (!hasExpectedOwner(c, { userId: row.user_id, householdId: row.household_id })) {
+          return c.json({ error: 'Request owner does not match authenticated session', code: 'SESSION_OWNER_MISMATCH' }, 403);
+        }
+        c.set('auth', { userId: row.user_id, householdId: row.household_id, email: row.email, isGuest: Boolean(row.is_guest), sessionId: row.id });
+        const lastSeen = Date.parse(row.last_seen_at?.replace(' ', 'T') + (row.last_seen_at?.endsWith('Z') ? '' : 'Z'));
+        if (!Number.isFinite(lastSeen) || lastSeen <= Date.now() - SESSION_LAST_SEEN_INTERVAL_MINUTES * 60_000) {
+          await c.env.DB.prepare(`UPDATE sessions_v2 SET last_seen_at = datetime('now') WHERE id = ?
+            AND (last_seen_at IS NULL OR datetime(last_seen_at) <= datetime('now', ?))`)
+            .bind(row.id, `-${SESSION_LAST_SEEN_INTERVAL_MINUTES} minutes`).run().catch(() => {});
+        }
+        return await next();
+      }
+    } catch {
+      return c.json({ error: 'Authentication service unavailable', code: 'AUTH_UNAVAILABLE' }, 503);
+    }
+  }
+
+  // Legacy bearer JWTs are accepted only for guest migration and reset-free
+  // public compatibility; authenticated users must use the opaque cookie.
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     // If public recipe reading, allow guest browsing
     if (c.req.method === 'GET' && path.includes('/recipes')) {
@@ -65,27 +119,11 @@ export async function authMiddleware(
 
   const token = authHeader.replace('Bearer ', '').trim();
 
-  // Check KV token revocation list (instant logout)
-  if (c.env.CACHE) {
-    try {
-      const isRevoked = await c.env.CACHE.get(`revoked_${token}`);
-      if (isRevoked) {
-        return c.json(
-          {
-            error: 'Unauthorized: Session revoked',
-            code: 'SESSION_REVOKED',
-          },
-          401
-        );
-      }
-    } catch {
-      // ignore
-    }
-  }
+  const jwtSecret = getJwtSecret(c.env);
 
   // 1. Verify Cryptographic JWT
   const verification = await verifyJwt<JwtPayload>(token, jwtSecret);
-  if (verification.valid && verification.payload) {
+  if (verification.valid && verification.payload && c.env.ENVIRONMENT !== 'production') {
     const p = verification.payload;
     const isValidAccess = p.typ === 'access' && p.isGuest !== true;
     const isValidGuest = p.typ === 'guest' && p.isGuest === true;
@@ -99,6 +137,9 @@ export async function authMiddleware(
       );
     }
 
+    if (!hasExpectedOwner(c, { userId: p.sub, householdId: p.hid })) {
+      return c.json({ error: 'Request owner does not match authenticated session', code: 'SESSION_OWNER_MISMATCH' }, 403);
+    }
     c.set('auth', {
       userId: p.sub,
       householdId: p.hid,

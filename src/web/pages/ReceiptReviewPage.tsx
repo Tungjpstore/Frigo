@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TopBar } from '../components/common/TopBar';
 import { QuantityStepper } from '../components/common/QuantityStepper';
 import { Button } from '../components/common/Button';
@@ -8,6 +8,7 @@ import { useWeekStore } from '../stores/useWeekStore';
 import { getIngredientImage } from '../lib/ingredient-images';
 import { CheckCircle2, ShoppingBag, Trash2, Store, Calendar, CalendarCheck } from 'lucide-react';
 import { StandardUnit } from '@frigo/domain';
+import { capturePrivateSession } from '../lib/private-session';
 
 interface ReceiptItemState {
   id: string;
@@ -22,27 +23,26 @@ interface ReceiptItemState {
 }
 
 export const ReceiptReviewPage: React.FC = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const currentPlan = useWeekStore((s) => s.currentPlan);
   const receiptScanId = searchParams.get('scanId');
+  return <ReceiptReview key={receiptScanId || ''} receiptScanId={receiptScanId} />;
+};
 
-  // Navigation state gives immediate UI data. The scanId query keeps async
-  // polling recoverable after a refresh or shared URL.
-  const receiptData = (location.state as any)?.receipt || (receiptScanId ? {
-    id: receiptScanId,
-    status: 'pending',
-    items: [],
-  } : {
-    id: '',
-    status: 'failed',
-    items: [],
+const ReceiptReview: React.FC<{ receiptScanId: string | null }> = ({ receiptScanId }) => {
+  const navigate = useNavigate();
+  const currentPlan = useWeekStore((s) => s.currentPlan);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+
+  // History survives logout. Only the authorized scan endpoint may supply receipt data.
+  const [liveReceipt, setLiveReceipt] = useState<any>({
+    id: receiptScanId || '', status: receiptScanId ? 'pending' : 'failed', items: [],
   });
-
-  const [liveReceipt, setLiveReceipt] = useState<any>(receiptData);
   const [pollError, setPollError] = useState<string | null>(
-    receiptData.id ? null : 'Không tìm thấy bản quét hóa đơn. Vui lòng quay lại và quét ảnh mới.'
+    receiptScanId ? null : 'Không tìm thấy bản quét hóa đơn. Vui lòng quay lại và quét ảnh mới.'
   );
   const isPending = liveReceipt.status === 'pending' || liveReceipt.status === 'processing';
   const isReady = liveReceipt.status === 'ready' || liveReceipt.status === 'confirmed';
@@ -50,7 +50,7 @@ export const ReceiptReviewPage: React.FC = () => {
   // Async receipt scans arrive as a pending DTO. Poll the tenant-scoped scan
   // endpoint until the queue processor publishes ready/failed state.
   useEffect(() => {
-    if (!liveReceipt.id || !isPending || liveReceipt.offline) return;
+    if (!liveReceipt.id || !isPending) return;
     let cancelled = false;
     let attempts = 0;
     const poll = async () => {
@@ -74,9 +74,9 @@ export const ReceiptReviewPage: React.FC = () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [liveReceipt.id, isPending, liveReceipt.offline]);
+  }, [liveReceipt.id, isPending]);
 
-  const [items, setItems] = useState<ReceiptItemState[]>(receiptData.items);
+  const [items, setItems] = useState<ReceiptItemState[]>([]);
   useEffect(() => {
     if (Array.isArray(liveReceipt.items) && liveReceipt.items.length > 0) {
       setItems(liveReceipt.items);
@@ -104,12 +104,14 @@ export const ReceiptReviewPage: React.FC = () => {
 
   const handleImportToFridge = async () => {
     if (items.length === 0 || !isReady) return;
+    const isCurrent = capturePrivateSession();
     setIsSubmitting(true);
     try {
       await api.confirmScan(liveReceipt.id, items);
+      if (!mounted.current || !isCurrent()) return;
       setSuccessToast('Đã nhập nguyên liệu hóa đơn vào tủ lạnh thành công!');
       setTimeout(() => {
-        navigate('/fridge');
+        if (mounted.current && isCurrent()) navigate('/fridge');
       }, 1200);
     } catch (err) {
       console.error('Failed to import receipt items:', err);
@@ -119,11 +121,14 @@ export const ReceiptReviewPage: React.FC = () => {
 
   const handleReconcileWeeklyPlan = async () => {
     if (items.length === 0 || !isReady) return;
+    const isCurrent = capturePrivateSession();
     setIsSubmitting(true);
     try {
       await api.confirmScan(liveReceipt.id, items);
+      if (!mounted.current || !isCurrent()) return;
       setSuccessToast('Đã đối chiếu hóa đơn & cập nhật tủ lạnh!');
       setTimeout(() => {
+        if (!mounted.current || !isCurrent()) return;
         if (currentPlan) {
           navigate(`/week/${currentPlan.id}/shopping`);
         } else {
@@ -170,12 +175,12 @@ export const ReceiptReviewPage: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-heading font-bold text-sm text-slate-900">
-                  {liveReceipt.merchantName || receiptData.merchantName}
+                  {liveReceipt.merchantName}
                 </h3>
                 <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                   <Calendar className="w-3 h-3 text-slate-400" />
-                  <span>{liveReceipt.purchaseDate || receiptData.purchaseDate}</span>
-                  {(liveReceipt.invoiceNumber || receiptData.invoiceNumber) && <span>• {liveReceipt.invoiceNumber || receiptData.invoiceNumber}</span>}
+                  <span>{liveReceipt.purchaseDate}</span>
+                  {liveReceipt.invoiceNumber && <span>• {liveReceipt.invoiceNumber}</span>}
                 </p>
               </div>
             </div>
@@ -187,7 +192,7 @@ export const ReceiptReviewPage: React.FC = () => {
           <div className="flex items-center justify-between pt-2 border-t border-slate-100">
             <span className="text-xs text-slate-500">Tổng thanh toán:</span>
             <span className="font-heading font-bold text-lg text-slate-900">
-              {(calculatedTotal || liveReceipt.totalAmountVnd || receiptData.totalAmountVnd || 0).toLocaleString('vi-VN')}đ
+              {(calculatedTotal || liveReceipt.totalAmountVnd || 0).toLocaleString('vi-VN')}đ
             </span>
           </div>
         </div>

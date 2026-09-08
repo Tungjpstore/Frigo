@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { isTrustedOrigin } from './config/origins';
 import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import { HTTPException } from 'hono/http-exception';
@@ -17,6 +18,7 @@ import { preferencesRoutes } from './routes/preferences';
 import { notificationRoutes } from './routes/notifications';
 import { weekRoutes } from './routes/week';
 import { processScanJob, ScanQueueError } from './services/scan-queue';
+import { billingRoutes } from './routes/billing';
 
 type WorkerVariables = { auth: AuthContext; requestId: string };
 type WorkerApp = { Bindings: Env; Variables: WorkerVariables };
@@ -78,19 +80,13 @@ app.use('*', async (c, next) => {
 app.use('*', productionConfigGate);
 
 app.use('*', cors({
-  origin: (origin, c) => {
-    // In production, allow same-origin and configured app URL
-    const allowed = ['https://frigo.tungjpstore.net', 'http://localhost:5173', 'http://127.0.0.1:5173'];
-    if (!origin || allowed.includes(origin) || c.env.ENVIRONMENT !== 'production') {
-      return origin || '*';
-    }
-    return 'https://frigo.tungjpstore.net';
-  },
+  origin: (origin, c) => isTrustedOrigin(origin, c.env) ? origin : undefined,
   allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
   // The SPA sends tenant context headers on every request and idempotency
   // keys on durable commands. Include them in preflight responses for a
   // separately-hosted frontend as well as same-origin deployments.
-  allowHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'x-household-id', 'Idempotency-Key', 'If-Match'],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'x-household-id',
+    'X-Frigo-Expected-User-Id', 'X-Frigo-Expected-Household-Id', 'Idempotency-Key', 'If-Match'],
   credentials: true,
   maxAge: 86400,
 }));
@@ -109,7 +105,6 @@ app.onError((err, c) => {
       level: 'error',
       requestId: c.get('requestId'),
       code: 'INTERNAL_SERVER_ERROR',
-      error: err.message,
     })
   );
   const isProd = c.env.ENVIRONMENT === 'production';
@@ -131,6 +126,7 @@ const api = new Hono<WorkerApp>();
 
 api.use('*', authMiddleware);
 api.route('/', authRoutes);
+api.route('/', billingRoutes);
 api.route('/', inventoryRoutes);
 api.route('/', scanRoutes);
 api.route('/', recipeRoutes);

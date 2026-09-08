@@ -14,6 +14,9 @@ function productionEnv(overrides: Partial<Env> = {}): Env {
     AI: {},
     SCAN_QUEUE: {} as Env['SCAN_QUEUE'],
     JWT_SECRET: 's'.repeat(40),
+    OTP_HASH_SECRET: 'otp'.repeat(16),
+    TURNSTILE_SITE_KEY: 'test-site-key',
+    TURNSTILE_SECRET_KEY: 'test-secret-key',
     ...overrides,
   };
 }
@@ -50,6 +53,14 @@ describe('validateEnvironment', () => {
     expect(result.fatal.map((i) => i.code)).toContain('CONFIG_PRODUCTION_APP_URL');
   });
 
+  it.each([undefined, '', 'https://', 'ftp://frigo.example.com', 'http://[::1]:8787', 'https://user:password@frigo.example.com'])
+    ('rejects an unusable production APP_URL (%s) without throwing', (APP_URL) => {
+      const result = validateEnvironment(productionEnv({ APP_URL }));
+      expect(result.ok).toBe(false);
+      expect(result.fatal.map((issue) => issue.code)).toContain('CONFIG_PRODUCTION_APP_URL');
+      expect(JSON.stringify(result)).not.toContain('user:password');
+    });
+
   it('rejects a missing required D1 binding in production', () => {
     const result = validateEnvironment(productionEnv({ DB: undefined }));
     expect(result.ok).toBe(false);
@@ -66,6 +77,12 @@ describe('validateEnvironment', () => {
     const result = validateEnvironment(productionEnv({ JWT_SECRET: undefined }));
     expect(result.ok).toBe(false);
     expect(result.fatal.map((i) => i.code)).toContain('CONFIG_JWT_SECRET_MISSING');
+  });
+
+  it.each([undefined, '', '   '])('rejects absent or blank OTP_HASH_SECRET (%s) in production', (OTP_HASH_SECRET) => {
+    const result = validateEnvironment(productionEnv({ OTP_HASH_SECRET }));
+    expect(result.ok).toBe(false);
+    expect(result.fatal.map((issue) => issue.code)).toContain('CONFIG_OTP_HASH_SECRET_MISSING');
   });
 
   it('rejects legacy Week schema mode and sync queue mode in production', () => {
@@ -89,10 +106,22 @@ describe('validateEnvironment', () => {
     expect(result.fatal.map((i) => i.code)).toContain('CONFIG_AI_BINDING_MISSING');
   });
 
-  it('treats a missing Turnstile secret as a warning, not a blocker', () => {
-    const result = validateEnvironment(productionEnv({ TURNSTILE_SITE_KEY: '0xsite' }));
-    expect(result.ok).toBe(true);
-    expect(result.warnings.map((i) => i.code)).toContain('CONFIG_TURNSTILE_MISSING_SECRET');
+  it.each([undefined, '', '  '])('rejects a missing or blank production Turnstile secret (%s)', (TURNSTILE_SECRET_KEY) => {
+    const result = validateEnvironment(productionEnv({ TURNSTILE_SECRET_KEY }));
+    expect(result.ok).toBe(false);
+    expect(result.fatal.map((i) => i.code)).toContain('CONFIG_TURNSTILE_MISSING_SECRET');
+  });
+
+  it.each([undefined, '', '  '])('rejects a missing or blank production Turnstile site key (%s)', (TURNSTILE_SITE_KEY) => {
+    const result = validateEnvironment(productionEnv({ TURNSTILE_SITE_KEY }));
+    expect(result.ok).toBe(false);
+    expect(result.fatal.map((i) => i.code)).toContain('CONFIG_TURNSTILE_MISSING_SITE_KEY');
+  });
+
+  it('rejects production with both Turnstile keys absent', () => {
+    const result = validateEnvironment(productionEnv({ TURNSTILE_SITE_KEY: undefined, TURNSTILE_SECRET_KEY: undefined }));
+    expect(result.ok).toBe(false);
+    expect(result.fatal.map((i) => i.code)).toEqual(expect.arrayContaining(['CONFIG_TURNSTILE_MISSING_SECRET', 'CONFIG_TURNSTILE_MISSING_SITE_KEY']));
   });
 
   it('treats absent optional providers as warnings only (no secret required when disabled)', () => {
@@ -106,7 +135,7 @@ describe('validateEnvironment', () => {
 
   it('never embeds secret values in diagnostics', () => {
     const secretValue = 'sk_do_not_leak_9f8e7d6c';
-    const result = validateEnvironment(productionEnv({ RESEND_API_KEY: secretValue, TURNSTILE_SECRET_KEY: secretValue }));
+    const result = validateEnvironment(productionEnv({ RESEND_API_KEY: secretValue, TURNSTILE_SECRET_KEY: secretValue, OTP_HASH_SECRET: secretValue }));
     const serialized = JSON.stringify(result);
     expect(serialized).not.toContain(secretValue);
   });

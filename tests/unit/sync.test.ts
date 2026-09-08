@@ -36,6 +36,7 @@ describe('offline outbox and scan persistence contract', () => {
   beforeEach(() => {
     storage = new MemoryStorage();
     vi.stubGlobal('localStorage', storage);
+    vi.stubGlobal('sessionStorage', new MemoryStorage());
   });
 
   afterEach(() => {
@@ -92,8 +93,9 @@ describe('offline outbox and scan persistence contract', () => {
           releaseReplay = resolve;
         })
     );
-    const first = flush(replay);
-    const second = flush(replay);
+    const options = { scope: { userId: 'user-a', householdId: 'house-a' } };
+    const first = flush(replay, undefined, options);
+    const second = flush(replay, undefined, options);
 
     // Let the first call finish; the second call must then observe an empty queue.
     await vi.waitFor(() => expect(releaseReplay).toBeTypeOf('function'));
@@ -107,7 +109,7 @@ describe('offline outbox and scan persistence contract', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')));
     storage.setItem('frigo_user_id', 'guest-1');
     storage.setItem('frigo_household_id', 'hh_guest_1');
-    storage.setItem('frigo_token', 'guest-token');
+    sessionStorage.setItem('frigo_guest_token', 'guest-token');
 
     const scan = await api.scanFridge('image-data');
     expect(scan.id).toMatch(/^scan_offline_/);
@@ -150,7 +152,7 @@ describe('offline outbox and scan persistence contract', () => {
   it('rebinds guest outbox operations after successful registration migration', async () => {
     storage.setItem('frigo_user_id', 'guest-1');
     storage.setItem('frigo_household_id', 'hh_guest_1');
-    storage.setItem('frigo_token', 'guest-token');
+    sessionStorage.setItem('frigo_guest_token', 'guest-token');
     pushOp({
       path: '/inventory',
       method: 'POST',
@@ -166,7 +168,7 @@ describe('offline outbox and scan persistence contract', () => {
         new Response(
           JSON.stringify({
             success: true,
-            token: 'access-token',
+            migratedFromHouseholdId: 'hh_guest_1',
             user: { id: 'user-1', householdId: 'hh_user-1' },
           }),
           { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -175,6 +177,12 @@ describe('offline outbox and scan persistence contract', () => {
     );
 
     await api.verifyOtp('a@example.com', '123456', 'register', 'hh_guest_1');
+
+    expect(fetch).toHaveBeenCalledWith('/api/v1/auth/verify-otp', expect.objectContaining({
+      credentials: 'include',
+      headers: expect.objectContaining({ Authorization: 'Bearer guest-token' }),
+    }));
+    expect(storage.getItem('frigo_token')).toBeNull();
 
     expect(getPendingOps()).toEqual([
       expect.objectContaining({ userId: 'user-1', householdId: 'hh_user-1' }),

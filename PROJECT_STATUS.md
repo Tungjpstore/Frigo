@@ -1,5 +1,15 @@
 # Frigo Project Status
 
+## Final hardening — source verification, not a production deployment (2026-09-08)
+
+The current release status is in `FINAL_HARDENING_REPORT.md`; historical **LIVE**
+entries below describe earlier operations, not proof of today's production SHA
+or schema. Final hardening preserves the session/OTP/quota/queue architecture,
+fixes reset privacy, mandatory production Turnstile, quota/origin drift,
+multi-household `/me`, and adds client/release/cleanup regressions. Production
+identity remains unverified from repository deployment metadata. Merge requires
+exact-head hosted CI; deployment and all payment work remain separate owner actions.
+
 ## M24: Week reconciliation, recovery & dual-write canary (2026-09-06) — LIVE
 - Thêm reconciliation read-only v1/v2 theo plan với canonical DTO, SHA-256, row-count, orphan và content mismatch report.
 - Strict gate chặn vacuous parity: plan `READY|ACTIVE|COMPLETED` không có day rows không được coi là parity dù checksum hai tập rỗng bằng nhau.

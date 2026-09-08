@@ -7,3 +7,4 @@ dist/
 *.zip
 .artifacts/
 .hoplite/attachments/
+.hoplite/artifacts/

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useScanStore } from '../stores/useScanStore';
 import { api } from '../services/api';
@@ -6,10 +6,19 @@ import { FRIGO_ASSETS } from '../lib/frigo-assets';
 import { CameraViewfinder } from '../components/scan/CameraViewfinder';
 import { ArrowLeft, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 import { clsx } from 'clsx';
+import { capturePrivateSession } from '../lib/private-session';
+import { readPrivateImage } from '../lib/private-image';
 
 export const ScanPage: React.FC = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const commandRef = useRef<{ id: string; image: string; type: string; owner: string } | null>(null);
+  const inFlight = useRef(false);
+  const cancelRead = useRef<(() => void) | null>(null);
+  useEffect(() => () => {
+    cancelRead.current?.();
+    commandRef.current = null;
+  }, []);
 
   const {
     imagePreviewUrl,
@@ -35,59 +44,72 @@ export const ScanPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    cancelRead.current?.();
+    commandRef.current = null;
     setErrorMsg(null);
-    const preview = URL.createObjectURL(file);
-
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = reader.result as string;
-      setImage(preview, base64);
-      await startAIScan(base64);
-    };
-    reader.readAsDataURL(file);
+    cancelRead.current = readPrivateImage(file, (base64) => {
+      setImage(base64, base64);
+      void startAIScan(base64);
+    });
   };
 
   const startAIScan = async (base64: string) => {
+    if (inFlight.current) return;
+    const owner = `${localStorage.getItem('frigo_user_id')}:${localStorage.getItem('frigo_household_id')}`;
+    if (!commandRef.current || commandRef.current.image !== base64 || commandRef.current.type !== activeTab || commandRef.current.owner !== owner) {
+      commandRef.current = { id: crypto.randomUUID(), image: base64, type: activeTab, owner };
+    }
+    const commandId = commandRef.current.id;
+    const sessionIsCurrent = capturePrivateSession();
+    const isCurrent = () => sessionIsCurrent() && commandRef.current?.id === commandId;
+    inFlight.current = true;
     setErrorMsg(null);
     if (activeTab === 'receipt') {
       setProcessing(true, 'Đang quét hóa đơn mua sắm...');
       try {
-        setTimeout(() => setProcessing(true, 'AI Vision đang nhận diện tên hàng & đơn giá...'), 600);
-        setTimeout(() => setProcessing(true, 'Bóc tách mặt hàng và kiểm tra đối chiếu...'), 1200);
+        setTimeout(() => { if (isCurrent()) setProcessing(true, 'AI Vision đang nhận diện tên hàng & đơn giá...'); }, 600);
+        setTimeout(() => { if (isCurrent()) setProcessing(true, 'Bóc tách mặt hàng và kiểm tra đối chiếu...'); }, 1200);
 
-        const receiptRes = await api.scanReceipt(base64);
+        const receiptRes = await api.scanReceipt(base64, commandId);
 
         setTimeout(() => {
+          if (!isCurrent()) return;
           setProcessing(false);
-          navigate(`/scan/receipt-review?scanId=${encodeURIComponent(receiptRes.id)}`, {
-            state: { receipt: receiptRes },
-          });
+          navigate(`/scan/receipt-review?scanId=${encodeURIComponent(receiptRes.id)}`);
         }, 1600);
       } catch {
+        if (!isCurrent()) return;
         setErrorMsg('Không thể bóc tách hóa đơn. Vui lòng thử lại với ảnh rõ nét hơn!');
         setProcessing(false);
+      } finally {
+        inFlight.current = false;
       }
       return;
     }
 
     setProcessing(true, 'Đang tải ảnh lên...');
     try {
-      setTimeout(() => setProcessing(true, 'AI Vision đang nhận diện nguyên liệu...'), 600);
-      setTimeout(() => setProcessing(true, 'Chuẩn hóa định lượng & kiểm tra độ tươi...'), 1200);
+      setTimeout(() => { if (isCurrent()) setProcessing(true, 'AI Vision đang nhận diện nguyên liệu...'); }, 600);
+      setTimeout(() => { if (isCurrent()) setProcessing(true, 'Chuẩn hóa định lượng & kiểm tra độ tươi...'); }, 1200);
 
-      const scanRes = await api.scanFridge(base64, activeTab);
+      const scanRes = await api.scanFridge(base64, activeTab, commandId);
 
       setTimeout(() => {
+        if (!isCurrent()) return;
         setScanResults(scanRes.id, scanRes.items);
         navigate(`/scan/${scanRes.id}/review`);
       }, 1600);
     } catch {
+      if (!isCurrent()) return;
       setErrorMsg('Không thể xử lý ảnh hoặc nhận diện thất bại. Vui lòng thử lại!');
       setProcessing(false);
+    } finally {
+      inFlight.current = false;
     }
   };
 
   const handleUseMockImage = async () => {
+    commandRef.current = null;
     reset();
     setImage(FRIGO_ASSETS.illustrations['scan-fridge']);
     await startAIScan('mock-fridge-base64');
@@ -143,6 +165,7 @@ export const ScanPage: React.FC = () => {
             <CameraViewfinder
               scanType={activeTab}
               onCapture={(base64) => {
+                commandRef.current = null;
                 setImage(base64, base64);
                 startAIScan(base64);
               }}
@@ -167,6 +190,9 @@ export const ScanPage: React.FC = () => {
           <div className="mt-3 bg-rose-500/20 border border-rose-500/40 rounded-xl p-3 text-xs text-rose-100 flex items-center gap-2 max-w-sm w-full">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-300" />
             <span>{errorMsg}</span>
+            <button className="underline shrink-0" onClick={() => {
+              if (commandRef.current) void startAIScan(commandRef.current.image);
+            }}>Thử lại</button>
           </div>
         )}
       </div>

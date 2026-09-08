@@ -8,9 +8,9 @@ export function apiCsp(): string {
 /**
  * SEC-CSP: the production bundle contains no inline scripts (verified against
  * dist/client/index.html), so script-src omits 'unsafe-inline'. style-src
- * still requires it: CookingModePage/WeekSetupPage/WeekShoppingPage bind
- * dynamic width style attributes that CSP cannot allowlist without a nonce
- * redesign. See docs/HOPLITE_HANDOFF.md before attempting to drop it.
+ * retains it for progress widths and the Google GSI widget's generated styles.
+ * Nonces do not authorize style attributes; removal needs UI/widget-compatible
+ * stylesheet changes. See FINAL_HARDENING_REPORT.md.
  */
 export function spaCsp(): string {
   return [

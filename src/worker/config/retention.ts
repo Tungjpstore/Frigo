@@ -4,6 +4,8 @@ import { Env } from '../types';
 // their natural expiry (OTP/session `expires_at`) or after reaching a terminal
 // state (queue jobs) plus this grace period, so operators keep a debugging
 // window and cron replays never remove live data.
+// Queue tombstones additionally require a matching terminal scan and no reserved
+// quota. All quota periods/reservations/history are retained without a TTL.
 export const DEFAULT_RETENTION_DAYS = {
   otp: 7,
   sessions: 30,
