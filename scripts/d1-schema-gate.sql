@@ -17,7 +17,9 @@ required_migrations(name) AS (
     ('0014_scan_queue_fencing.sql'),
     ('0015_auth_session_otp_hardening.sql'),
     ('0016_scan_quota_ledger.sql'),
-    ('0017_auth_otps_remove_plaintext.sql')
+    ('0017_auth_otps_remove_plaintext.sql'),
+    ('0019_recipe_domain_foundation.sql'),
+    ('0020_t01_foundation_hardening.sql')
 ),
 required_tables(name) AS (
   VALUES
@@ -36,10 +38,34 @@ required_tables(name) AS (
     ,('auth_otps')
     ,('scan_quota_periods')
     ,('scan_quota_ledger')
+    ,('measurement_units')
+    ,('ingredient_tags')
+    ,('ingredient_storage_guidelines')
+    ,('nutrition_profiles')
+    ,('ingredient_nutrition')
+    ,('recipe_families')
+    ,('recipe_family_slots')
+    ,('recipe_family_options')
+    ,('recipe_nutrition')
+    ,('recipe_classifications')
 ),
 required_columns(table_name, column_name) AS (
   VALUES
     ('inventory_items', 'version'),
+    ('inventory_items', 'opened_at'),
+    ('inventory_items', 'expiry_kind'),
+    ('inventory_items', 'expiry_source'),
+    ('ingredients', 'default_name'),
+    ('ingredients', 'subcategory'),
+    ('ingredients', 'allergen_review_state'),
+    ('ingredient_aliases', 'language'),
+    ('ingredient_aliases', 'normalized_alias'),
+    ('recipes', 'family_id'),
+    ('recipes', 'prep_time_minutes'),
+    ('recipes', 'source_type'),
+    ('recipes', 'source_reference'),
+    ('recipes', 'verification_state'),
+    ('recipes', 'version'),
     ('meal_plans', 'snapshot_json'),
     ('shopping_import_commands', 'request_fingerprint'),
     ('shopping_import_commands', 'lock_token'),
@@ -78,6 +104,20 @@ required_columns(table_name, column_name) AS (
     ,('scans', 'total_amount_vnd')
     ,('scan_items', 'unit_price_vnd')
     ,('scan_items', 'total_price_vnd')
+),
+required_triggers(name) AS (
+  VALUES
+    ('trg_meal_plans_household_immutable'),
+    ('trg_ingredients_canonical_id_insert'),
+    ('trg_ingredients_canonical_id_update'),
+    ('trg_recipe_nutrition_version_insert'),
+    ('trg_recipe_nutrition_version_update'),
+    ('trg_recipes_nutrition_version_insert'),
+    ('trg_recipes_nutrition_version_update'),
+    ('trg_recipes_source_reference_insert'),
+    ('trg_recipes_source_reference_update'),
+    ('trg_recipe_families_source_reference_insert'),
+    ('trg_recipe_families_source_reference_update')
 )
 SELECT 'missing_migration' AS issue, migration.name AS detail
 FROM required_migrations migration
@@ -101,10 +141,11 @@ WHERE NOT EXISTS (
   WHERE column_info.name = required.column_name
 )
 UNION ALL
-SELECT 'missing_trigger', 'trg_meal_plans_household_immutable'
+SELECT 'missing_trigger', required.name
+FROM required_triggers required
 WHERE NOT EXISTS (
   SELECT 1 FROM sqlite_master
-  WHERE type = 'trigger' AND name = 'trg_meal_plans_household_immutable'
+  WHERE type = 'trigger' AND name = required.name
 )
 UNION ALL
 SELECT 'foreign_key_violation',
