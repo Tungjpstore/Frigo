@@ -18,6 +18,11 @@ Checkpoint verified 2026-09-08. Exact commands, limitations and next action are 
 `CURRENT_STATE.md` and `HANDOFF.md`. No production deployment or runtime catalog
 cutover occurred; existing scoring/Week is legacy capability, not completed T02–T05.
 
+Team review: [PR #5](https://github.com/tun-vn/Frigo/pull/5) opened against `main`
+on 2026-09-08, with automatic CI/review feedback tracking enabled. No merge or
+deployment was performed. Publication follow-up is documentation-only; the
+verified implementation and T01/T02 statuses are unchanged.
+
 - Do not advance a status solely because code exists. Advance it only after the packet acceptance criteria and relevant checks pass.
 - `BLOCKED BY` means implementation must not begin until its dependencies are complete unless a documented, non-overlapping preparatory task is explicitly approved.
 - Before every task, inspect `git status`, `git diff`, and `git log --oneline -10`; then read all files named in `docs/ai/AGENT_RULES.md` and the active task packet.

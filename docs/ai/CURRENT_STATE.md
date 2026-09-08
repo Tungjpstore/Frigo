@@ -5,7 +5,10 @@ checkpoint, not a claim that the seven-task platform is finished.
 
 Verified implementation commit: `e2a63bbd09e31b4f9d2628a0ad459653a9527056` on
 `hoplite/olbia-borysthenes-fbc61adc`. This state document is in the subsequent
-documentation-only checkpoint. Neither commit is claimed published/deployed.
+documentation-only checkpoint. Published for team review on 2026-09-08 in
+[PR #5](https://github.com/tun-vn/Frigo/pull/5), targeting `main`. Automatic CI/review
+feedback tracking is enabled. No merge or deployment was performed; consult live
+PR checks rather than interpreting the local results below as hosted-CI evidence.
 
 ## Implemented
 
@@ -138,6 +141,10 @@ production integrations and browser/UI checks were not run; no UI changed.
 Optional inline Node manifest commands were blocked before execution by sandbox
 shell policy; equivalent read-only `find`/`grep` validation passed. Local Git
 checkpoint operations were run separately and succeeded.
+
+Publication follow-up: only `CURRENT_STATE.md`, `TASK_BOARD.md` and `HANDOFF.md`
+changed to record PR #5. Git status/diff/history and `git diff --check` were checked;
+full local gates were not rerun because implementation commit `e2a63bb` is unchanged.
 
 ## Next exact action
 

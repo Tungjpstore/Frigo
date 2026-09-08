@@ -14,9 +14,11 @@ This handoff is in the following documentation-only checkpoint, so it deliberate
 references the tested implementation rather than trying to embed its own Git hash.
 
 Branch: `hoplite/olbia-borysthenes-fbc61adc`. Baseline:
-`57c88c5140cec3cd6cbf763fda5592bcd9568e32`. Local checkpoint commits only; no push,
-pull request or deployment. Use `git log -2 --oneline` and `git status --short` to
-confirm the implementation + documentation checkpoints and current working tree.
+`57c88c5140cec3cd6cbf763fda5592bcd9568e32`. Published for team review on 2026-09-08:
+[PR #5](https://github.com/tun-vn/Frigo/pull/5), targeting `main`, ready for review.
+Automatic CI/review feedback tracking is enabled. No merge or deployment was
+performed. Use `git log --oneline -3` and `git status --short` to confirm the
+implementation/documentation checkpoints and current working tree.
 
 ## Completed
 - Audited Git and actual frontend/Worker/D1/domain/recipe/OCR/household architecture.
@@ -27,6 +29,8 @@ confirm the implementation + documentation checkpoints and current working tree.
 - Added 17 meaningful unit/SQLite tests and extended migration/schema gates.
 - Created all protocol documents/task packets and recorded ADR-001–ADR-007.
 - Completed local validation; T02 ready, T03–T07 dependency-blocked.
+- Published the checkpoint and opened PR #5 at the user's request; enabled the
+  automatic review loop. Publication follow-up changes only these state documents.
 
 ## In Progress
 - None. T01 implementation and protocol are complete.
@@ -101,7 +105,11 @@ authorization and backup/ledger checks from `DEPLOYMENT.md`.
   this was not a repository test failure. Local Git commits ran separately.
 
 ### Not Run
-- Hosted CI/remote D1/production integration or deployment; no publication requested.
+- Hosted CI outcomes are not asserted here; consult PR #5 checks for current state.
+- Remote D1/production integration or deployment. Publication did not authorize them.
+- Full local gates were not rerun for the documentation-only publication follow-up;
+  the verified implementation commit is unchanged. Git status/diff/history and
+  `git diff --check` were checked before committing the publication note.
 - Browser/preview/UI smoke: no UI changes. Source regression tests are not visual proof.
 
 ## Known Issues
