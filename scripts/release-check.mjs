@@ -4,7 +4,7 @@ import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 // The operator-approved final hardening SHA must descend from this reviewed floor.
-export const REVIEWED_HARDENING_BASE = '4fe18d28aa25f900a459b17932832d9c3d36852e';
+export const REVIEWED_HARDENING_BASE = 'af661af467ba8620ba6b2919ee958195d179380c';
 const SHA = /^[a-f0-9]{40}$/;
 
 function git(cwd, ...args) {

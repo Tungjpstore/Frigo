@@ -25,7 +25,8 @@ pre-deploy schema gate (read-only) → production deploy → production smoke
 
 ## CI (`.github/workflows/ci.yml`)
 
-Runs on every pull request and every push to `main`. Permissions are limited
+Runs on pull requests to `main`/`master` and pushes to `main`, `master`, and
+`codex/security-hardening-sync`. Permissions are limited
 to `contents: read`; fork PRs receive no secrets. Steps:
 
 1. `pnpm install --frozen-lockfile`
@@ -69,8 +70,10 @@ Behavior:
 ## Production gate
 
 Production deploys are dispatched manually: **Actions → Deploy → Run
-workflow**, `environment: production`, `confirm_production: true`, and the
-`ref` to deploy. The `production` job additionally runs under the GitHub
+workflow **from main**, `environment: production`, `confirm_production: true`,
+`ref: <full SHA or refs/tags/v*>`, and `hardened_sha: <exact approved final hardening SHA>`.
+The release must be contained in main, contain that hardened commit, and have
+successful exact-SHA main-push CI. The `production` job additionally runs under the GitHub
 `production` environment.
 
 Required GitHub configuration (manual, cannot be done in code):
@@ -81,8 +84,8 @@ Required GitHub configuration (manual, cannot be done in code):
 2. Add environment secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
    Scope the API token to this account/zone with Workers Scripts:Edit,
    D1:Edit, and Queue permissions. Never put credentials in YAML.
-3. Optional repository variable `PRODUCTION_URL` (defaults to
-   `https://frigo.tungjpstore.net`).
+3. Required repository variable `PRODUCTION_URL`: an exact HTTPS origin matching
+   the deployment's `APP_URL`. There is no hardcoded production smoke fallback.
 
 The production job re-runs lint/typecheck/tests/migration-smoke/build, then:
 
@@ -140,9 +143,9 @@ messages never embed secret values or binding IDs. Non-production is never
 gated; development runs via `pnpm dev:worker`, which forces
 `--var ENVIRONMENT:development`.
 
-Fatal in production: missing/invalid `APP_URL` (including loopback), `AI_MOCK_MODE=true`,
+Fatal in production: missing/invalid/non-HTTPS `APP_URL` (including loopback), `AI_MOCK_MODE=true`,
 `WEEK_SCHEMA_MODE != dual`, `SCAN_QUEUE_MODE != async`, missing `DB`,
-`CACHE`, `JWT_SECRET`, `OTP_HASH_SECRET`, missing `AI` binding while mock off, missing
+`CACHE`, `JWT_SECRET`, `OTP_HASH_SECRET`, `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, missing `AI` binding while mock off, missing
 `SCAN_QUEUE` while async.
 
 `wrangler.jsonc` versions the existing production frontend origin as `APP_URL`;
@@ -165,9 +168,11 @@ it (`packages/ai/src/providers/groq.ts`). The AI/provider owner must confirm
 the intended effective model and account access before deploying that setup;
 mock-AI tests and the isolated preview do not verify live provider availability.
 
-Warnings (reported, non-blocking): Turnstile key pair half-configured, no
-email provider (`SEND_EMAIL` binding or `RESEND_API_KEY`), missing
-`PLUS_GRANT_SECRET`. Feature-disabled features never require their secrets.
+Warnings (reported, non-blocking): no email provider (`SEND_EMAIL` binding or
+`RESEND_API_KEY`), missing `PLUS_GRANT_SECRET`. Turnstile is not optional in
+production: either missing/blank key is fatal, including when both are absent.
+Explicit development/staging may omit the pair; configured secrets still enforce
+verification. Login, registration, forgot-password and OTP resend require tokens.
 
 ## Health / readiness
 
@@ -222,7 +227,9 @@ cancels the rest. Session revocation is authoritative in D1
 
 - **Code rollback:** redeploy a known-good, migrated-schema-compatible SHA — *Actions → Deploy → Run
   workflow*, `environment: production`, `confirm_production: true`,
-  `ref: <previous-good-sha>`. Same gates run. Concurrency is serialized
+  `ref: <previous-good-sha>` and the approved compatible `hardened_sha`.
+  The target must contain the repository's minimum hardening floor and pass
+  exact-SHA CI/migration-ledger checks. Same gates run. Concurrency is serialized
   (`cancel-in-progress: false`), so an in-flight deploy must finish first.
   After 0017, do not select a pre-hardening SHA that reads/writes plaintext
   OTPs or authenticates legacy sessions. Prefer a forward fix or a tested
@@ -248,3 +255,44 @@ Every deploy stamps `GIT_COMMIT` (Wrangler var). `/api/v1/health/ready`
 exposes `commit` + `version` + `environment`; workflow logs show the exact
 SHA deployed. Structured production request logs include `requestId`,
 `method`, `path`, `status`, `durationMs` (response header `X-Request-Id`).
+
+## Final hardening release cutover
+
+`scripts/release-check.mjs` is a source-only release gate, with local tests.
+It validates main ancestry and immutable refs, the approved hardened ancestor,
+the latest exact-SHA main-push CI run, and a contiguous migration manifest with
+SHA-256 checksums. The workflow stores candidate/production manifests for 90 days;
+the release owner must archive approved receipts longer-term. Candidate validation
+is not proof of deployment: the production receipt must also contain the observed
+D1 migration names and a readiness response matching the exact SHA/environment.
+Source migration checksums do not certify the contents of the remote database.
+
+1. Before rollout, the owner independently establishes the actual production SHA
+   and migration ledger. Repository deployment metadata currently does not prove
+   either. Preserve any production-ahead commits; never force-push main.
+2. Review PR #2 and require green hosted checks at its exact final head. Merge
+   normally with a **merge commit**, retaining the exact hardened commits.
+   Squash/rebase merging breaks the ancestry gate and is not the prescribed cutover.
+3. Require successful CI on the resulting main SHA; create an approved release tag
+   on that SHA. Dispatch the workflow from main, selecting that immutable SHA/tag
+   and the final hardening SHA. Configure required production Environment reviewers
+   separately; source code cannot enforce the repository's reviewer settings.
+4. Confirm stable `OTP_HASH_SECRET`, mandatory production Turnstile keys, HTTPS
+   `APP_URL`, exact `PRODUCTION_URL`, provider availability, and the appropriate
+   schema/code cutover. No remote migrations run automatically.
+5. Production approval, deployment, readiness/SHA receipt and monitoring are
+   separate owner actions, not performed by final hardening.
+
+**Rollback compatibility:** migrations 0015 and 0017 intentionally invalidate old
+sessions/remove plaintext OTP storage. Pre-hardening auth is not a safe code
+rollback on a database at 0017+. New challenges use contextual HMAC v2; old v1
+challenges remain valid only until expiry. A rollback must understand v2 (or
+explicitly invalidate outstanding challenges), opaque sessions, quota ledger,
+queue fencing and Week dual-write. Database restoration is a separate approved
+incident procedure, not a code rollback. Unknown later migration names block the
+release gate until explicitly reviewed.
+
+Local development now defaults Vite's API proxy to `127.0.0.1:8787`, never the
+production hostname. The managed preview uses `scripts/security-preview.mjs`
+(in-memory SQLite, no outbound backend fetch, no real mail/AI). Verify
+`/api/v1/health/ready` reports `development` before any local browser mutation.

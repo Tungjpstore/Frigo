@@ -3,6 +3,72 @@
 Cross-thread integration notes for parallel Frigo work. Read this before
 rebasing or touching a system you do not own.
 
+# Final Hardening
+
+This section and `FINAL_HARDENING_REPORT.md` supersede the historical operational
+claims below. Starting head: `4fe18d28aa25f900a459b17932832d9c3d36852e`, PR #2,
+`codex/security-hardening-sync`. Repository tools resolve `vna-sex/Frigo`.
+
+- **Forgot-password privacy:** known/unknown accounts return identical HTTP 200
+  and generic Vietnamese JSON, including resend and delivery failures. Unknown
+  accounts perform random/HMAC work without persistence/mail. Reset delivery is
+  registered with Worker `waitUntil`, removing email-provider latency from the
+  public response. No constant-time-network claim. Replacement/reset-resend
+  invalidation and challenge insertion share a D1 batch; older codes cannot
+  revive after the replacement is consumed.
+- **Turnstile:** both production keys are mandatory/fatal in config/readiness.
+  Login/register/forgot-password/resend fail closed without verification.
+  Explicit development/staging may disable it. Client resend sends a token,
+  loader names its onload callback, and consumed tokens get fresh widgets on retry.
+- **Quota:** `src/worker/config/scan-quota-policy.ts` owns Free 5 / Plus 999999.
+  Entitlements ignore legacy mutable limit/usage projections. UTC month rollover;
+  reserved and consumed rows count, released rows do not. Enforcement retains its
+  atomic acquisition/reclaim/fencing. `/me` reads the same entitlement and current
+  ledger count without creating billing/quota rows, returns `plan/limit/used/
+  remaining/resetAt` plus old aliases, and returns 503 on DB failures. Offline
+  clients report unavailable quota, not invented usage. Profile joins are scoped
+  to the session household, including its name, avoiding false identity resets.
+- **Origins:** validated HTTPS `APP_URL` supplies CORS and CSRF's exact production
+  origin. Only explicit development adds documented localhost/127.0.0.1 origins.
+  No wildcard, prefix match or arbitrary non-production reflection.
+- **OTP:** new HMAC v2 binds JSON-encoded normalized email/purpose/code. Existing
+  v1 verification continues until expiry; no schema migration or secret rotation.
+  D1 attempts/lockout, expiry and conditional one-winner consume remain authoritative.
+- **Logging:** auth/email/Turnstile failures use static event codes and safe
+  provider names; no full email, provider bodies, raw exceptions, OTP/digest,
+  password, cookie or token. The global error log omits raw exception text.
+  Unrelated domain logging has not undergone a broad rewrite.
+- **Sessions:** D1 validity is still read each request; last-seen is touched only
+  after 15 minutes (new sessions use creation time initially). A conditional SQL
+  predicate fences simultaneous touches. No KV validity cache/sliding expiry/jobs.
+- **CSP:** no script unsafe-inline. Style unsafe-inline remains for three dynamic
+  progress widths and Google GSI-generated styles observed in the browser.
+  Removing it requires widget-compatible styling work; nonces do not authorize
+  style attributes. Worker/static policies remain synchronized.
+- **Cleanup:** expired sessions_v2 30d, expired OTP 7d, ready jobs 30d and failed
+  jobs 90d, centralized in retention config. Jobs need a matching terminal scan,
+  no reserved quota and sufficiently old update time before deletion. Active
+  sessions/OTPs/jobs and all quota history/reservations are retained. Real current
+  SQLite tests cover repeat cleanup and mixed timestamp formats.
+- **Release:** use a merge commit retaining exact hardened ancestry, green PR-head
+  CI, green main release-SHA CI, then an approved immutable SHA/tag. Workflow
+  artifacts record SHA/ancestry/CI/schema checksums/observed ledger/readiness SHA.
+  See `DEPLOYMENT.md` for production/main reconciliation and 0017+ rollback limits.
+
+The browser smoke covers login, `/me`, inventory read, logout/reload, A→B,
+failed logout/reload/retry, generic reset copy and synthetic Turnstile-token
+refresh. Real-SQLite client tests cover household switching and owned offline
+replay. The isolated preview does not certify live mail, AI or Turnstile services.
+The platform initially ignored repository scripts and started Vite's old
+production proxy: two synthetic register requests were rejected by Turnstile
+before account creation. The server was stopped, Vite made local-by-default, and
+the existing isolated script configured explicitly as the managed run override.
+
+**Deferred — PayOS / Payment Owner Action:** all provider/webhook/signature,
+payment schema/UI/intent/settlement/configuration and manual Plus activation
+remain untouched and uncertified. No production deploy, remote D1/KV/R2 mutation,
+queue send, migration, secret rotation, DNS or GitHub Environment change.
+
 # Production Platform Hardening
 
 Thread 5 (baseline `e6d4788a`). Scope: CI/CD, production config validation,
