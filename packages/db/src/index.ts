@@ -28,3 +28,4 @@ export interface D1Response {
 }
 
 export * from './queries';
+export * from './catalog';

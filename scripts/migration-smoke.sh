@@ -58,12 +58,17 @@ VALUES ('migration_smoke_req_only', 'migration_smoke_plan', 'GINGER', 'Gừng', 
 .read migrations/0016_scan_quota_ledger.sql
 .read migrations/0017_auth_otps_remove_plaintext.sql
 .read migrations/0018_payments.sql
+.read migrations/0019_recipe_domain_foundation.sql
 
 CREATE TEMP TABLE assert_zero (value INTEGER NOT NULL CHECK (value = 0));
 INSERT INTO assert_zero SELECT COUNT(*) FROM pragma_foreign_key_check;
 INSERT INTO assert_zero SELECT COUNT(*) FROM pragma_integrity_check WHERE integrity_check <> 'ok';
 
 CREATE TEMP TABLE assert_one (value INTEGER NOT NULL CHECK (value = 1));
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('ingredient_aliases') WHERE name = 'normalized_alias';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('inventory_items') WHERE name = 'expiry_source';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('recipes') WHERE name = 'verification_state';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'recipe_family_options';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('meal_plan_days') WHERE name = 'day_type';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('meal_plans') WHERE name = 'snapshot_json';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('meal_plan_slots') WHERE name = 'snapshot_json';

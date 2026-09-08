@@ -17,7 +17,8 @@ required_migrations(name) AS (
     ('0014_scan_queue_fencing.sql'),
     ('0015_auth_session_otp_hardening.sql'),
     ('0016_scan_quota_ledger.sql'),
-    ('0017_auth_otps_remove_plaintext.sql')
+    ('0017_auth_otps_remove_plaintext.sql'),
+    ('0019_recipe_domain_foundation.sql')
 ),
 required_tables(name) AS (
   VALUES
@@ -36,10 +37,34 @@ required_tables(name) AS (
     ,('auth_otps')
     ,('scan_quota_periods')
     ,('scan_quota_ledger')
+    ,('measurement_units')
+    ,('ingredient_tags')
+    ,('ingredient_storage_guidelines')
+    ,('nutrition_profiles')
+    ,('ingredient_nutrition')
+    ,('recipe_families')
+    ,('recipe_family_slots')
+    ,('recipe_family_options')
+    ,('recipe_nutrition')
+    ,('recipe_classifications')
 ),
 required_columns(table_name, column_name) AS (
   VALUES
     ('inventory_items', 'version'),
+    ('inventory_items', 'opened_at'),
+    ('inventory_items', 'expiry_kind'),
+    ('inventory_items', 'expiry_source'),
+    ('ingredients', 'default_name'),
+    ('ingredients', 'subcategory'),
+    ('ingredients', 'allergen_review_state'),
+    ('ingredient_aliases', 'language'),
+    ('ingredient_aliases', 'normalized_alias'),
+    ('recipes', 'family_id'),
+    ('recipes', 'prep_time_minutes'),
+    ('recipes', 'source_type'),
+    ('recipes', 'source_reference'),
+    ('recipes', 'verification_state'),
+    ('recipes', 'version'),
     ('meal_plans', 'snapshot_json'),
     ('shopping_import_commands', 'request_fingerprint'),
     ('shopping_import_commands', 'lock_token'),
