@@ -74,7 +74,7 @@ export const WeekDashboardPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] pb-28 select-none">
+    <div className="min-h-screen bg-[#F8FAF9] pb-28">
       <TopBar title="Thực đơn tuần" subtitle={formatDateRange(currentPlan.startDate, currentPlan.endDate)} />
 
       <div className="px-4 pt-3 space-y-5 max-w-md mx-auto animate-fade-in">

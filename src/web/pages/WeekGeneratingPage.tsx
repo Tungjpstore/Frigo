@@ -60,7 +60,7 @@ export const WeekGeneratingPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#FFFDF6] text-slate-900 flex flex-col justify-between p-6 select-none max-w-md mx-auto animate-fade-in">
+    <div className="min-h-screen bg-[#FFFDF6] text-slate-900 flex flex-col justify-between p-6 max-w-md mx-auto animate-fade-in">
       {/* Top Brand Mark */}
       <div className="pt-8 text-center">
         <div className="w-20 h-20 mx-auto mb-4 overflow-hidden flex items-center justify-center">

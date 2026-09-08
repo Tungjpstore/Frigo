@@ -61,7 +61,7 @@ export const MealDetailPage: React.FC = () => {
   const recipe = targetSlot.recipe;
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] pb-32 select-none max-w-md mx-auto">
+    <div className="min-h-screen bg-[#F8FAF9] pb-32 max-w-md mx-auto">
       <TopBar
         showBack
         title={targetSlot.recipe.title}

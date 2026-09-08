@@ -37,7 +37,7 @@ export const ProfilePage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] pb-24 max-w-md mx-auto select-none">
+    <div className="min-h-screen bg-[#F8FAF9] pb-24 max-w-md mx-auto">
       <TopBar title="Hồ sơ" />
 
       <div className="px-4 pt-4 space-y-4">

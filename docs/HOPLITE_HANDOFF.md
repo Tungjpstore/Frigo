@@ -154,3 +154,41 @@ gracefully until the schema lands).
 Test baseline: 126 (pre-Thread-5) → 163 (with Thread 5 platform tests),
 lint/typecheck/build/migration-smoke all green. Production deployment:
 **NOT PERFORMED**.
+
+# Frontend Architecture (production upgrade thread)
+
+Scope: `src/web` only — no worker/domain/schema/payment changes. Full details
+in `FRONTEND_PRODUCTION_UPGRADE_REPORT.md`.
+
+State ownership is strict: TanStack Query owns server state, Zustand owns
+workflow/UI state, `localStorage` holds only user+household-scoped offline
+projections and device preferences, React state is ephemeral UI.
+
+- `src/web/services/http.ts` — fetch core: Bearer auth, `ApiError` taxonomy
+  (offline/unauthorized/server), unauthorized cleanup, `getCurrentScope()`
+  (user+household), scoped offline-cache helpers, legacy cache migration.
+- `src/web/services/{auth,inventory,recipes,week,shopping,scans,notifications}.ts`
+  — one service per domain. `services/api.ts` is a compatibility facade
+  re-exporting the historical `api.*` surface; new code should import domain
+  services directly.
+- `src/web/lib/queryKeys.ts` — single query-key factory; every key embeds
+  user+household so caches never leak across account/household switches.
+- `src/web/lib/format.ts` — Vietnamese currency/date/expiry helpers.
+- Routes are lazy-loaded (`App.tsx`) behind `RouteFallback`; the build emits
+  per-route chunks plus split vendor chunks (react/query/icons).
+- Honest-data rule: widgets show real server data or explicit
+  loading/error/empty/offline states (`AsyncState`, `EmptyState`) — never
+  fabricated meals, budgets, progress, or notification dots.
+- Dialogs: `components/common/ConfirmDialog.tsx` (alertdialog semantics,
+  focus/Escape/backdrop handling); no native `alert()`/`confirm()` remain in
+  `src/web`.
+- Invariants to preserve: outbox replay with stable IDs + idempotency +
+  `If-Match`; household ownership fencing; offline scans return empty drafts
+  (never fabricated detections); notifications are empty offline; payment
+  code (`components/payment/VietQRModal.tsx`) is owner-gated — do not modify.
+- Known gap: worker notification IDs use `Date.now()` — add stable
+  server-side IDs before building any unread badge/count.
+
+Frontend test baseline: 163 → 180 (17 new frontend-service regression tests);
+lint/typecheck/build/migration-smoke all green. Production deployment:
+**NOT PERFORMED**.

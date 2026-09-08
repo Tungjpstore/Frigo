@@ -111,8 +111,19 @@ describe('offline outbox and scan persistence contract', () => {
 
     const scan = await api.scanFridge('image-data');
     expect(scan.id).toMatch(/^scan_offline_/);
+    // Offline scans are empty drafts (AI vision needs the server) — no fabricated detections.
+    expect(scan.offline).toBe(true);
+    expect(scan.items).toHaveLength(0);
 
-    const result = await api.confirmScan(scan.id, [scan.items[0]]);
+    // The user manually adds an item during offline review, then confirms.
+    const reviewedItem = {
+      id: 'manual-1',
+      rawName: 'Trứng gà',
+      estimatedQuantity: 6,
+      unit: 'piece',
+      storage: 'fridge',
+    };
+    const result = await api.confirmScan(scan.id, [reviewedItem]);
     expect(result.pendingSync).toBe(true);
 
     const ops = getPendingOps();

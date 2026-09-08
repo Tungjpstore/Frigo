@@ -78,7 +78,7 @@ export const WeekShoppingPage: React.FC = () => {
   // 6.3 HOÀN TẤT ĐI CHỢ
   if (shoppingMode === 'complete') {
     return (
-      <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between p-6 select-none max-w-md mx-auto animate-fade-in">
+      <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between p-6 max-w-md mx-auto animate-fade-in">
         <div className="text-center pt-8 space-y-2">
           <h2 className="font-heading font-extrabold text-2xl text-slate-900 tracking-tight">
             Tuyệt vời! 🎉
@@ -154,7 +154,7 @@ export const WeekShoppingPage: React.FC = () => {
 
   // 6.1 (LIST) & 6.2 (ACTIVE SHOPPING MODE)
   return (
-    <div className="min-h-screen bg-[#F8FAF9] pb-32 select-none max-w-md mx-auto">
+    <div className="min-h-screen bg-[#F8FAF9] pb-32 max-w-md mx-auto">
       <TopBar
         showBack
         title={shoppingMode === 'active' ? 'Đang đi chợ' : 'Danh sách đi chợ'}

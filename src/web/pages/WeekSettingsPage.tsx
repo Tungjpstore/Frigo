@@ -25,7 +25,7 @@ export const WeekSettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] pb-24 select-none max-w-md mx-auto">
+    <div className="min-h-screen bg-[#F8FAF9] pb-24 max-w-md mx-auto">
       <TopBar showBack title="Cài đặt thực đơn tuần" />
 
       <div className="px-4 pt-4 max-w-md mx-auto space-y-5">

@@ -20,7 +20,7 @@ export const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] flex flex-col justify-between px-6 py-10 relative overflow-hidden select-none max-w-md mx-auto">
+    <div className="min-h-screen bg-[#F8FAF9] flex flex-col justify-between px-6 py-10 relative overflow-hidden max-w-md mx-auto">
       {/* Brand Header */}
       <div className="relative z-10 text-center pt-4">
         <div className="flex justify-center mb-3">

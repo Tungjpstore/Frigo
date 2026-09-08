@@ -4,6 +4,7 @@ import { TopBar } from '../components/common/TopBar';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/useAuthStore';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { Globe, Shield, LogOut, Check, Smartphone, Trash2, Info, Wifi } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
@@ -13,6 +14,8 @@ export const SettingsPage: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState(false);
   const [cacheCleared, setCacheCleared] = useState(false);
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
     // Check if app is running in standalone mode (installed PWA)
@@ -36,7 +39,7 @@ export const SettingsPage: React.FC = () => {
         setDeferredPrompt(null);
       }
     } else {
-      alert('Để cài đặt Frigo:\n• Trên iPhone/Safari: Nhấn nút "Chia sẻ" (Share) rồi chọn "Thêm vào MH chính" (Add to Home Screen).\n• Trên Android/Chrome: Nhấn menu 3 chấm rồi chọn "Cài đặt ứng dụng".');
+      setShowInstallHelp(true);
     }
   };
 
@@ -50,10 +53,7 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleLogout = () => {
-    if (confirm('Bạn có chắc muốn đăng xuất? Dữ liệu cục bộ sẽ được làm mới.')) {
-      logout();
-      navigate('/landing');
-    }
+    setConfirmLogout(true);
   };
 
   return (
@@ -166,6 +166,30 @@ export const SettingsPage: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmLogout}
+        title="Đăng xuất tài khoản?"
+        description="Dữ liệu cục bộ trên thiết bị này sẽ được làm mới."
+        confirmText="Đăng xuất"
+        destructive
+        onConfirm={() => {
+          setConfirmLogout(false);
+          logout();
+          navigate('/landing');
+        }}
+        onCancel={() => setConfirmLogout(false)}
+      />
+
+      <ConfirmDialog
+        open={showInstallHelp}
+        title="Cài đặt Frigo lên màn hình chính"
+        description={'Trên iPhone (Safari): nhấn nút Chia sẻ rồi chọn "Thêm vào MH chính". Trên Android (Chrome): nhấn menu ba chấm rồi chọn "Cài đặt ứng dụng".'}
+        confirmText="Đã hiểu"
+        cancelText="Đóng"
+        onConfirm={() => setShowInstallHelp(false)}
+        onCancel={() => setShowInstallHelp(false)}
+      />
     </div>
   );
 };

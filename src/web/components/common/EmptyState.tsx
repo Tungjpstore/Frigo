@@ -28,7 +28,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         FRIGO_ASSETS.illustrations['empty-fridge'];
 
   return (
-    <div className="bg-white rounded-2xl p-6 text-center border border-slate-200/80 shadow-xs my-4 select-none animate-fade-in">
+    <div className="bg-white rounded-2xl p-6 text-center border border-slate-200/80 shadow-xs my-4 animate-fade-in">
       <div className="w-32 h-32 mx-auto mb-3 overflow-hidden flex items-center justify-center">
         <img
           src={imgSrc}

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useCookingStore } from '../stores/useCookingStore';
 import { api } from '../services/api';
 import { Button } from '../components/common/Button';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { FRIGO_ASSETS } from '../lib/frigo-assets';
 import { ArrowLeft, Play, Pause, RotateCcw, Clock, Volume2, VolumeX, Mic, MicOff, CheckCircle2, Refrigerator, ArrowRight } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -34,6 +35,7 @@ export const CookingModePage: React.FC = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [heardText, setHeardText] = useState<string | null>(null);
+  const [confirmExit, setConfirmExit] = useState(false);
 
   // If page refreshed directly on /cook/:slug, load recipe
   useEffect(() => {
@@ -183,7 +185,7 @@ export const CookingModePage: React.FC = () => {
   // 1. Completion view (Deduction confirmation)
   if (isCompletedView) {
     return (
-      <div className="min-h-screen bg-[#F8FAF9] p-4 flex flex-col justify-between pb-10 select-none max-w-md mx-auto">
+      <div className="min-h-screen bg-[#F8FAF9] p-4 flex flex-col justify-between pb-10 max-w-md mx-auto">
         <div className="space-y-4">
           <div className="text-center pt-4">
             <div className="w-28 h-28 mx-auto mb-2 overflow-hidden flex items-center justify-center">
@@ -276,16 +278,11 @@ export const CookingModePage: React.FC = () => {
 
   // 2. Active step cooking mode
   return (
-    <div className="min-h-screen bg-[#F8FAF9] flex flex-col justify-between p-5 select-none max-w-md mx-auto">
+    <div className="min-h-screen bg-[#F8FAF9] flex flex-col justify-between p-5 max-w-md mx-auto">
       <div>
         <div className="flex items-center justify-between mb-3">
           <button
-            onClick={() => {
-              if (confirm('Bạn có chắc muốn thoát chế độ nấu?')) {
-                resetCooking();
-                navigate(-1);
-              }
-            }}
+            onClick={() => setConfirmExit(true)}
             className="w-10 h-10 rounded-xl hover:bg-slate-100 active:scale-95 text-slate-700 flex items-center justify-center tap-target transition-colors"
             aria-label="Thoát chế độ nấu"
           >
@@ -444,6 +441,20 @@ export const CookingModePage: React.FC = () => {
           </Button>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmExit}
+        title="Thoát chế độ nấu?"
+        description="Tiến trình các bước nấu hiện tại sẽ không được lưu."
+        confirmText="Thoát"
+        destructive
+        onConfirm={() => {
+          setConfirmExit(false);
+          resetCooking();
+          navigate(-1);
+        }}
+        onCancel={() => setConfirmExit(false)}
+      />
     </div>
   );
 };
