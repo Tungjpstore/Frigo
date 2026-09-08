@@ -545,91 +545,9 @@ export function findCanonicalIngredient(input: string): CanonicalIngredient | nu
   return null;
 }
 
-const STANDARD_UNITS = new Set<StandardUnit>([
-  'g',
-  'kg',
-  'ml',
-  'l',
-  'piece',
-  'pack',
-  'bunch',
-  'slice',
-]);
-
-export function isStandardUnit(value: unknown): value is StandardUnit {
-  return typeof value === 'string' && STANDARD_UNITS.has(value as StandardUnit);
-}
-
-// Unit families are intentionally conservative. A piece cannot be inferred as
-// grams (or a bunch as millilitres) without product-specific metadata.
-export function areUnitsCompatible(from: StandardUnit, to: StandardUnit): boolean {
-  if (!isStandardUnit(from) || !isStandardUnit(to)) return false;
-  if (from === to) return true;
-  const mass = new Set<StandardUnit>(['g', 'kg']);
-  const volume = new Set<StandardUnit>(['ml', 'l']);
-  if (mass.has(from) && mass.has(to)) return true;
-  if (volume.has(from) && volume.has(to)) return true;
-  return false;
-}
-
-export class UnitConversionError extends Error {
-  constructor(
-    readonly from: StandardUnit,
-    readonly to: StandardUnit,
-    message = `Cannot convert ${from} to ${to}`
-  ) {
-    super(message);
-    this.name = 'UnitConversionError';
-  }
-}
-
-// Convert units if convertible. This legacy API intentionally keeps its
-// numeric fallback for older callers; new business logic should use
-// `convertUnitStrict` or `tryConvertUnit` so incompatible units fail closed.
-export function convertUnit(quantity: number, from: StandardUnit, to: StandardUnit): number {
-  if (from === to) return quantity;
-  if (from === 'kg' && to === 'g') return quantity * 1000;
-  if (from === 'g' && to === 'kg') return quantity / 1000;
-  if (from === 'l' && to === 'ml') return quantity * 1000;
-  if (from === 'ml' && to === 'l') return quantity / 1000;
-  return quantity; // Fallback same value if incompatible unit conversion
-}
-
-/**
- * Converts a quantity only when both units are valid and belong to the same
- * measurable family. Unlike the legacy `convertUnit`, this never fabricates a
- * value for an incompatible pair.
- */
-export function convertUnitStrict(quantity: number, from: StandardUnit, to: StandardUnit): number {
-  if (!Number.isFinite(quantity)) {
-    throw new UnitConversionError(from, to, 'Quantity must be finite');
-  }
-  if (!areUnitsCompatible(from, to)) {
-    throw new UnitConversionError(from, to);
-  }
-
-  const converted = convertUnit(quantity, from, to);
-  if (!Number.isFinite(converted)) {
-    throw new UnitConversionError(from, to, 'Converted quantity must be finite');
-  }
-  return converted;
-}
-
-/**
- * Nullable conversion for scoring/planning paths where an incompatible stock
- * row should be treated as unavailable rather than aborting the whole plan.
- */
-export function tryConvertUnit(
-  quantity: number,
-  from: StandardUnit,
-  to: StandardUnit
-): number | null {
-  try {
-    return convertUnitStrict(quantity, from, to);
-  } catch {
-    return null;
-  }
-}
+export * from './units';
+export * from './availability';
+export * from './quantity';
 
 // Calculate freshness status given expiry date or added date
 export function computeFreshness(expiryDate?: string, addedDate?: string, shelfLifeDays = 7): FreshnessStatus {

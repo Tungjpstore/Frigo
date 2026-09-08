@@ -1,10 +1,15 @@
-# Domain Model — T01 contracts and extension points
+# Domain Model — T01 foundation and T02 calculations
 
 Implemented SQL is `migrations/0019_recipe_domain_foundation.sql` plus append-only
 `0020_t01_foundation_hardening.sql`; validated inputs
 are `packages/domain/src/foundation.ts` and `packages/recipes/src/foundation.ts`.
 These supplement, not replace, existing runtime `CanonicalIngredient`, `InventoryItem`
 and `Recipe` DTOs. Do not cast a database row to those camelCase DTOs.
+
+T02's calculation/output contract is documented in `RECIPE_ENGINE.md`; it consumes
+these definitions without a schema or runtime catalog cutover. Canonical inventory
+availability, repeated requirements, serving scaling, explicit substitutions and
+bounded family candidates share one deterministic quantity path.
 
 ## Boundaries
 
@@ -160,8 +165,9 @@ Reuse relational `recipes`, `recipe_ingredients`, `recipe_steps`, translations.
 Recipe line quantities are at `recipes.servings`, not per serving. Required and
 optional lines have positive amounts; absence/availability/missing amounts are
 computed, not persisted on recipe lines. Repeated ingredient rows may represent
-different preparation stages; T02 must aggregate them safely, not require a
-new uniqueness constraint that would delete detail.
+different preparation stages; T02 aggregates compatible required/optional groups
+before serving scaling while preserving source line indices, rather than requiring
+a new uniqueness constraint that would delete detail.
 
 New recipe columns: optional family FK and prep minutes; source type (`legacy`,
 `curated`, `imported`, `ai_generated`, `user_generated`), source reference, review
@@ -188,12 +194,13 @@ optional slots min = 0. A concrete dish may optionally link its family.
 Composite FKs bind options to their family/slot; duplicate slot and option IDs are
 rejected. Zod validates selection counts against option count. SQL cannot enforce
 that cross-row aggregate during staged inserts; authors must validate the complete
-family and write all rows in a D1 batch before making it available. T02 owns bounded
-variant generation, selected-slot traces, coherent steps and deterministic
-substitution rules. T01 stores neither every permutation nor a generic rules engine.
-T02 must enforce named candidate and search-work budgets during expansion (ADR-005,
-T02 packet), not build a Cartesian product then truncate it. Slot/option counts
-alone do not provide a safe computational bound. T01 implements no generator.
+family and write all rows in a D1 batch before making it available. T02 now provides
+bounded variant generation, selected/omitted-slot traces and explicit deterministic
+substitution rules. Missing family instructions/cuisine/times remain unknown for
+later publication/integration; the engine does not invent coherent cooking steps.
+T01 stores neither every permutation nor a generic rules engine. T02 enforces
+candidate/search-work budgets during traversal (ADR-005/012), not after constructing
+a Cartesian product. No generated variant is persisted as a canonical recipe.
 
 ## Provenance, ownership and deferred fields
 
@@ -210,7 +217,8 @@ derived labels need deterministic rules later. Existing free-form `recipes.tags`
 are retained, not silently asserted into normalized classifications. Substitution
 edges, retailer products/prices, detailed ingredient metadata, family translations,
 nutrition goals, new nutrient registries and private recipe ownership are deferred
-until a task needs them. No generic JSON metadata bag is introduced speculatively.
+until a task needs them. T02 adds only validated per-invocation, reviewed substitution
+rules, not a persisted edge registry. No generic JSON metadata bag is introduced.
 
 Input schemas are authoring contracts, not raw-row decoders. Map SQL NULL to
 omitted optional fields where required; recipe source references explicitly accept

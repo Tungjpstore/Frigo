@@ -1,4 +1,4 @@
-# Architecture — audited T01 baseline
+# Architecture — T01 foundation and T02 engine
 
 ## Stack and layout
 
@@ -13,15 +13,21 @@ Zod 3, Vite 6, Vitest 3, TypeScript 5, Wrangler 3).
 | Web data | `src/web/services/api.ts` compatibility facade; `http.ts` cookie transport/owner fencing; domain services; scoped query keys/cache/outbox |
 | Worker | `src/worker/index.ts`, Hono `/api/v1` routers; middleware for sessions, CSRF, tenancy, rate limits; Cloudflare Queue consumer |
 | Validation | `src/worker/validation/schemas.ts` Zod request schemas, additional route-local validation; older routes still contain loosely typed code |
-| Domain | `packages/domain/src/index.ts` static ingredients, normalization, units/freshness; `week/*` deterministic planning, scoring, pricing, packages, portions, shopping, leftovers/utilization |
-| Recipes | `packages/recipes/src/{types,data,engine,vietnamese-bank}.ts`; static `ALL_RECIPES` drives API, cook commands and Week |
-| Database | `packages/db/src/{index,queries}.ts`; raw prepared SQL and D1 batch, **no ORM**; numbered `migrations/*.sql` |
+| Domain | `index.ts` static ingredients/normalization/freshness; leaf `units.ts`, `quantity.ts`, `availability.ts` for shared T02 arithmetic; `week/*` remains the legacy planner |
+| Recipes | Legacy `{types,data,engine,vietnamese-bank}.ts` still drives API/cooking/Week; new `{catalog,requirements,substitutions,families,candidates}.ts` is an explicitly invoked T02 library |
+| Database | Raw SQL/D1 batch, **no ORM**; T01 `catalog.ts` trusted authoring and T02 `recipe-catalog.ts` read-only snapshots; numbered `migrations/*.sql` |
 | AI | `packages/ai/src/router.ts`, `schemas.ts`, `providers/*`; validated structured predictions, provider routing and mock mode |
 
 T01 adds leaf `foundation.ts` domain/recipe contracts and `packages/db/src/catalog.ts`
 for explicitly invoked catalog authoring/exact alias lookup. Legacy entry-point
 types/engines remain intact. Leaf imports avoid expanding the existing
 domain-week/recipes barrel dependency cycle.
+
+T02 adds one canonical lot index and per-candidate reservation witness. Concrete
+recipes and bounded family variants use the same scaling, availability and
+substitution path. The explicit snapshot contract separates candidate generation
+from existing ranking, Week simulation and live readers. No new endpoint, migration
+or persisted variant exists. See `RECIPE_ENGINE.md` for the full consumer contract.
 
 ## Data/runtime split (important)
 
@@ -31,12 +37,17 @@ domain-week/recipes barrel dependency cycle.
 - At the audited seed baseline there are 45 D1 ingredients, 59 recipes, 328 recipe
   lines and 295 steps; DB aliases/translations start empty. Static catalogs contain
   aliases and optional recipe macro summaries absent from those SQL tables.
-- T01 does **not** reconcile/import the whole catalog or switch any live reader.
-  T02 must introduce an explicit validated catalog adapter and a drift report.
-- T02 may inspect either catalog through that adapter while retaining source and
+- T01 did **not** reconcile/import the whole catalog or switch any live reader.
+  T02 now provides explicit validated adapters and a read-only drift report.
+- T02 inspects either catalog through that adapter while retaining source and
   incompatibility evidence. It must not merge conflicting identities, hydrate old
   runtime readers from D1, or change catalog authority without a separately reviewed
   import/cutover. Foundation persistence is not runtime publication.
+- T02's fresh replay audit finds 45 canonical IDs in both sources; 59 D1 recipes
+  agree with their static counterparts. Static-only `gl-01`–`gl-12` remain static;
+  no requirement/unit drift was found among shared recipes. Alias keys/collisions
+  are reported for review only, never automatically promoted. The eight D1 catalog
+  SELECTs use one transactional batch to keep parent versions and demands coherent.
 - D1 is authoritative for household inventory and commands. KV caches are not a
   replacement for failed authoritative reads; command paths already use strict
   reads, transactions/idempotency and version checks.
@@ -92,7 +103,8 @@ context and package arithmetic, not T01.
 - `scripts/migration-smoke.sh` tests the entire chain and historical Week/seed
   recovery cases. `scripts/d1-schema-gate.sql` checks migration ledger/schema.
 - `pnpm lint`, `typecheck`, `test`, `check:migrations`, `build`; `pnpm check` wraps
-  local gates. `typecheck` checks source/packages, not all test types.
+  local gates. `typecheck` includes source/packages and TS/TSX tests through
+  `tsconfig.json`; JavaScript/MJS tests are executed, not checked with `checkJs`.
 - Existing `.github/workflows/{ci,deploy}.yml` and `DEPLOYMENT.md` govern release.
   T01 makes no deployment/config/auth/payment change. Existing migrations are
   immutable; 0019 is additive and ledger-applied once. Published 0019 is retained;

@@ -16,6 +16,12 @@ Implement a deterministic eligibility and ranking layer over T02 candidates, wit
 
 T02 complete.
 
+Read `../RECIPE_ENGINE.md`, ADR-011/012, T02 `candidates.ts` and its unit/integration
+tests before editing. `generateRecipeCandidates` supplies requirement status,
+shortages/uncertainty, approved replacement traces, raw coverage/classifications,
+source/version identity and family truncation. It explicitly assesses quantities
+only; hard allergy/dietary/nutrition eligibility is not implied by cook-now coverage.
+
 ## Context
 
 Frigo already has a simple recipe score in `@frigo/recipes` and preference data, but it is not a complete, persisted, safety-aware ranking contract. T02 owns availability and shortage calculations. T03 must consume those outputs rather than recreate inventory maps or unit conversions.
@@ -75,3 +81,12 @@ PayOS, unrelated auth/session mechanics, deployment, scan confirmation, and Task
 ## Expected Handoff
 
 Document score inputs, eligibility policy, persisted feedback schema, migration impact, weights, test results, and any legacy bridge. T04 must use the ranked eligible candidate list but retain sequential inventory simulation as its own responsibility.
+
+## First Recommended Action
+
+Write a failing eligibility regression using actual T02 output: a candidate with
+full quantity coverage must be excluded before scoring when an explicit allergen
+conflict exists or a requested hard safety condition lacks trustworthy evidence.
+Also preserve an empty/truncated-family result without an unsafe fallback. Build
+the separate eligibility/score contract around these facts, not a new inventory
+map or quantity converter. Keep legacy ranker bridging explicit and reviewed.
