@@ -68,7 +68,7 @@ describe('scheduled cleanup', () => {
 
     expect(deleted).toBe(3);
     const { sql, params } = db.statements[0];
-    expect(sql).toContain('DELETE FROM sessions');
+    expect(sql).toContain('DELETE FROM sessions_v2');
     expect(sql).toContain('datetime(expires_at) < datetime(\'now\', ?)');
     expect(params).toEqual(['-30 days']);
   });
@@ -86,11 +86,15 @@ describe('scheduled cleanup', () => {
 
     const [ready, failed] = db.statements;
     expect(ready.sql).toContain('status = \'ready\'');
-    expect(ready.sql).toContain("COALESCE(completed_at, updated_at)");
+    expect(ready.sql).toContain('MAX(COALESCE(datetime(completed_at), datetime(updated_at)), datetime(updated_at))');
     expect(ready.params).toEqual(['-30 days']);
     expect(failed.sql).toContain('status = \'failed\'');
     expect(failed.params).toEqual(['-90 days']);
     for (const { sql } of db.statements) {
+      expect(sql).toContain('s.id = scan_queue_jobs.scan_id');
+      expect(sql).toContain('s.user_id = scan_queue_jobs.user_id');
+      expect(sql).toContain('s.household_id = scan_queue_jobs.household_id');
+      expect(sql).toContain("q.status = 'reserved'");
       expect(sql).not.toContain('pending');
       expect(sql).not.toContain('processing');
     }

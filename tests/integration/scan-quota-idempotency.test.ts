@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SqliteD1, createBarrier } from '../helpers/sqlite-d1';
 import { reserveScanQuota, finalizeScanQuota } from '../../src/worker/services/scan-quota';
+import { SCAN_QUOTA_POLICY } from '../../src/worker/config/scan-quota-policy';
 import { authMiddleware } from '../../src/worker/middleware/auth';
 import { scanRoutes } from '../../src/worker/routes/scans';
 import { sha256Hex, SESSION_COOKIE } from '../../src/worker/utils/session';
@@ -30,13 +31,13 @@ describe('D1 scan quota and request idempotency', () => {
   });
 
   it('serializes concurrent contenders for the final quota slot', async () => {
-    for (let i = 0; i < 4; i++) expect((await reserveScanQuota(db, input(`seed-${i}`))).ok).toBe(true);
+    for (let i = 0; i < SCAN_QUOTA_POLICY.free - 1; i++) expect((await reserveScanQuota(db, input(`seed-${i}`))).ok).toBe(true);
     const barrier = createBarrier(2);
     db.hooks.beforeBatch = () => barrier.wait();
     const results = await Promise.all(['last-a', 'last-b'].map((id) => reserveScanQuota(db, input(id))));
     expect(results.filter((result) => result.ok)).toHaveLength(1);
     expect(results).toContainEqual({ ok: false, reason: 'exceeded' });
-    expect(usage()).toBe(5);
+    expect(usage()).toBe(SCAN_QUOTA_POLICY.free);
   });
 
   it('uses one ledger entry and one owner for concurrent duplicate commands', async () => {
@@ -66,12 +67,12 @@ describe('D1 scan quota and request idempotency', () => {
     await finalizeScanQuota(db, first.reservation.reservationId, 'released');
 
     vi.setSystemTime(new Date('2026-09-15T12:00:00Z'));
-    for (let i = 0; i < 5; i++) expect((await reserveScanQuota(db, input(`current-${i}`))).ok).toBe(true);
+    for (let i = 0; i < SCAN_QUOTA_POLICY.free; i++) expect((await reserveScanQuota(db, input(`current-${i}`))).ok).toBe(true);
     expect(await reserveScanQuota(db, input('historical'))).toEqual({ ok: false, reason: 'exceeded' });
     expect(db.query('SELECT id, period_start, status FROM scan_quota_ledger WHERE scan_id = ?', 'historical'))
       .toEqual([{ id: first.reservation.reservationId, period_start: '2026-08-01', status: 'released' }]);
     expect(db.query('SELECT period_start, used_count FROM scan_quota_periods ORDER BY period_start'))
-      .toEqual([{ period_start: '2026-08-01', used_count: 0 }, { period_start: '2026-09-01', used_count: 5 }]);
+      .toEqual([{ period_start: '2026-08-01', used_count: 0 }, { period_start: '2026-09-01', used_count: SCAN_QUOTA_POLICY.free }]);
   });
 
   it('atomically moves historical released quota to the current last slot with one new owner', async () => {
@@ -82,7 +83,7 @@ describe('D1 scan quota and request idempotency', () => {
     await finalizeScanQuota(db, first.reservation.reservationId, 'released');
 
     vi.setSystemTime(new Date('2026-09-15T12:00:00Z'));
-    for (let i = 0; i < 4; i++) expect((await reserveScanQuota(db, input(`current-${i}`))).ok).toBe(true);
+    for (let i = 0; i < SCAN_QUOTA_POLICY.free - 1; i++) expect((await reserveScanQuota(db, input(`current-${i}`))).ok).toBe(true);
     const barrier = createBarrier(2);
     db.hooks.afterStatement = (event) => event.method === 'first' && event.sql.includes('WHERE idempotency_key = ? OR scan_id = ?') ? barrier.wait() : undefined;
     const results = await Promise.all([reserveScanQuota(db, input('historical')), reserveScanQuota(db, input('historical'))]);
@@ -99,7 +100,7 @@ describe('D1 scan quota and request idempotency', () => {
     expect(await reserveScanQuota(db, input('historical'))).toMatchObject({ ok: true, acquired: false, reservation: reclaimed.reservation });
     expect(await reserveScanQuota(db, input('extra'))).toEqual({ ok: false, reason: 'exceeded' });
     expect(db.query('SELECT period_start, used_count FROM scan_quota_periods ORDER BY period_start'))
-      .toEqual([{ period_start: '2026-08-01', used_count: 0 }, { period_start: '2026-09-01', used_count: 5 }]);
+      .toEqual([{ period_start: '2026-08-01', used_count: 0 }, { period_start: '2026-09-01', used_count: SCAN_QUOTA_POLICY.free }]);
     expect(db.query('SELECT * FROM scan_quota_ledger WHERE scan_id = ?', 'historical')).toHaveLength(1);
   });
 
@@ -111,10 +112,10 @@ describe('D1 scan quota and request idempotency', () => {
     if (status === 'consumed') await finalizeScanQuota(db, first.reservation.reservationId, 'consumed');
 
     vi.setSystemTime(new Date('2026-09-15T12:00:00Z'));
-    for (let i = 0; i < 5; i++) expect((await reserveScanQuota(db, input(`current-${i}`))).ok).toBe(true);
+    for (let i = 0; i < SCAN_QUOTA_POLICY.free; i++) expect((await reserveScanQuota(db, input(`current-${i}`))).ok).toBe(true);
     expect(await reserveScanQuota(db, input('historical'))).toEqual({ ok: true, acquired: false, reservation: first.reservation });
     expect(db.query('SELECT period_start, used_count FROM scan_quota_periods ORDER BY period_start'))
-      .toEqual([{ period_start: '2026-08-01', used_count: 1 }, { period_start: '2026-09-01', used_count: 5 }]);
+      .toEqual([{ period_start: '2026-08-01', used_count: 1 }, { period_start: '2026-09-01', used_count: SCAN_QUOTA_POLICY.free }]);
     expect(db.query('SELECT status FROM scan_quota_ledger WHERE scan_id = ?', 'historical')).toEqual([{ status }]);
   });
 
@@ -125,14 +126,14 @@ describe('D1 scan quota and request idempotency', () => {
     if (!first.ok) throw new Error('reservation failed');
 
     vi.setSystemTime(new Date('2026-09-15T12:00:00Z'));
-    for (let i = 0; i < 5; i++) expect((await reserveScanQuota(db, input(`current-${i}`))).ok).toBe(true);
+    for (let i = 0; i < SCAN_QUOTA_POLICY.free; i++) expect((await reserveScanQuota(db, input(`current-${i}`))).ok).toBe(true);
     db.hooks.beforeBatch = async () => {
       db.hooks.beforeBatch = undefined;
       await finalizeScanQuota(db, first.reservation.reservationId, 'released');
     };
     expect(await reserveScanQuota(db, input('historical'))).toEqual({ ok: false, reason: 'exceeded' });
     expect(db.query('SELECT period_start, used_count FROM scan_quota_periods ORDER BY period_start'))
-      .toEqual([{ period_start: '2026-08-01', used_count: 0 }, { period_start: '2026-09-01', used_count: 5 }]);
+      .toEqual([{ period_start: '2026-08-01', used_count: 0 }, { period_start: '2026-09-01', used_count: SCAN_QUOTA_POLICY.free }]);
   });
 
   it('duplicate and late releases cannot decrement another reservation or its reclaim', async () => {
@@ -223,13 +224,13 @@ describe('D1 scan quota and request idempotency', () => {
 
   it('ignores client Plus/quota hints and expired server Plus entitlements', async () => {
     db.seed(`INSERT INTO subscriptions (id,user_id,plan,status,max_scans_per_month,expires_at)
-      VALUES ('expired','user-a','plus','active',999999,datetime('now','-1 day'));`);
-    for (let i = 0; i < 5; i++) await reserveScanQuota(db, input(`full-${i}`));
-    const response = await request('bypass', undefined, { isPlus: true, plan: 'plus', maxScans: 999999 });
+      VALUES ('expired','user-a','plus','active',${SCAN_QUOTA_POLICY.plus},datetime('now','-1 day'));`);
+    for (let i = 0; i < SCAN_QUOTA_POLICY.free; i++) await reserveScanQuota(db, input(`full-${i}`));
+    const response = await request('bypass', undefined, { isPlus: true, plan: 'plus', maxScans: SCAN_QUOTA_POLICY.plus });
     expect(response.status).toBe(429);
     expect(await response.json()).toMatchObject({ code: 'SCAN_QUOTA_EXCEEDED' });
     expect(vision).not.toHaveBeenCalled();
-    expect(usage()).toBe(5);
+    expect(usage()).toBe(SCAN_QUOTA_POLICY.free);
   });
 
   it('scopes client command IDs to their user and household', async () => {

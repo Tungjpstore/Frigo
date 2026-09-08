@@ -55,33 +55,38 @@ export async function cleanupExpiredOtps(db: NonNullable<Env['DB']>, days: numbe
   return deleteExpired(db, 'auth_otps', 'expires_at', days);
 }
 
-/**
- * DEPENDENCY (post-Thread-2 integration): this runs against the current
- * Opaque cookie sessions live in sessions_v2; legacy sessions are never used
- * for authentication after the cutover.
- */
+/** Legacy sessions are not an authentication or cleanup source after cutover. */
 export async function cleanupExpiredSessions(db: NonNullable<Env['DB']>, days: number): Promise<number> {
   return deleteExpired(db, 'sessions_v2', 'expires_at', days);
 }
 
-/** Terminal (ready/failed) jobs only; pending/processing rows are never touched. */
+/** Keep tombstones while the scan or its quota reservation may still need replay. */
 export async function cleanupTerminalScanJobs(
   db: NonNullable<Env['DB']>,
   cfg: { readyJobDays: number; failedJobDays: number }
 ): Promise<{ readyDeleted: number; failedDeleted: number }> {
+  const replaySafe = ` AND EXISTS (
+    SELECT 1 FROM scans s WHERE s.id = scan_queue_jobs.scan_id
+      AND s.user_id = scan_queue_jobs.user_id AND s.household_id = scan_queue_jobs.household_id
+      AND ((scan_queue_jobs.status = 'ready' AND s.status IN ('ready', 'confirmed'))
+        OR (scan_queue_jobs.status = 'failed' AND s.status = 'failed'))
+    ) AND NOT EXISTS (
+      SELECT 1 FROM scan_quota_ledger q WHERE q.scan_id = scan_queue_jobs.scan_id
+        AND q.status = 'reserved'
+    )`;
   const readyDeleted = await deleteExpired(
     db,
     'scan_queue_jobs',
-    'COALESCE(completed_at, updated_at)',
+    'MAX(COALESCE(datetime(completed_at), datetime(updated_at)), datetime(updated_at))',
     cfg.readyJobDays,
-    " AND status = 'ready'"
+    " AND status = 'ready'" + replaySafe
   );
   const failedDeleted = await deleteExpired(
     db,
     'scan_queue_jobs',
     'updated_at',
     cfg.failedJobDays,
-    " AND status = 'failed'"
+    " AND status = 'failed'" + replaySafe
   );
   return { readyDeleted, failedDeleted };
 }

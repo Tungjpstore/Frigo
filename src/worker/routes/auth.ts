@@ -3,21 +3,25 @@ import { Env, AuthContext } from '../types';
 import { SQL } from '@frigo/db';
 import { hashPassword, generateSalt, verifyPassword } from '../utils/password';
 import { signJwt, verifyJwt } from '../utils/jwt';
-import { generateSessionToken, hmacSha256Hex, sha256Hex, SESSION_COOKIE } from '../utils/session';
+import { generateSessionToken, sha256Hex, SESSION_COOKIE } from '../utils/session';
+import { createOtpDigest, verifyOtpDigest, OTP_DIGEST_VERSION } from '../utils/otp-digest';
+import { SCAN_QUOTA_POLICY } from '../config/scan-quota-policy';
 import { verifyGoogleToken } from '../utils/oauth';
 import { verifyTurnstileToken } from '../utils/turnstile';
 import { getJwtSecret } from '../middleware/auth';
 import { hasTrustedOrigin } from '../middleware/csrf';
 import { sendEmail, buildOtpEmail } from '../services/email';
 import { shouldConsumeOtpOnVerify } from '../utils/otp';
+import { getScanQuota } from '../services/scan-quota';
 
-// OTP-B1: Persist code then deliver via email. Fire-and-log: a failed send
-// never blocks the flow (code is in D1; dev surfaces it via devOtp).
+// Persist digests before delivery; reset email latency stays outside the response path.
 async function issueAndSendOtp(
   db: any,
   env: Env,
   email: string,
-  purpose: 'register' | 'forgot_password' | 'login'
+  purpose: 'register' | 'forgot_password' | 'login',
+  issue = true,
+  scheduleDelivery?: (task: Promise<void>) => void,
 ): Promise<{ code: string; emailSent: boolean; provider: string }> {
   const otpCode = generateOtp();
   const otpId = `otp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -25,19 +29,56 @@ async function issueAndSendOtp(
 
   const otpSecret = env.OTP_HASH_SECRET;
   if (!otpSecret) throw new Error('OTP_HASH_SECRET is not configured');
-  const digest = await hmacSha256Hex(otpCode, otpSecret);
-  await db
-    .prepare('INSERT INTO auth_otps (id, email, code_digest, digest_version, purpose, expires_at, used, attempt_count) VALUES (?, ?, ?, 1, ?, ?, 0, 0)')
-    .bind(otpId, email, digest, purpose, expiresAt)
-    .run();
-
-  const { subject, html, text } = buildOtpEmail(otpCode, purpose);
-  const result = await sendEmail(env, { to: email, subject, html, text });
-  if (!result.sent) {
-    console.error(`[OTP] Email delivery failed (${result.provider}) for ${email}: ${result.error}`);
+  const digest = await createOtpDigest(email, purpose, otpCode, otpSecret);
+  // Unknown reset accounts do equivalent random/HMAC work, without storing or mailing a challenge.
+  if (!issue) return { code: otpCode, emailSent: false, provider: 'none' };
+  const insert = db
+    .prepare('INSERT INTO auth_otps (id, email, code_digest, digest_version, purpose, expires_at, used, attempt_count) VALUES (?, ?, ?, ?, ?, ?, 0, 0)')
+    .bind(otpId, email, digest, OTP_DIGEST_VERSION, purpose, expiresAt);
+  if (purpose === 'forgot_password') {
+    const results = await db.batch([
+      db.prepare("UPDATE auth_otps SET used = 1, used_at = datetime('now') WHERE email = ? AND purpose = ? AND used = 0")
+        .bind(email, purpose),
+      insert,
+    ]);
+    if (results.some((result: { success: boolean }) => !result.success)) throw new Error('OTP_PERSIST_FAILED');
+  } else {
+    await insert.run();
   }
 
+  const { subject, html, text } = buildOtpEmail(otpCode, purpose);
+  const deliver = async () => {
+    const result = await sendEmail(env, { to: email, subject, html, text });
+    if (!result.sent) {
+      console.error(JSON.stringify({ event: 'otp_delivery_failed', provider: result.provider }));
+    }
+    return result;
+  };
+  if (scheduleDelivery) {
+    scheduleDelivery(deliver().then(() => {}).catch(() => {
+      console.error(JSON.stringify({ event: 'otp_delivery_failed' }));
+    }));
+    return { code: otpCode, emailSent: false, provider: 'scheduled' };
+  }
+  const result = await deliver();
   return { code: otpCode, emailSent: result.sent, provider: result.provider };
+}
+
+async function requestPasswordReset(db: Env['DB'], env: Env, email: string, scheduleDelivery: (task: Promise<void>) => void) {
+  const account = await db!.prepare('SELECT user_id FROM auth_accounts WHERE email = ?').bind(email).first();
+  let devOtp: string | undefined;
+  try {
+    const result = await issueAndSendOtp(db, env, email, 'forgot_password', Boolean(account), scheduleDelivery);
+    devOtp = result.code;
+  } catch {
+    // Delivery/storage failures must not become a membership oracle.
+    console.error(JSON.stringify({ event: 'password_reset_issue_failed' }));
+  }
+  return {
+    success: true,
+    message: 'Nếu email này có tài khoản Frigo, hướng dẫn đặt lại mật khẩu sẽ được gửi đến email của bạn.',
+    ...(env.ENVIRONMENT === 'development' ? { devOtp } : {}),
+  };
 }
 import { rateLimiter } from '../middleware/rate-limit';
 import {
@@ -85,7 +126,7 @@ async function getLatestOtp(
   purpose: string
 ): Promise<any | null> {
   return db.prepare(
-    `SELECT id, expires_at, used, used_at, code_digest, attempt_count, locked_until
+    `SELECT id, expires_at, used, used_at, code_digest, digest_version, attempt_count, locked_until
        FROM auth_otps
       WHERE email = ? AND purpose = ? AND used = 0
       ORDER BY created_at DESC LIMIT 1`
@@ -115,12 +156,6 @@ async function consumeOtp(db: Env['DB'], id: string): Promise<boolean> {
   return result.meta?.changes === 1;
 }
 
-async function verifyOtpDigest(code: string, digestHex: string, secret: string): Promise<boolean> {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
-  const sig = new Uint8Array((digestHex.match(/.{2}/g) || []).map((x) => parseInt(x, 16)));
-  return crypto.subtle.verify('HMAC', key, sig, new TextEncoder().encode(code));
-}
-
 // Persist only the hash of the opaque cookie credential.
 async function createSessionAndToken(
   db: any,
@@ -141,8 +176,8 @@ async function createSessionAndToken(
         .prepare('INSERT INTO sessions_v2 (id, user_id, household_id, token_hash, expires_at) VALUES (?, ?, ?, ?, ?)')
         .bind(sessionId, user.id, user.householdId, tokenHash, expiresAt)
         .run();
-    } catch (err) {
-      console.error('Failed inserting session to D1:', err);
+    } catch {
+      console.error(JSON.stringify({ event: 'session_persist_failed' }));
       throw new Error('SESSION_PERSIST_FAILED');
     }
   }
@@ -160,43 +195,17 @@ authRoutes.get('/me', async (c) => {
   }
 
   try {
-    const userRow: any = await db.prepare(SQL.GET_USER_PROFILE).bind(auth.userId).first();
+    const userRow: any = await db.prepare(SQL.GET_USER_PROFILE).bind(auth.householdId, auth.userId).first();
     const prefRow: any = await db.prepare(SQL.GET_USER_PREFERENCES).bind(auth.userId).first();
 
-    // S2: entitlement is owned by the server (subscriptions table), not the client.
-    let plan = 'free';
-    let isPlus = false;
-    let maxScans = 10;
-    let scansUsed = 1;
-    let subExpiresAt: string | null = null;
-    try {
-      const sub: any = await db
-        .prepare(
-          'SELECT plan, status, expires_at, max_scans_per_month, scan_count_current_month FROM subscriptions WHERE user_id = ?'
-        )
-        .bind(auth.userId)
-        .first();
-      if (sub) {
-        const active =
-          sub.plan === 'plus' &&
-          (!sub.status || sub.status === 'active') &&
-          (!sub.expires_at || new Date(sub.expires_at).getTime() > Date.now());
-        isPlus = active;
-        plan = active ? 'plus' : 'free';
-        maxScans = active ? 999999 : (sub.max_scans_per_month ?? 10);
-        scansUsed = sub.scan_count_current_month ?? 1;
-        subExpiresAt = sub.expires_at || null;
-      }
-    } catch {
-      // subscription lookup failed — safely default to free
-    }
+    const quota = await getScanQuota(db, auth.userId);
 
     return c.json({
       user: {
         id: auth.userId,
         email: userRow?.email || auth.email || `${auth.userId}@frigo.local`,
         isGuest: Boolean(userRow?.is_guest ?? auth.isGuest),
-        isPlus,
+        isPlus: quota.isPlus,
         displayName: userRow?.display_name || (auth.isGuest ? 'Khách ghé thăm' : 'Người dùng Frigo'),
         avatarUrl: userRow?.avatar_url || '/icons/favicon.svg',
         household: {
@@ -217,16 +226,14 @@ authRoutes.get('/me', async (c) => {
               dietaryRestrictions: [],
             },
         subscription: {
-          plan,
-          isPlus,
-          maxScans,
-          scansUsed,
-          expiresAt: subExpiresAt,
+          ...quota,
+          maxScans: quota.limit,
+          scansUsed: quota.used,
         },
       },
     });
-  } catch (err) {
-    console.error('Failed loading current user profile:', err);
+  } catch {
+    console.error(JSON.stringify({ event: 'profile_load_failed' }));
     return c.json({ error: 'Database service unavailable', code: 'DATABASE_UNAVAILABLE' }, 503);
   }
 });
@@ -235,7 +242,7 @@ authRoutes.get('/me', async (c) => {
 authRoutes.post('/auth/register', async (c) => {
   const rawBody = await c.req.json().catch(() => ({}));
 
-  // SEC-6: bot protection (active once TURNSTILE_SECRET_KEY is configured)
+  // Production requires bot protection before account lookup.
   const turnstile = await verifyTurnstileToken(
     c.env,
     rawBody?.turnstileToken,
@@ -328,8 +335,8 @@ authRoutes.post('/auth/register', async (c) => {
       db.prepare(
         `INSERT OR IGNORE INTO subscriptions
           (id, user_id, plan, status, scan_count_current_month, max_scans_per_month)
-         VALUES (?, ?, 'free', 'active', 0, 5)`
-      ).bind(`sub_${userId}`, userId),
+         VALUES (?, ?, 'free', 'active', 0, ?)`
+      ).bind(`sub_${userId}`, userId, SCAN_QUOTA_POLICY.free),
       db.prepare(
         'INSERT OR IGNORE INTO shopping_lists (id, household_id, name) VALUES (?, ?, ?)'
       ).bind(`list_hh_${userId}`, `hh_${userId}`, 'Danh sách mua sắm'),
@@ -354,9 +361,9 @@ authRoutes.post('/auth/register', async (c) => {
     }
 
     return c.json(responseData);
-  } catch (err: any) {
-    console.error('Register error:', err);
-    return c.json({ error: err?.message || 'Không thể tạo tài khoản' }, 500);
+  } catch {
+    console.error(JSON.stringify({ event: 'registration_failed' }));
+    return c.json({ error: 'Không thể tạo tài khoản' }, 500);
   }
 });
 
@@ -397,7 +404,7 @@ authRoutes.post('/auth/verify-otp', async (c) => {
 
     const secret = c.env.OTP_HASH_SECRET;
     if (!secret) return c.json({ error: 'Dịch vụ OTP chưa được cấu hình', code: 'OTP_PROTECTION_UNAVAILABLE' }, 503);
-    const valid = Boolean(secret && otpRow.code_digest && (await verifyOtpDigest(cleanCode, otpRow.code_digest, secret)));
+    const valid = Boolean(secret && otpRow.code_digest && (await verifyOtpDigest(normalizedEmail, purpose, cleanCode, otpRow.code_digest, otpRow.digest_version, secret)));
     if (!valid) {
       const attempts = await markOtpFailure(db, otpRow);
       if (attempts >= OTP_MAX_FAILURES) {
@@ -536,10 +543,10 @@ authRoutes.post('/auth/verify-otp', async (c) => {
             await c.env.CACHE.delete(`inv_${guestHouseholdId}`).catch(() => {});
             await c.env.CACHE.delete(`inv_${householdId}`).catch(() => {});
           }
-          console.log(`[Auth] Migrated guest household ${guestHouseholdId} -> ${householdId}`);
-        } catch (migErr: any) {
+          console.log(JSON.stringify({ event: 'guest_migration_completed', householdId }));
+        } catch {
           // Migration is best-effort — never block registration on it.
-          console.warn('[Auth] Guest migration failed:', migErr?.message);
+          console.warn(JSON.stringify({ event: 'guest_migration_failed' }));
         }
       }
 
@@ -590,15 +597,19 @@ authRoutes.post('/auth/verify-otp', async (c) => {
     }
 
     return c.json({ success: true });
-  } catch (err: any) {
-    console.error('Verify OTP error:', err);
-    return c.json({ error: err?.message || 'Lỗi kiểm tra OTP' }, 500);
+  } catch {
+    console.error(JSON.stringify({ event: 'otp_verification_failed' }));
+    return c.json({ error: 'Lỗi kiểm tra OTP' }, 500);
   }
 });
 
 // 4. POST /auth/resend-otp — Resend new OTP
 authRoutes.post('/auth/resend-otp', async (c) => {
   const rawBody = await c.req.json().catch(() => ({}));
+  const turnstile = await verifyTurnstileToken(c.env, rawBody?.turnstileToken, c.req.header('cf-connecting-ip'));
+  if (!turnstile.ok) {
+    return c.json({ error: 'Xác thực chống bot thất bại. Vui lòng thử lại.', code: 'TURNSTILE_FAILED' }, 403);
+  }
   const parsed = ResendOtpSchema.safeParse(rawBody);
   if (!parsed.success) {
     return c.json(
@@ -634,6 +645,10 @@ authRoutes.post('/auth/resend-otp', async (c) => {
       });
     }
 
+    if (purpose === 'forgot_password') {
+      return c.json(await requestPasswordReset(db, c.env, normalizedEmail, (task) => c.executionCtx.waitUntil(task)));
+    }
+
     // Only the newest code remains valid for this flow.
     await db
       .prepare('UPDATE auth_otps SET used = 1 WHERE email = ? AND purpose = ? AND used = 0')
@@ -655,8 +670,8 @@ authRoutes.post('/auth/resend-otp', async (c) => {
 
     if (!isProduction) responseData.devOtp = otpCode;
     return c.json(responseData);
-  } catch (err: any) {
-    return c.json({ error: err?.message || 'Không thể gửi lại OTP' }, 500);
+  } catch {
+    return c.json({ error: 'Không thể gửi lại OTP' }, 500);
   }
 });
 
@@ -664,7 +679,7 @@ authRoutes.post('/auth/resend-otp', async (c) => {
 authRoutes.post('/auth/login', async (c) => {
   const rawBody = await c.req.json().catch(() => ({}));
 
-  // SEC-6: bot protection (active once TURNSTILE_SECRET_KEY is configured)
+  // Production requires bot protection before account lookup.
   const turnstile = await verifyTurnstileToken(
     c.env,
     rawBody?.turnstileToken,
@@ -775,9 +790,9 @@ authRoutes.post('/auth/login', async (c) => {
         isGuest: false,
       },
     });
-  } catch (err: any) {
-    console.error('Login error:', err);
-    return c.json({ error: err?.message || 'Đăng nhập thất bại' }, 500);
+  } catch {
+    console.error(JSON.stringify({ event: 'login_failed' }));
+    return c.json({ error: 'Đăng nhập thất bại' }, 500);
   }
 });
 
@@ -785,7 +800,7 @@ authRoutes.post('/auth/login', async (c) => {
 authRoutes.post('/auth/forgot-password', async (c) => {
   const rawBody = await c.req.json().catch(() => ({}));
 
-  // SEC-6: bot protection (active once TURNSTILE_SECRET_KEY is configured)
+  // Production requires bot protection before account lookup.
   const turnstile = await verifyTurnstileToken(
     c.env,
     rawBody?.turnstileToken,
@@ -809,34 +824,9 @@ authRoutes.post('/auth/forgot-password', async (c) => {
   }
 
   try {
-    const account: any = await db
-      .prepare('SELECT user_id FROM auth_accounts WHERE email = ?')
-      .bind(normalizedEmail)
-      .first();
-
-    if (!account) {
-      return c.json({ error: 'Email này chưa được đăng ký tài khoản tại Frigo' }, 404);
-    }
-
-    const { code: otpCode, emailSent } = await issueAndSendOtp(db, c.env, normalizedEmail, 'forgot_password');
-
-    const isProduction = c.env.ENVIRONMENT === 'production';
-    const responseData: any = {
-      success: true,
-      message: emailSent
-        ? 'Mã OTP đặt lại mật khẩu đã được tạo và gửi đến email của bạn'
-        : 'Không thể gửi email lúc này — vui lòng thử lại sau.',
-      email: normalizedEmail,
-    };
-
-    // SEC-02 FIX: NEVER leak devOtp in production responses
-    if (!isProduction) {
-      responseData.devOtp = otpCode;
-    }
-
-    return c.json(responseData);
-  } catch (err: any) {
-    return c.json({ error: err?.message || 'Không thể tạo yêu cầu quên mật khẩu' }, 500);
+    return c.json(await requestPasswordReset(db, c.env, normalizedEmail, (task) => c.executionCtx.waitUntil(task)));
+  } catch {
+    return c.json({ error: 'Không thể tạo yêu cầu quên mật khẩu', code: 'RESET_REQUEST_UNAVAILABLE' }, 503);
   }
 });
 
@@ -878,7 +868,7 @@ authRoutes.post('/auth/reset-password', async (c) => {
 
     const secret = c.env.OTP_HASH_SECRET;
     if (!secret) return c.json({ error: 'Dịch vụ OTP chưa được cấu hình', code: 'OTP_PROTECTION_UNAVAILABLE' }, 503);
-    const valid = Boolean(secret && otpRow.code_digest && (await verifyOtpDigest(cleanCode, otpRow.code_digest, secret)));
+    const valid = Boolean(secret && otpRow.code_digest && (await verifyOtpDigest(normalizedEmail, 'forgot_password', cleanCode, otpRow.code_digest, otpRow.digest_version, secret)));
     if (!valid) {
       const attempts = await markOtpFailure(db, otpRow);
       if (attempts >= OTP_MAX_FAILURES) {
@@ -943,9 +933,9 @@ authRoutes.post('/auth/reset-password', async (c) => {
       success: true,
       message: 'Đặt lại mật khẩu thành công! Bạn có thể đăng nhập ngay.',
     });
-  } catch (err: any) {
-    console.error('Reset password error:', err);
-    return c.json({ error: err?.message || 'Lỗi đặt lại mật khẩu' }, 500);
+  } catch {
+    console.error(JSON.stringify({ event: 'password_reset_failed' }));
+    return c.json({ error: 'Lỗi đặt lại mật khẩu' }, 500);
   }
 });
 
@@ -1073,8 +1063,8 @@ authRoutes.post('/auth/google', async (c) => {
       db.prepare(
         `INSERT OR IGNORE INTO subscriptions
           (id, user_id, plan, status, scan_count_current_month, max_scans_per_month)
-         VALUES (?, ?, 'free', 'active', 0, 5)`
-      ).bind(`sub_${userId}`, userId),
+         VALUES (?, ?, 'free', 'active', 0, ?)`
+      ).bind(`sub_${userId}`, userId, SCAN_QUOTA_POLICY.free),
       db.prepare(
         'INSERT OR IGNORE INTO shopping_lists (id, household_id, name) VALUES (?, ?, ?)'
       ).bind(`list_hh_${userId}`, householdId, 'Danh sách mua sắm'),
@@ -1100,9 +1090,9 @@ authRoutes.post('/auth/google', async (c) => {
         isGuest: false,
       },
     });
-  } catch (err: any) {
-    console.error('Google auth error:', err);
-    return c.json({ error: err?.message || 'Lỗi xác thực Google' }, 500);
+  } catch {
+    console.error(JSON.stringify({ event: 'google_auth_failed' }));
+    return c.json({ error: 'Lỗi xác thực Google' }, 500);
   }
 });
 
@@ -1148,13 +1138,13 @@ authRoutes.post('/auth/guest', async (c) => {
           .prepare(
             'INSERT OR IGNORE INTO subscriptions (id, user_id, plan, status, scan_count_current_month, max_scans_per_month) VALUES (?, ?, ?, ?, ?, ?)'
           )
-          .bind(`sub_${newGuestId}`, newGuestId, 'free', 'active', 0, 5),
+          .bind(`sub_${newGuestId}`, newGuestId, 'free', 'active', 0, SCAN_QUOTA_POLICY.free),
         c.env.DB
           .prepare('INSERT OR IGNORE INTO shopping_lists (id, household_id, name) VALUES (?, ?, ?)')
           .bind(`list_${householdId}`, householdId, 'Danh sách mua sắm'),
     ]);
-  } catch (err: any) {
-    console.error('[Auth] Failed to initialize guest principal:', err);
+  } catch {
+    console.error(JSON.stringify({ event: 'guest_initialization_failed' }));
     return c.json(
       {
         error: 'Không thể khởi tạo phiên khách. Vui lòng thử lại sau.',

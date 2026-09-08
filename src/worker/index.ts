@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { isTrustedOrigin } from './config/origins';
 import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import { HTTPException } from 'hono/http-exception';
@@ -79,14 +80,7 @@ app.use('*', async (c, next) => {
 app.use('*', productionConfigGate);
 
 app.use('*', cors({
-  origin: (origin, c) => {
-    // In production, allow same-origin and configured app URL
-    const allowed = ['https://frigo.tungjpstore.net', 'http://localhost:5173', 'http://127.0.0.1:5173'];
-    if (!origin || allowed.includes(origin) || c.env.ENVIRONMENT !== 'production') {
-      return origin || '*';
-    }
-    return 'https://frigo.tungjpstore.net';
-  },
+  origin: (origin, c) => isTrustedOrigin(origin, c.env) ? origin : undefined,
   allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
   // The SPA sends tenant context headers on every request and idempotency
   // keys on durable commands. Include them in preflight responses for a
@@ -111,7 +105,6 @@ app.onError((err, c) => {
       level: 'error',
       requestId: c.get('requestId'),
       code: 'INTERNAL_SERVER_ERROR',
-      error: err.message,
     })
   );
   const isProd = c.env.ENVIRONMENT === 'production';

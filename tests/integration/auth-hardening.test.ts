@@ -8,6 +8,7 @@ import type { AuthContext, Env } from '../../src/worker/types';
 import { signJwt } from '../../src/worker/utils/jwt';
 import { verifyPassword } from '../../src/worker/utils/password';
 import { hmacSha256Hex, SESSION_COOKIE, sha256Hex } from '../../src/worker/utils/session';
+import { createOtpDigest } from '../../src/worker/utils/otp-digest';
 import { createBarrier, SqliteD1 } from '../helpers/sqlite-d1';
 
 // The Workers-only cloudflare:email module cannot load in Node; no network mail is sent.
@@ -35,6 +36,7 @@ interface RequestOptions {
   referer?: string;
   headers?: Record<string, string>;
   env?: Partial<Env>;
+  withoutTurnstile?: boolean;
 }
 
 interface OtpRow {
@@ -51,6 +53,7 @@ interface OtpRow {
 let fixtureNumber = 0;
 let db: SqliteD1;
 let env: Env;
+let scheduled: Promise<unknown>[];
 
 async function request(route: string, options: RequestOptions = {}) {
   const headers = new Headers({ 'CF-Connecting-IP': `198.51.100.${fixtureNumber}` });
@@ -62,8 +65,8 @@ async function request(route: string, options: RequestOptions = {}) {
   const response = await authApp.fetch(new Request(`${ORIGIN}${route}`, {
     method: options.method ?? 'POST',
     headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  }), { ...env, ...options.env });
+    body: options.body === undefined ? undefined : JSON.stringify({ turnstileToken: options.withoutTurnstile ? undefined : 'test-widget-token', ...options.body as object }),
+  }), { ...env, ...options.env }, { waitUntil: (task) => { scheduled.push(task); }, passThroughOnException: () => {}, props: {} });
   return { response, status: response.status, json: await response.json() as any };
 }
 
@@ -120,7 +123,9 @@ async function forgotPassword() {
 
 beforeEach(() => {
   fixtureNumber += 1;
+  scheduled = [];
   vi.clearAllMocks();
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json({ success: true })));
   db = new SqliteD1();
   env = {
     DB: db,
@@ -128,10 +133,13 @@ beforeEach(() => {
     APP_URL: `${ORIGIN}/app`,
     OTP_HASH_SECRET: OTP_SECRET,
     JWT_SECRET,
+    TURNSTILE_SITE_KEY: 'integration-site-key',
+    TURNSTILE_SECRET_KEY: 'integration-secret-key',
   };
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await Promise.all(scheduled);
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   db.close();
@@ -343,8 +351,9 @@ describe('cookie authentication and production CSRF', () => {
   it('fails closed when Turnstile is configured and no valid widget token is supplied', async () => {
     const outbound = vi.fn();
     vi.stubGlobal('fetch', outbound);
-    for (const route of ['register', 'login', 'forgot-password']) {
+    for (const route of ['register', 'login', 'forgot-password', 'resend-otp']) {
       const result = await request(`/auth/${route}`, {
+        withoutTurnstile: true,
         body: { name: 'Auth Test', email: EMAIL, password: PASSWORD },
         env: { TURNSTILE_SECRET_KEY: 'integration-turnstile-secret' },
       });
@@ -520,10 +529,10 @@ describe('expected-owner fencing across cookie changes', () => {
 });
 
 describe('D1-authoritative OTP verification', () => {
-  it('stores v1 HMAC only and consumes a correct registration OTP exactly once', async () => {
+  it('stores contextual v2 HMAC only and consumes a correct registration OTP exactly once', async () => {
     const { code } = await register();
-    expect(otp().code_digest).toBe(await hmacSha256Hex(code, OTP_SECRET));
-    expect(otp().digest_version).toBe(1);
+    expect(otp().code_digest).toBe(await createOtpDigest(EMAIL, 'register', code, OTP_SECRET));
+    expect(otp().digest_version).toBe(2);
     expect(otp().used).toBe(0);
     expect(db.query('SELECT is_verified FROM auth_accounts WHERE email = ?', EMAIL)[0].is_verified).toBe(0);
     const first = await verify(code);
@@ -742,6 +751,111 @@ describe('D1-authoritative OTP verification', () => {
     expect(db.query('SELECT * FROM sessions_v2 WHERE revoked_at IS NULL')).toHaveLength(1);
     expect(sessionCount()).toBe(1);
     expect((await request('/private', { method: 'GET', cookie: original.cookie })).status).toBe(200);
+  });
+});
+
+describe('final auth hardening adversarial regressions', () => {
+  it('invalidates superseded reset codes even after the replacement is consumed', async () => {
+    await signup();
+    vi.spyOn(crypto, 'getRandomValues')
+      .mockImplementationOnce((array: any) => { array.fill(1); return array; })
+      .mockImplementationOnce((array: any) => { array.fill(2); return array; });
+    const codeA = await forgotPassword();
+    const resend = await request('/auth/resend-otp', { body: { email: EMAIL, purpose: 'forgot_password' } });
+    expect(resend.status).toBe(200);
+    const codeB = deliveredCode();
+    expect(codeB).not.toBe(codeA);
+    expect(db.query("SELECT * FROM auth_otps WHERE email = ? AND purpose = 'forgot_password' AND used = 0", EMAIL)).toHaveLength(1);
+    expect((await verify(codeA, 'forgot_password')).status).toBe(400);
+    const reset = (code: string) => request('/auth/reset-password', { body: { email: EMAIL, code, newPassword: 'replacement-password-strong' } });
+    expect((await reset(codeB)).status).toBe(200);
+    expect((await reset(codeA)).status).toBe(400);
+  });
+
+  it('returns the same response while known-account email delivery is still pending', async () => {
+    await signup();
+    let deliver!: () => void;
+    const pending = new Promise<void>((resolve) => { deliver = resolve; });
+    vi.mocked(sendEmail).mockClear();
+    vi.mocked(sendEmail).mockImplementationOnce(async () => { await pending; return { sent: true, provider: 'resend' }; });
+    const knownRequest = request('/auth/forgot-password', { body: { email: EMAIL } });
+    const unknown = await request('/auth/forgot-password', { body: { email: 'unknown@example.com' } });
+    try {
+      const known = await Promise.race([knownRequest, new Promise<null>((resolve) => setTimeout(() => resolve(null), 100))]);
+      expect(known, 'response must not await the email provider').not.toBeNull();
+      expect(known!.status).toBe(unknown.status);
+      expect(known!.json).toEqual(unknown.json);
+      expect(sendEmail).toHaveBeenCalledTimes(1);
+      expect(scheduled).toHaveLength(1);
+    } finally { deliver(); await knownRequest; }
+  });
+
+  it.each(['/auth/forgot-password', '/auth/resend-otp'])('does not expose account membership through %s', async (route) => {
+    await signup();
+    vi.mocked(sendEmail).mockClear();
+    const known = await request(route, { body: { email: EMAIL, purpose: 'forgot_password' } });
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+    expect(otp('forgot_password').digest_version).toBe(2);
+    const unknown = await request(route, { body: { email: 'nobody@example.com', purpose: 'forgot_password' } });
+    expect(known.status).toBe(200);
+    expect(unknown.status).toBe(known.status);
+    expect(unknown.json).toEqual(known.json);
+    expect(known.json).toEqual({ success: true, message: expect.stringContaining('Nếu email này có tài khoản Frigo') });
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+    expect(db.query('SELECT * FROM auth_otps WHERE email = ?', 'nobody@example.com')).toEqual([]);
+  });
+
+  it('hides delivery failures and exception PII without changing the reset response', async () => {
+    await signup();
+    const sensitive = `${EMAIL} private-password private-token private-otp`;
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(sendEmail).mockRejectedValueOnce(new Error(sensitive));
+    const known = await request('/auth/forgot-password', { body: { email: EMAIL } });
+    const unknown = await request('/auth/forgot-password', { body: { email: 'nobody@example.com' } });
+    expect(known.status).toBe(200);
+    expect(known.json).toEqual(unknown.json);
+    expect(JSON.stringify(log.mock.calls)).not.toContain(sensitive);
+    expect(JSON.stringify(log.mock.calls)).not.toContain(EMAIL);
+  });
+
+  it('still verifies outstanding v1 challenges without issuing new v1 digests', async () => {
+    const { code } = await register();
+    await db.prepare('UPDATE auth_otps SET code_digest = ?, digest_version = 1 WHERE id = ?').bind(await hmacSha256Hex(code, OTP_SECRET), otp().id).run();
+    expect((await verify(code)).status).toBe(200);
+    expect((await verify(code)).status).toBe(400);
+  });
+
+  it.each(['email', 'purpose', 'version'])('rejects transplanted OTP %s context', async (context) => {
+    const { code } = await register();
+    const digest = await createOtpDigest(context === 'email' ? 'other@example.com' : EMAIL,
+      context === 'purpose' ? 'forgot_password' : 'register', code, OTP_SECRET);
+    await db.prepare('UPDATE auth_otps SET code_digest = ?, digest_version = ? WHERE id = ?').bind(digest, context === 'version' ? 99 : 2, otp().id).run();
+    const result = await verify(code);
+    expect(result.status).toBe(400);
+    expect(otp().attempt_count).toBe(1);
+    expect(otp().used).toBe(0);
+    expect(sessionCount()).toBe(0);
+  });
+
+  it('reads D1 every request but writes last_seen only after 15 minutes', async () => {
+    const { cookie } = await signup();
+    const statements: string[] = [];
+    db.hooks.beforeStatement = ({ sql }) => { statements.push(sql); };
+    for (let i = 0; i < 3; i++) expect((await request('/private', { method: 'GET', cookie })).status).toBe(200);
+    expect(statements.filter((sql) => sql.includes('FROM sessions_v2 s'))).toHaveLength(3);
+    expect(statements.filter((sql) => sql.includes('UPDATE sessions_v2 SET last_seen_at'))).toHaveLength(0);
+    db.seed("UPDATE sessions_v2 SET last_seen_at = datetime('now', '-16 minutes')");
+    expect((await request('/private', { method: 'GET', cookie })).status).toBe(200);
+    expect((await request('/private', { method: 'GET', cookie })).status).toBe(200);
+    expect(statements.filter((sql) => sql.includes('UPDATE sessions_v2 SET last_seen_at'))).toHaveLength(1);
+    expect(db.query("SELECT COUNT(*) AS count FROM sessions_v2 WHERE datetime(last_seen_at) > datetime('now', '-1 minute')")[0].count).toBe(1);
+  });
+
+  it.each(['TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY'] as const)('fails closed without production %s even outside the config gate', async (key) => {
+    const result = await request('/auth/forgot-password', { body: { email: EMAIL }, env: { [key]: undefined } });
+    expect(result.status).toBe(403);
+    expect(result.json.code).toBe('TURNSTILE_FAILED');
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 });
 

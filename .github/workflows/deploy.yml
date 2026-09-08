@@ -1,34 +1,26 @@
-# Frigo deployment pipeline.
-#
-# Flow: CI (separate workflow) -> merge to main -> staging deploy -> staging
-# smoke -> PRODUCTION APPROVAL -> production deploy -> production smoke.
-#
-# Staging deploys automatically after CI succeeds on main. Production NEVER
-# deploys from a merge: it requires a manual workflow_dispatch with the
-# `confirm` input AND approval of the `production` GitHub Environment
-# (configure required reviewers there; see DEPLOYMENT.md). Secrets live only
-# in GitHub secrets / environment secrets — never in this file.
-
+# Required production Environment reviewers are operator-managed, never configured by this workflow.
 name: Deploy
 
 on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [main, master]
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
         description: Target environment
         type: choice
-        options:
-          - staging
-          - production
+        options: [staging, production]
         default: production
       ref:
-        description: Git ref (branch/tag/SHA) to deploy
+        description: Full release SHA or refs/tags/v* tag already contained in main (not a branch)
         type: string
-        default: main
+        required: true
+      hardened_sha:
+        description: Exact final hardening SHA approved by the release owner; release must contain it
+        type: string
+        required: true
       confirm_production:
         description: Confirm this is an intentional production deployment
         type: boolean
@@ -36,43 +28,77 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
-# Serialize deployments; never cancel in progress, the current run must finish.
 concurrency:
   group: frigo-deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'staging' }}
   cancel-in-progress: false
 
 jobs:
-  staging:
+  release:
+    # Only the reviewed workflow on main can authorize an immutable release.
     if: >-
-      (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
+       (inputs.environment == 'staging' || inputs.confirm_production == true)) ||
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_branch == 'main' &&
-       github.event.workflow_run.repository.full_name == github.repository)
+       github.event.workflow_run.repository.full_name == github.repository &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
-    environment: staging
+    outputs:
+      deploy_sha: ${{ steps.gate.outputs.deploy_sha }}
     steps:
-      - name: Checkout validated commit
+      - name: Checkout trusted main release policy and full ancestry
         uses: actions/checkout@v4
         with:
-          ref: >-
-            ${{
-              github.event_name == 'workflow_run'
-                && github.event.workflow_run.head_sha
-                || github.event.inputs.ref
-            }}
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Record deployed commit for traceability
-        run: echo "DEPLOY_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Require main ancestry, approved hardening, and exact-SHA hosted CI
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_REF: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.ref }}
+          HARDENED_SHA: ${{ inputs.hardened_sha }}
+          RELEASE_ENVIRONMENT: ${{ github.event_name == 'workflow_run' && 'staging' || inputs.environment }}
+        run: node scripts/release-check.mjs gate
+
+      - name: Save immutable candidate manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release-manifest.json
+          if-no-files-found: error
+          retention-days: 90
+
+  staging:
+    needs: release
+    if: github.event_name == 'workflow_run' || inputs.environment == 'staging'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.deploy_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v4
         with:
           version: 10
 
@@ -82,7 +108,7 @@ jobs:
       - name: Verify staging configuration exists
         run: |
           if [ ! -f wrangler.staging.jsonc ]; then
-            echo "::notice::wrangler.staging.jsonc not found — staging is not provisioned, skipping deployment. See DEPLOYMENT.md."
+            echo "::notice::Staging is not provisioned; no deployment attempted."
             echo "STAGING_UNCONFIGURED=true" >> "$GITHUB_ENV"
           fi
 
@@ -90,50 +116,73 @@ jobs:
         if: env.STAGING_UNCONFIGURED != 'true'
         run: pnpm build
 
+      - name: Recheck exact-head CI after environment approval
+        if: env.STAGING_UNCONFIGURED != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release-check.mjs recheck
+
       - name: Deploy to Cloudflare staging
         if: env.STAGING_UNCONFIGURED != 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --config wrangler.staging.jsonc --var GIT_COMMIT:${{ env.DEPLOY_SHA }}
+          command: deploy --config wrangler.staging.jsonc --var GIT_COMMIT:${{ needs.release.outputs.deploy_sha }}
 
-      - name: Staging post-deploy smoke
+      - name: Staging post-deploy smoke and SHA receipt
         if: env.STAGING_UNCONFIGURED != 'true' && vars.STAGING_URL != ''
-        run: bash scripts/post-deploy-smoke.sh "${{ vars.STAGING_URL }}"
+        env:
+          APP_SMOKE_URL: ${{ vars.STAGING_URL }}
+        run: |
+          bash scripts/post-deploy-smoke.sh "$APP_SMOKE_URL"
+          curl --fail --silent --show-error --max-time 30 "$APP_SMOKE_URL/api/v1/health/ready" > readiness.json
+          node scripts/release-check.mjs deployed release-manifest.json readiness.json
+
+      - name: Save staging receipt (deployed field exists only after SHA smoke passes)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-staging-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release-manifest.json
+          retention-days: 90
 
   production:
-    # Boolean input: compare against boolean true. String 'true' would coerce
-    # to NaN in GitHub's number-based loose equality and never open the gate.
+    needs: release
     if: >-
       github.event_name == 'workflow_dispatch' &&
-      inputs.environment == 'production' &&
-      inputs.confirm_production == true
+      inputs.environment == 'production' && inputs.confirm_production == true
     runs-on: ubuntu-latest
-    # The explicit gate: require approval (and, recommended, required
-    # reviewers) in the `production` GitHub Environment before this job gets
-    # its secrets.
     environment: production
     steps:
-      - name: Checkout requested ref
+      - name: Checkout pinned approved release
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.ref }}
+          ref: ${{ needs.release.outputs.deploy_sha }}
+          fetch-depth: 0
+          persist-credentials: false
 
-      # github.sha is the dispatched ref tip, not necessarily the checked-out
-      # commit (rollback deploys use an older SHA). Stamp what is deployed.
-      - name: Record deployed commit for traceability
-        run: echo "DEPLOY_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-candidate-${{ github.run_id }}-${{ github.run_attempt }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 10
+
+      - name: Require explicit production smoke origin
+        env:
+          APP_SMOKE_URL: ${{ vars.PRODUCTION_URL }}
+        run: |
+          node --input-type=module -e '
+            const value = process.env.APP_SMOKE_URL;
+            const url = new URL(value);
+            if (url.protocol !== "https:" || url.origin !== value) throw new Error("PRODUCTION_URL must be an exact HTTPS origin");
+          '
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -146,20 +195,40 @@ jobs:
           pnpm check:migrations
           pnpm build
 
-      # READ-ONLY schema expectation check against remote D1. It does not
-      # apply migrations. If the deployed schema is missing something this
-      # fails BEFORE any code is deployed; the operator then runs
-      # `wrangler d1 migrations apply --remote` manually (documented in
-      # DEPLOYMENT.md) and re-dispatches.
-      - name: Pre-deploy schema gate (read-only)
-        run: bash scripts/d1-schema-gate.sh remote
+      - name: Recheck exact-head CI after approval and local gates
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release-check.mjs recheck
+
+      # SELECT-only; missing/unknown migrations block deployment, never auto-apply.
+      - name: Pre-deploy schema gate and migration ledger receipt (read-only)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          bash scripts/d1-schema-gate.sh remote
+          pnpm wrangler d1 execute frigo-db --remote --yes --command "SELECT name FROM d1_migrations ORDER BY name" --json > migration-ledger.json
+          node scripts/release-check.mjs schema release-manifest.json migration-ledger.json
 
       - name: Deploy to Cloudflare production
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --var GIT_COMMIT:${{ env.DEPLOY_SHA }}
+          command: deploy --var GIT_COMMIT:${{ needs.release.outputs.deploy_sha }}
 
-      - name: Production post-deploy smoke
-        run: bash scripts/post-deploy-smoke.sh "${{ vars.PRODUCTION_URL || 'https://frigo.tungjpstore.net' }}"
+      - name: Production post-deploy smoke and exact SHA receipt
+        env:
+          APP_SMOKE_URL: ${{ vars.PRODUCTION_URL }}
+        run: |
+          bash scripts/post-deploy-smoke.sh "$APP_SMOKE_URL"
+          curl --fail --silent --show-error --max-time 30 "$APP_SMOKE_URL/api/v1/health/ready" > readiness.json
+          node scripts/release-check.mjs deployed release-manifest.json readiness.json
+
+      - name: Save production receipt even on failure (inspect deployed field)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-production-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release-manifest.json
+          retention-days: 90

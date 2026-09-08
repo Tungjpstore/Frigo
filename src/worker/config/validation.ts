@@ -1,14 +1,13 @@
 import { Env } from '../types';
+import { applicationOrigin } from './origins';
 
 /**
  * Centralized configuration validation. Production must fail loudly when the
  * deployment is dangerous; every message is a static string and never embeds
  * secret values, token material, or binding identifiers.
  *
- * Feature awareness: a feature that is intentionally disabled (for example
- * Turnstile with no site key, or AI in mock mode) does not require its
- * credentials. Only features whose production configuration implies they are
- * enabled must have their backing binding/secret present.
+ * Production authentication always requires Turnstile; optional providers
+ * remain feature-aware.
  */
 
 export const VALID_ENVIRONMENTS = ['development', 'staging', 'production'] as const;
@@ -37,10 +36,6 @@ function warning(code: string, message: string): ConfigIssue {
   return { code, severity: 'warning', message };
 }
 
-function isLoopbackHost(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]' || hostname.endsWith('.localhost');
-}
-
 export function validateEnvironment(env: Env): ConfigValidationResult {
   const environment = env.ENVIRONMENT || 'development';
   const warnings: ConfigIssue[] = [];
@@ -61,11 +56,9 @@ export function validateEnvironment(env: Env): ConfigValidationResult {
   const fatalIssues: ConfigIssue[] = [];
 
   // Cookie mutations need a configured trusted origin, not just a reachable host.
-  let appUrl: URL | undefined;
-  try { appUrl = new URL(env.APP_URL || ''); } catch { /* reported below */ }
-  if (!appUrl || !['https:', 'http:'].includes(appUrl.protocol) || appUrl.username || appUrl.password || isLoopbackHost(appUrl.hostname)) {
+  if (!applicationOrigin(env)) {
     fatalIssues.push(
-      fatal('CONFIG_PRODUCTION_APP_URL', 'APP_URL must be a public HTTP(S) URL in production; missing, invalid, credential-bearing and loopback URLs are rejected.')
+      fatal('CONFIG_PRODUCTION_APP_URL', 'APP_URL must be a public HTTPS URL in production; missing, invalid, credential-bearing and loopback URLs are rejected.')
     );
   }
 
@@ -118,20 +111,19 @@ export function validateEnvironment(env: Env): ConfigValidationResult {
     );
   }
 
-  // Turnstile: page shows a widget only when a site key exists. A site key
-  // without the secret makes verification silently pass — warn loudly.
-  if (env.TURNSTILE_SITE_KEY && !env.TURNSTILE_SECRET_KEY) {
-    warnings.push(
-      warning(
+  if (!env.TURNSTILE_SECRET_KEY?.trim()) {
+    fatalIssues.push(
+      fatal(
         'CONFIG_TURNSTILE_MISSING_SECRET',
-        'TURNSTILE_SITE_KEY is configured but TURNSTILE_SECRET_KEY is absent; token verification silently passes.'
+        'Production authentication requires TURNSTILE_SECRET_KEY.'
       )
     );
-  } else if (!env.TURNSTILE_SITE_KEY && env.TURNSTILE_SECRET_KEY) {
-    warnings.push(
-      warning(
+  }
+  if (!env.TURNSTILE_SITE_KEY?.trim()) {
+    fatalIssues.push(
+      fatal(
         'CONFIG_TURNSTILE_MISSING_SITE_KEY',
-        'TURNSTILE_SECRET_KEY is configured but no site key is published; the widget will not render.'
+        'Production authentication requires TURNSTILE_SITE_KEY.'
       )
     );
   }

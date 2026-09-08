@@ -4,6 +4,7 @@ import { Env, AuthContext } from '../types';
 import { verifyJwt, JwtPayload } from '../utils/jwt';
 import { sha256Hex, SESSION_COOKIE } from '../utils/session';
 import { hasTrustedOrigin } from './csrf';
+import { SESSION_LAST_SEEN_INTERVAL_MINUTES } from '../config/sessions';
 
 // SEC-01: No default JWT secret. If JWT_SECRET is not configured as a Wrangler
 // secret, auth fails closed (503) instead of silently trusting a public key.
@@ -71,7 +72,7 @@ export async function authMiddleware(
       try { tokenValue = decodeURIComponent(cookieToken); } catch { tokenValue = ''; }
       const tokenHash = await sha256Hex(tokenValue);
       const row: any = await c.env.DB.prepare(
-        `SELECT s.id, s.user_id, s.household_id, u.email, u.is_guest, p.display_name
+        `SELECT s.id, s.user_id, s.household_id, COALESCE(s.last_seen_at, s.created_at) AS last_seen_at, u.email, u.is_guest, p.display_name
            FROM sessions_v2 s JOIN users u ON u.id = s.user_id
            LEFT JOIN profiles p ON p.user_id = s.user_id
           WHERE s.token_hash = ? AND s.revoked_at IS NULL AND datetime(s.expires_at) > datetime('now') LIMIT 1`
@@ -81,7 +82,12 @@ export async function authMiddleware(
           return c.json({ error: 'Request owner does not match authenticated session', code: 'SESSION_OWNER_MISMATCH' }, 403);
         }
         c.set('auth', { userId: row.user_id, householdId: row.household_id, email: row.email, isGuest: Boolean(row.is_guest), sessionId: row.id });
-        await c.env.DB.prepare("UPDATE sessions_v2 SET last_seen_at = datetime('now') WHERE id = ?").bind(row.id).run().catch(() => {});
+        const lastSeen = Date.parse(row.last_seen_at?.replace(' ', 'T') + (row.last_seen_at?.endsWith('Z') ? '' : 'Z'));
+        if (!Number.isFinite(lastSeen) || lastSeen <= Date.now() - SESSION_LAST_SEEN_INTERVAL_MINUTES * 60_000) {
+          await c.env.DB.prepare(`UPDATE sessions_v2 SET last_seen_at = datetime('now') WHERE id = ?
+            AND (last_seen_at IS NULL OR datetime(last_seen_at) <= datetime('now', ?))`)
+            .bind(row.id, `-${SESSION_LAST_SEEN_INTERVAL_MINUTES} minutes`).run().catch(() => {});
+        }
         return await next();
       }
     } catch {

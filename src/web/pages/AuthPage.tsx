@@ -42,6 +42,7 @@ export const AuthPage: React.FC = () => {
   // SEC-6: Turnstile bot protection (inactive when server has no site key)
   const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileGeneration, setTurnstileGeneration] = useState(0);
   const handleTurnstileToken = useCallback((token: string | null) => setTurnstileToken(token), []);
 
   useEffect(() => {
@@ -155,6 +156,8 @@ export const AuthPage: React.FC = () => {
         setErrorMessage(err?.message || 'Email hoặc mật khẩu không chính xác');
       }
     } finally {
+      setTurnstileToken(null);
+      setTurnstileGeneration((value) => value + 1);
       setIsLoading(false);
     }
   };
@@ -186,6 +189,8 @@ export const AuthPage: React.FC = () => {
     } catch (err: any) {
       setErrorMessage(err?.message || 'Đăng ký thất bại. Email có thể đã tồn tại.');
     } finally {
+      setTurnstileToken(null);
+      setTurnstileGeneration((value) => value + 1);
       setIsLoading(false);
     }
   };
@@ -281,15 +286,17 @@ export const AuthPage: React.FC = () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const res = await api.resendOtp(email, otpPurpose);
+      const res = await api.resendOtp(email, otpPurpose, turnstileToken);
       if (res.success) {
         if (res.devOtp) setDevOtp(res.devOtp);
         setResendCountdown(60);
-        setSuccessMessage('Đã gửi lại mã OTP mới!');
+        setSuccessMessage(res.message);
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Không thể gửi lại OTP');
     } finally {
+      setTurnstileToken(null);
+      setTurnstileGeneration((value) => value + 1);
       setIsLoading(false);
     }
   };
@@ -313,11 +320,13 @@ export const AuthPage: React.FC = () => {
         setForgotOtpRequested(true);
         setOtpPurpose('forgot_password');
         setResendCountdown(60);
-        setSuccessMessage('Mã xác thực đặt lại mật khẩu đã được tạo!');
+        setSuccessMessage(res.message);
       }
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Không tìm thấy tài khoản với email này');
+      setErrorMessage(err?.message || 'Không thể tạo yêu cầu đặt lại mật khẩu lúc này');
     } finally {
+      setTurnstileToken(null);
+      setTurnstileGeneration((value) => value + 1);
       setIsLoading(false);
     }
   };
@@ -548,7 +557,7 @@ export const AuthPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleLogin} className="space-y-3">
-              {turnstileSiteKey && <TurnstileWidget siteKey={turnstileSiteKey} onToken={handleTurnstileToken} />}
+              {turnstileSiteKey && <TurnstileWidget key={turnstileGeneration} siteKey={turnstileSiteKey} onToken={handleTurnstileToken} />}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
                 <div className="relative">
@@ -613,7 +622,7 @@ export const AuthPage: React.FC = () => {
         {mode === 'register' && (
           <div className="mt-5 space-y-4">
             <form onSubmit={handleRegister} className="space-y-3">
-              {turnstileSiteKey && <TurnstileWidget siteKey={turnstileSiteKey} onToken={handleTurnstileToken} />}
+              {turnstileSiteKey && <TurnstileWidget key={turnstileGeneration} siteKey={turnstileSiteKey} onToken={handleTurnstileToken} />}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Họ và tên</label>
                 <div className="relative">
@@ -676,6 +685,7 @@ export const AuthPage: React.FC = () => {
         {/* ================= MODE 3: OTP VERIFICATION ================= */}
         {mode === 'otp_verify' && (
           <div className="mt-6 space-y-5">
+            {turnstileSiteKey && <TurnstileWidget key={turnstileGeneration} siteKey={turnstileSiteKey} onToken={handleTurnstileToken} />}
             <form onSubmit={handleVerifyOtp} className="space-y-4">
               {/* 6-box OTP input */}
               <div className="flex justify-center gap-2" onPaste={handleOtpPaste}>
@@ -719,7 +729,7 @@ export const AuthPage: React.FC = () => {
           <div className="mt-5 space-y-4">
             {!forgotOtpRequested && (
               <form onSubmit={handleRequestForgotOtp} className="space-y-3">
-                {turnstileSiteKey && <TurnstileWidget siteKey={turnstileSiteKey} onToken={handleTurnstileToken} />}
+                {turnstileSiteKey && <TurnstileWidget key={turnstileGeneration} siteKey={turnstileSiteKey} onToken={handleTurnstileToken} />}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Email đăng ký tài khoản</label>
                   <div className="relative">

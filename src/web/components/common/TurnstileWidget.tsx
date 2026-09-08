@@ -1,8 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-// SEC-6: Cloudflare Turnstile widget (invisible mode). Renders nothing when
-// no site key is configured — the app works unchanged without Turnstile.
-// The token is passed to auth calls as `turnstileToken`.
+// Production requires the site key; only local/staging configuration may omit it.
 
 declare global {
   interface Window {
@@ -15,7 +13,7 @@ declare global {
   }
 }
 
-const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad';
 
 let scriptPromise: Promise<void> | null = null;
 
@@ -29,7 +27,11 @@ function loadTurnstileScript(): Promise<void> {
     s.src = SCRIPT_SRC;
     s.async = true;
     s.defer = true;
-    s.onerror = () => reject(new Error('Failed to load Turnstile script'));
+    s.onerror = () => {
+      scriptPromise = null;
+      s.remove();
+      reject(new Error('Failed to load Turnstile script'));
+    };
     document.head.appendChild(s);
   });
   return scriptPromise;
@@ -67,6 +69,7 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({ siteKey, onTok
       onToken(null);
     }
     return () => {
+      onToken(null);
       if (widgetIdRef.current && window.turnstile) {
         try {
           window.turnstile.remove(widgetIdRef.current);

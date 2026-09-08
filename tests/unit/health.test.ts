@@ -97,6 +97,8 @@ describe('health endpoints', () => {
       OTP_HASH_SECRET: 'otp'.repeat(16),
       APP_URL: 'https://frigo.example.com',
       // No email provider and no Plus grant secret: warnings only, not fatal.
+      TURNSTILE_SITE_KEY: 'test-site-key',
+      TURNSTILE_SECRET_KEY: 'test-secret-key',
     });
     expect(response.status).toBe(200);
     const body = (await response.json()) as Record<string, unknown>;
@@ -165,6 +167,8 @@ describe('health endpoints', () => {
       JWT_SECRET: 's'.repeat(40),
       OTP_HASH_SECRET: 'otp'.repeat(16),
       APP_URL: 'https://frigo.example.com',
+      TURNSTILE_SITE_KEY: 'test-site-key',
+      TURNSTILE_SECRET_KEY: 'test-secret-key',
     });
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ status: 'ok' });

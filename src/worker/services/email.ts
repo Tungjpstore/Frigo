@@ -78,8 +78,8 @@ export async function sendEmail(
         new EmailMessage(FROM_EMAIL, params.to, message)
       );
       return { sent: true, provider: 'workers-email' };
-    } catch (err: any) {
-      console.error('[email] workers-email send failed:', err?.message);
+    } catch {
+      console.error(JSON.stringify({ event: 'email_delivery_failed', provider: 'workers-email' }));
       // fall through to HTTP providers
     }
   }
@@ -106,10 +106,9 @@ export async function sendEmail(
         signal: AbortSignal.timeout(8000),
       });
       if (res.ok) return { sent: true, provider: 'resend' };
-      const errText = await res.text().catch(() => '');
-      return { sent: false, provider: 'resend', error: `HTTP ${res.status}: ${errText.slice(0, 200)}` };
-    } catch (err: any) {
-      return { sent: false, provider: 'resend', error: err?.message || 'network error' };
+      return { sent: false, provider: 'resend', error: `HTTP ${res.status}` };
+    } catch {
+      return { sent: false, provider: 'resend', error: 'network error' };
     }
   }
 

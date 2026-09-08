@@ -471,21 +471,28 @@ describe('server-confirmed logout and private session isolation', () => {
     expect(sessionStorage.getItem('frigo_guest_token')).toBe('guest-only-token');
   });
 
-  it('invalidates projections and in-flight guards when another tab changes the owner', async () => {
+  it.each(['account', 'household'] as const)('invalidates projections and in-flight guards when another tab changes the %s', async (change) => {
     const client = await loadClient();
     signIn(client);
     seedPrivateState(client);
     const isCurrent = client.session.capturePrivateSession();
-    localStorage.setItem('frigo_user_id', 'user-b');
+    const userId = change === 'account' ? 'user-b' : 'user-a';
+    localStorage.setItem('frigo_user_id', userId);
     localStorage.setItem('frigo_household_id', 'house-b');
     localStorage.setItem('frigo_email', 'b@example.test');
-    window.dispatchEvent(Object.assign(new Event('storage'), { key: 'frigo_user_id' }));
+    window.dispatchEvent(Object.assign(new Event('storage'), {
+      key: change === 'account' ? 'frigo_user_id' : 'frigo_household_id',
+    }));
     expect(isCurrent()).toBe(false);
-    expect(client.auth.getState()).toMatchObject({ userId: 'user-b', householdId: 'house-b', email: 'b@example.test' });
+    expect(client.auth.getState()).toMatchObject({ userId, householdId: 'house-b', email: 'b@example.test' });
     expect(client.week.getState().currentPlan).toBeNull();
     expect(client.scan.getState().imageBase64).toBeNull();
     expect(client.cooking.getState().activeRecipe).toBeNull();
     expect(client.queryClient.getQueryCache().getAll()).toHaveLength(0);
     expect(() => client.session.privateCacheKey('inventory', 'house-a')).toThrow('active owner');
+    vi.stubGlobal('fetch', vi.fn());
+    await expect(client.api.retryPendingWrites()).resolves.toEqual({ attempted: 0, remaining: 1 });
+    expect(client.sync.getPendingOps()).toEqual([expect.objectContaining({ userId: 'user-a', householdId: 'house-a' })]);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

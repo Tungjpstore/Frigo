@@ -1,9 +1,25 @@
 import { D1DatabaseBinding } from '@frigo/db';
+import { getScanQuotaEntitlement, getScanQuotaPeriod, type ScanSubscription } from '../config/scan-quota-policy';
 
 export type QuotaReservation = { reservationId: string; periodStart: string; scanId: string };
 
-function periodStart(now = new Date()): string {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+/** Read one snapshot without creating subscriptions, periods, or reservations. */
+export async function getScanQuota(db: D1DatabaseBinding, userId: string, now = new Date()) {
+  const period = getScanQuotaPeriod(now);
+  const row = await db.prepare(`SELECT sub.plan, sub.status, sub.expires_at,
+      (SELECT COUNT(*) FROM scan_quota_ledger
+        WHERE user_id = principal.user_id AND period_start = ? AND status != 'released') AS used
+    FROM (SELECT ? AS user_id) AS principal
+    LEFT JOIN subscriptions AS sub ON sub.user_id = principal.user_id`)
+    .bind(period.start, userId).first<ScanSubscription & { used: number }>();
+  if (!row || !Number.isSafeInteger(row.used) || row.used < 0) throw new Error('SCAN_QUOTA_UNAVAILABLE');
+  const entitlement = getScanQuotaEntitlement(row, now);
+  return {
+    ...entitlement,
+    used: row.used,
+    remaining: Math.max(0, entitlement.limit - row.used),
+    resetAt: period.resetAt,
+  };
 }
 
 function changes(result: any): number {
@@ -24,12 +40,12 @@ export async function reserveScanQuota(
       return { ok: false, reason: 'conflict' };
     }
     // Only released rows can move periods; their reclaim always uses today's allowance.
-    const period = periodStart();
-    const sub: any = await db.prepare(
-      "SELECT plan, status, expires_at, max_scans_per_month FROM subscriptions WHERE user_id = ?"
-    ).bind(input.userId).first();
-    const activePlus = sub?.plan === 'plus' && (!sub.status || sub.status === 'active') && (!sub.expires_at || new Date(sub.expires_at).getTime() > Date.now());
-    const maxScans = activePlus ? 999999 : sub?.plan === 'free' ? Number(sub.max_scans_per_month ?? 5) : 5;
+    const now = new Date();
+    const period = getScanQuotaPeriod(now).start;
+    const sub = await db.prepare(
+      'SELECT plan, status, expires_at FROM subscriptions WHERE user_id = ?'
+    ).bind(input.userId).first<ScanSubscription>();
+    const maxScans = getScanQuotaEntitlement(sub, now).limit;
     const reservationId = `quota_${crypto.randomUUID()}`;
     // D1 serializes this whole batch. The unique ledger is authoritative;
     // used_count is a projection, never an independently incremented counter.

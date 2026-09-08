@@ -300,7 +300,7 @@ export const api = {
           displayName: 'Bạn mới của Frigo',
           isGuest: true,
           household: { id: getHouseholdId(), name: 'Tủ lạnh nhà tôi' },
-          subscription: { plan: 'free', maxScans: 5, scansUsed: 1 }
+          subscription: null,
         }
       };
     }
@@ -1233,11 +1233,11 @@ export const api = {
     }
   },
 
-  resendOtp: async (email: string, purpose: string) => {
+  resendOtp: async (email: string, purpose: string, turnstileToken?: string | null) => {
     try {
       return await fetchJson<{ success: boolean; message: string; devOtp?: string }>('/auth/resend-otp', {
         method: 'POST',
-        body: JSON.stringify({ email, purpose }),
+        body: JSON.stringify({ email, purpose, turnstileToken }),
       });
     } catch (err: any) {
       // SEC-04: surface the real error instead of a fake OTP.
