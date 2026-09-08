@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/useAuthStore';
 import { TopBar } from '../components/common/TopBar';
 import { Card } from '../components/common/Card';
-import { ConfirmDialog } from '../components/common/ConfirmDialog';
+import { LogoutDialog } from '../components/common/LogoutDialog';
 import {
   Sparkles,
   ChevronRight,
@@ -18,13 +18,8 @@ import {
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { displayName, email, isPlus, avatarUrl, logout, logoutError } = useAuthStore();
+  const { displayName, email, isPlus, avatarUrl } = useAuthStore();
   const [confirmLogout, setConfirmLogout] = useState(false);
-
-  const handleLogout = async () => {
-    setConfirmLogout(false);
-    if (await logout()) navigate('/auth', { replace: true });
-  };
 
   const initialLetter = (displayName || 'K').charAt(0).toUpperCase();
 
@@ -114,7 +109,6 @@ export const ProfilePage: React.FC = () => {
 
         {/* Logout Button */}
         <div className="pt-2">
-          {logoutError && <p role="alert" className="text-sm text-rose-700 mb-3">{logoutError}</p>}
           <button
             onClick={() => setConfirmLogout(true)}
             className="w-full py-3 px-4 rounded-xl border border-rose-200 bg-rose-50/60 hover:bg-rose-100/70 text-rose-700 font-medium text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
@@ -129,14 +123,10 @@ export const ProfilePage: React.FC = () => {
           <p className="text-[11px] text-slate-400">Frigo • Ăn đủ. Mua đủ. Dùng hết.</p>
         </div>
       </div>
-      <ConfirmDialog
+      <LogoutDialog
         open={confirmLogout}
-        title="Đăng xuất tài khoản?"
-        description="Frigo sẽ thu hồi phiên trên máy chủ trước khi xóa dữ liệu riêng tư trên thiết bị này."
-        confirmText="Đăng xuất"
-        destructive
-        onConfirm={handleLogout}
         onCancel={() => setConfirmLogout(false)}
+        onLoggedOut={() => navigate('/auth', { replace: true })}
       />
     </div>
   );

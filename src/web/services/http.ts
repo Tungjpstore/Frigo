@@ -15,11 +15,13 @@ export type ApiErrorKind = 'offline' | 'http' | 'auth';
 export class ApiError extends Error {
   kind: ApiErrorKind;
   status?: number;
-  constructor(kind: ApiErrorKind, message: string, status?: number) {
+  retryable?: boolean;
+  constructor(kind: ApiErrorKind, message: string, status?: number, options?: { retryable?: boolean }) {
     super(message);
     this.name = 'ApiError';
     this.kind = kind;
     this.status = status;
+    this.retryable = options?.retryable;
   }
 }
 
@@ -58,7 +60,7 @@ export async function fetchJson<T>(path: string, options?: RequestInit): Promise
     throw new ApiError('auth', 'Vui lòng đăng nhập hoặc bắt đầu phiên khách.');
   }
   if (isOfflineGuestSession() && !path.startsWith('/auth/') && pathname !== '/config') {
-    throw new ApiError('offline', 'Phiên khách này chỉ lưu dữ liệu trên thiết bị.');
+    throw new ApiError('offline', 'Phiên khách này chỉ lưu dữ liệu trên thiết bị.', undefined, { retryable: false });
   }
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -89,7 +91,7 @@ export async function fetchJson<T>(path: string, options?: RequestInit): Promise
   } catch {
     assertCurrent();
     // Network-level failure (no connectivity, DNS, aborted) => offline.
-    throw new ApiError('offline', `Không có kết nối mạng khi gọi ${path}`);
+    throw new ApiError('offline', `Không có kết nối mạng khi gọi ${path}`, undefined, { retryable: true });
   }
 
   assertCurrent();

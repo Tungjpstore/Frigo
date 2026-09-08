@@ -153,6 +153,16 @@ describe('offline outbox and scan persistence contract', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('counts only pending operations owned by the active user and household', () => {
+    pushOp({ path: '/inventory', method: 'POST', label: 'A', userId: 'user-a', householdId: 'house-a' });
+    pushOp({ path: '/inventory', method: 'POST', label: 'B', userId: 'user-a', householdId: 'house-a' });
+    pushOp({ path: '/inventory', method: 'POST', label: 'foreign', userId: 'user-b', householdId: 'house-b' });
+
+    expect(pendingCount({ userId: 'user-a', householdId: 'house-a' })).toBe(2);
+    expect(pendingCount({ userId: 'user-b', householdId: 'house-b' })).toBe(1);
+    expect(pendingCount()).toBe(3);
+  });
+
   it('rebinds guest outbox operations after successful registration migration', async () => {
     storage.setItem('frigo_user_id', 'guest-1');
     storage.setItem('frigo_household_id', 'hh_guest_1');

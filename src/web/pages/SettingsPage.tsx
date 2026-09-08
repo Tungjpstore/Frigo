@@ -3,14 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { TopBar } from '../components/common/TopBar';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import { useAuthStore } from '../stores/useAuthStore';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
-import { Globe, Shield, LogOut, Check, Smartphone, Trash2, Info, Wifi } from 'lucide-react';
+import { LogoutDialog } from '../components/common/LogoutDialog';
+import { Globe, Shield, LogOut, Smartphone, Trash2, Info, Wifi } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { logout, logoutError } = useAuthStore();
-  const [language, setLanguage] = useState('vi');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState(false);
   const [cacheCleared, setCacheCleared] = useState(false);
@@ -52,11 +50,6 @@ export const SettingsPage: React.FC = () => {
     setTimeout(() => setCacheCleared(false), 3000);
   };
 
-  const handleLogout = async () => {
-    setConfirmLogout(false);
-    if (await logout()) navigate('/landing', { replace: true });
-  };
-
   return (
     <div className="min-h-screen bg-[#F8FAF9] pb-12 text-slate-900">
       <TopBar showBack title="Cài đặt" />
@@ -90,10 +83,10 @@ export const SettingsPage: React.FC = () => {
         <Card className="p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Wifi className="w-4 h-4 text-emerald-600" />
-            <h4 className="font-heading font-bold text-sm text-slate-900">Dữ liệu Ngoại tuyến & Bộ nhớ đệm</h4>
+            <h4 className="font-heading font-bold text-sm text-slate-900">Bộ nhớ đệm ứng dụng</h4>
           </div>
           <p className="text-xs text-slate-600 leading-relaxed">
-            Frigo lưu trữ thực đơn, tồn kho tủ lạnh và danh sách đi chợ trên thiết bị để bạn xem được ngay cả khi mất sóng trong siêu thị.
+            Xóa tài nguyên PWA đã lưu trên trình duyệt. Thao tác này không xóa dữ liệu ngoại tuyến hoặc thay đổi chưa đồng bộ của bạn.
           </p>
           <Button
             variant="outline"
@@ -102,7 +95,7 @@ export const SettingsPage: React.FC = () => {
             className="w-full flex items-center justify-center gap-2 text-xs text-slate-800"
           >
             <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-            <span>{cacheCleared ? '✓ Đã làm mới bộ nhớ đệm' : 'Làm mới bộ nhớ đệm (Clear Cache)'}</span>
+            <span>{cacheCleared ? '✓ Đã xóa bộ nhớ đệm ứng dụng' : 'Xóa bộ nhớ đệm ứng dụng'}</span>
           </Button>
         </Card>
 
@@ -110,27 +103,11 @@ export const SettingsPage: React.FC = () => {
         <Card className="p-4 space-y-2.5">
           <div className="flex items-center gap-2">
             <Globe className="w-4 h-4 text-emerald-600" />
-            <h4 className="font-heading font-bold text-sm text-slate-900">Ngôn ngữ hiển thị (i18n ready)</h4>
+            <h4 className="font-heading font-bold text-sm text-slate-900">Ngôn ngữ hiển thị</h4>
           </div>
-          <div className="grid grid-cols-2 gap-2.5 pt-1">
-            {[
-              { id: 'vi', label: 'Tiếng Việt 🇻🇳' },
-              { id: 'en', label: 'English 🇺🇸' },
-            ].map((lang) => (
-              <button
-                key={lang.id}
-                onClick={() => setLanguage(lang.id)}
-                className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between tap-target transition-all ${
-                  language === lang.id
-                    ? 'bg-emerald-50 border-emerald-600 text-emerald-900 ring-1 ring-emerald-600 shadow-xs'
-                    : 'bg-white border-slate-200/80 text-slate-700 hover:border-slate-300'
-                }`}
-              >
-                <span>{lang.label}</span>
-                {language === lang.id && <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />}
-              </button>
-            ))}
-          </div>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Tiếng Việt (hiện tại). Tiếng Anh sẽ được bổ sung khi bản dịch đầy đủ sẵn sàng.
+          </p>
         </Card>
 
         {/* Privacy Notes */}
@@ -140,7 +117,7 @@ export const SettingsPage: React.FC = () => {
             <h4 className="font-heading font-bold text-sm text-slate-900">Quyền riêng tư & AI</h4>
           </div>
           <p className="text-xs text-slate-600 leading-relaxed">
-            Frigo không gửi email, số điện thoại, vị trí hoặc thông tin cá nhân tới các nhà cung cấp AI. AI chỉ nhận diện nguyên liệu dựa trên hình ảnh thực phẩm ẩn danh của bạn.
+            Frigo không gửi email, số điện thoại, vị trí hoặc thông tin cá nhân tới các nhà cung cấp AI. AI chỉ nhận diện nguyên liệu từ hình ảnh bạn chủ động gửi để xử lý yêu cầu.
           </p>
         </Card>
 
@@ -148,7 +125,7 @@ export const SettingsPage: React.FC = () => {
         <div className="text-center py-2 space-y-1">
           <div className="flex items-center justify-center gap-1 text-xs text-slate-400">
             <Info className="w-3.5 h-3.5" />
-            <span>Frigo v1.2.0 • Build 2026.09.05</span>
+            <span>Frigo v{import.meta.env.VITE_APP_VERSION} • Build {import.meta.env.VITE_GIT_COMMIT || 'local'} • {import.meta.env.VITE_BUILD_TIMESTAMP || 'local build'}</span>
           </div>
           <p className="text-[11px] text-slate-400">Ăn đủ. Mua đủ. Dùng hết.</p>
         </div>
@@ -167,15 +144,10 @@ export const SettingsPage: React.FC = () => {
           </Button>
         </div>
       </div>
-      {logoutError && <p role="alert" className="px-4 text-sm text-rose-700">{logoutError}</p>}
-      <ConfirmDialog
+      <LogoutDialog
         open={confirmLogout}
-        title="Đăng xuất tài khoản?"
-        description="Frigo sẽ thu hồi phiên trên máy chủ trước khi xóa dữ liệu riêng tư trên thiết bị này."
-        confirmText="Đăng xuất"
-        destructive
-        onConfirm={handleLogout}
         onCancel={() => setConfirmLogout(false)}
+        onLoggedOut={() => navigate('/landing', { replace: true })}
       />
       <ConfirmDialog
         open={showInstallHelp}
