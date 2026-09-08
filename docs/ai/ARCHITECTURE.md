@@ -1,4 +1,17 @@
-# Architecture — T01 foundation, T02 candidates and T03 ranking
+# Architecture — T01 foundation through T04 sequential planning
+
+T04 adds `recipes/src/planner-*.ts` and `weekly-planner.ts`: opaque preloaded
+context, fixed-offset ordered slots, exact branch-local inventory, T02 regeneration,
+T03 eligibility/utility, bounded beam search, period nutrition, locks and explicit
+partial/incomplete results. Opt-in T02 expiry-first lot ordering supplies the actual
+projection witness; the standalone default stays ID-ordered. No T03 scoring or
+safety logic is replaced. See `WEEKLY_PLANNER.md` for the complete T05 contract,
+limits, generated-only persistence and safe future shadow/canary integration.
+
+The T04 core accepts no database binding, performs no I/O and never writes real
+stock or Week rows. Source snapshots must be authorized/preloaded before context
+creation and revalidated before future acceptance/cooking. Existing legacy Week
+remains the production path, including all dual-write and reconciliation behavior.
 
 T03 adds pure `recipes/src/ranking*.ts` and scoped `personalization.ts` contracts.
 Hard eligibility precedes bounded component utility and deterministic ordering.

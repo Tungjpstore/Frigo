@@ -44,6 +44,22 @@ Frigo already has a Week planner/persistence flow, including dual-write/reconcil
 
 ## Acceptance Criteria
 
+### Implemented contract
+
+- `../WEEKLY_PLANNER.md` documents the T04 pure API, ordered slots, fixed-offset
+  temporal snapshot, opaque server-owned context, inventory projection, bounded
+  beam policy, future utility, locks, period nutrition and T05 shortage handoff.
+- Every branch regenerates T02 and invokes unchanged T03 hard eligibility/ranking.
+  An optional T02 expiry-first witness policy leaves standalone default behavior intact.
+- Persistence is generated-only with an explicit documented future shadow/canary
+  path. No production Week route/schema, inventory command or migration is changed.
+- Leftovers are explicitly deferred under the detailed T04 task's permitted
+  limitation: legacy title/tag heuristics do not establish prepared-food expiry.
+  The request only accepts `leftovers: 'disabled'`; no excess servings are created.
+- T04 is temporarily stacked after immutable T03 `3592de9` on its existing branch
+  with user authorization, due only to Hoplite's dependent-branch allocation limit.
+  Current exact checks and publication state remain in CURRENT_STATE/HANDOFF.
+
 - If Monday consumes 300 g from 500 g chicken, later slots observe only the remaining compatible quantity; they cannot each claim the original 500 g.
 - Planner never selects a recipe disallowed by T03 eligibility and never bypasses unresolved hard safety constraints.
 - Locked meals survive regeneration; a conflict yields a documented infeasible/needs-user-choice state.

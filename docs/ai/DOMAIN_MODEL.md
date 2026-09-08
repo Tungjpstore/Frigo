@@ -1,4 +1,19 @@
-# Domain Model — T01 foundation, T02 calculations and T03 utility
+# Domain Model — T01 foundation through T04 projected planning
+
+T04 introduces `PlanningContext`, `PlanningReference`, `PlannerRequest`,
+`WeeklyMealPlan` and native `ProjectedInventoryDelta` contracts. A plan is generated
+household/current-user state over an immutable versioned stock snapshot; it is not
+a reservation or actual inventory command. Each chosen meal retains T02 demands,
+allocations/shortages/variant identity and T03 ranked facts. A branch's projected
+stock decreases before later candidate generation. No new persistent identity or
+schema replaces existing Week. T05 consumes this output without subtracting initial
+inventory again. See `WEEKLY_PLANNER.md` for validated fields and failure semantics.
+
+Period nutrition ranges explicitly concern household totals across requested meals,
+with unknown and reviewed/estimated coverage retained. Leftover scheduling is
+explicitly disabled until trusted prepared-food storage/expiry policy exists; no
+surplus servings or invented shelf life are implied. No grocery purchases are
+projected into stock, even when known shortages are permitted.
 
 T03 adds `RankingPreferences`, `RecipeFeedback`, candidate-bound review evidence
 and `RankedRecipeCandidate`; see `RANKING_ENGINE.md`. Preferences are explicitly

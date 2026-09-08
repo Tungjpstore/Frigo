@@ -326,3 +326,38 @@ D1 registration. No safety catalog is fabricated. Nutrition adapters preserve
 partial serving-basis observations as unverified; hard ranges require independently
 reviewed evidence. Expiry normalizes existing allocation shares, never reallocates
 stock. T04 receives candidate utility/components, not future meal decisions.
+
+## ADR-014 — Bounded sequential planning over the T02/T03 dependency
+
+**Status:** Accepted 2026-09-08 (T04)
+
+**Decision:** Add an explicitly invoked, pure weekly planner. Each ordered slot
+regenerates T02 availability on branch-local projected inventory and invokes T03
+hard eligibility/utility with trusted server-owned context. Deterministic bounded
+beam search keeps alternative futures; hard constraints never become score penalties.
+Expose recipe-search and planner-search incompleteness separately. A failed bounded
+search is not proof of infeasibility. No production Week/API cutover or inventory
+write is performed; T06 owns an authenticated shadow/canary integration.
+
+Reuse exact Quantity arithmetic and T02 lot witnesses. An opt-in expiry-priority
+allocation order supports projected consumption while preserving T02's default
+ID-order behavior. Only explicit supported expiry evidence affects priority; T02
+availability remains authoritative. Servings use T02 scaling without count rounding.
+One offset-bearing planning instant derives its local date and each slot's instant
+using the same fixed offset, with no inferred timezone or DST rules. Actual history
+is frozen at the planning instant; future choices are plan-local, not cooked events.
+
+T03 scores cover past-relative preference/expiry/time; additional plan terms cover
+future repetition, ingredient continuity and period nutrition only. Period nutrition
+targets explicitly concern household totals over requested meals, not invented daily
+meal allocations. Unknown/unreviewed hard nutrition fails closed. Leftover scheduling
+is deferred because legacy leftovers lack a trusted prepared-food expiry policy;
+every selected meal cooks and consumes its requested servings, without hidden excess.
+
+**Consequences:** Output includes selected demand/witnesses, shortages, per-lot deltas,
+initial versioned stock, projected final stock and complete search metadata for T05.
+It is generated state, not a reservation, shopping purchase or persisted Week plan.
+No migration is needed. A future accepting writer must reauthorize membership and
+recheck inventory/catalog/preference versions before invoking existing versioned,
+idempotent Week/command paths. T03 remains immutable at `3592de9`; temporary use of
+its branch is a tooling constraint only, and T04 is isolated in subsequent commits.
