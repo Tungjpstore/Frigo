@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import {
   buildInventoryAvailability, compareIds, createAvailabilitySession,
-  type InventoryAvailabilityIndex, type InventoryDiagnostic, type LotAllocation,
+  type InventoryAvailabilityIndex, type InventoryDiagnostic, type LotAllocation, type LotAllocationPolicy,
 } from '../../domain/src/availability';
 import { QuantityRangeError } from '../../domain/src/quantity';
 import { RecipeDefinitionSchema, RecipeFamilySchema, type RecipeDefinition, type RecipeProvenance } from './foundation';
@@ -17,6 +17,7 @@ import {
 } from './substitutions';
 
 export type CandidateMode = 'cook_now' | 'shopping_allowed';
+export type CandidateAllocationPolicy = LotAllocationPolicy;
 export interface CandidateSource {
   catalog: CatalogSource;
   kind: 'recipe' | 'family';
@@ -47,7 +48,7 @@ export interface RecipeCandidate {
     optionalRequirementCount: number;
     unavailableOptionalCount: number;
   };
-  allocationPolicy: 'independent_candidate_lot_id_witness';
+  allocationPolicy: 'independent_candidate_lot_id_witness' | 'independent_candidate_expiry_first_witness';
   lotAllocations: LotAllocation[];
   rescueLotIds: string[];
   variant?: RecipeFamilyVariant;
@@ -78,6 +79,8 @@ export interface CandidateGenerationInput {
   substitutions?: readonly unknown[];
   approvedSubstitutionIds?: readonly string[];
   activeConstraints?: readonly string[];
+  /** Opt-in FEFO witness for projected planning. Existing callers retain lot-ID order. */
+  allocationPolicy?: CandidateAllocationPolicy;
   maxVariantCandidatesPerFamily?: number;
   maxVariantSearchStatesPerFamily?: number;
 }
@@ -111,6 +114,7 @@ interface EvaluationContext {
   rules: readonly SubstitutionRule[];
   policy: SubstitutionPolicy;
   classifications: ReadonlyMap<string, RecipeClassificationFact[]>;
+  allocationPolicy: CandidateAllocationPolicy;
 }
 
 function evaluateDemands(
@@ -155,7 +159,8 @@ function evaluateDemands(
       optionalRequirementCount: optional.length,
       unavailableOptionalCount: optional.filter((item) => item.status !== 'satisfied').length,
     },
-    allocationPolicy: 'independent_candidate_lot_id_witness', lotAllocations,
+    allocationPolicy: context.allocationPolicy === 'expiry_first'
+      ? 'independent_candidate_expiry_first_witness' : 'independent_candidate_lot_id_witness', lotAllocations,
     rescueLotIds: [...new Set(lotAllocations.filter((lot) => lot.freshness === 'expiring' || lot.freshness === 'use_soon')
       .map((lot) => lot.lotId))].sort(compareIds),
     ...(variant ? { variant } : {}),
@@ -169,8 +174,10 @@ export function generateRecipeCandidates(input: CandidateGenerationInput): Candi
     .parse(input.maxVariantCandidatesPerFamily ?? MAX_VARIANT_CANDIDATES_PER_FAMILY);
   const maxSearchStates = z.number().int().min(1).max(MAX_VARIANT_SEARCH_STATES_PER_FAMILY)
     .parse(input.maxVariantSearchStatesPerFamily ?? MAX_VARIANT_SEARCH_STATES_PER_FAMILY);
+  const allocationPolicy = z.enum(['lot_id', 'expiry_first']).parse(input.allocationPolicy ?? 'lot_id');
   const index = buildInventoryAvailability(input.inventory, {
     ingredientIds: input.catalog.ingredientIds, asOfDate: input.asOfDate, householdId: input.householdId,
+    allocationPolicy,
   });
   const substitutions = validateSubstitutions(z.array(z.unknown()).max(1000).parse(input.substitutions ?? []), index.ingredientIds);
   const policy: SubstitutionPolicy = {
@@ -183,7 +190,7 @@ export function generateRecipeCandidates(input: CandidateGenerationInput): Candi
     facts.push({ ...fact });
     classifications.set(fact.recipeId, facts);
   }
-  const context = { index, requestedServings, rules: substitutions.rules, policy, classifications };
+  const context: EvaluationContext = { index, requestedServings, rules: substitutions.rules, policy, classifications, allocationPolicy };
   const candidates: RecipeCandidate[] = [];
   const exclusions: CandidateExclusion[] = [];
   const familySearches: FamilySearchMetadata[] = [];

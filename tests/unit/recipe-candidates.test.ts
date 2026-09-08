@@ -40,6 +40,19 @@ function family(): RecipeFamily {
 }
 
 describe('T02 deterministic recipe candidates', () => {
+  it('uses opt-in FEFO witnesses without changing default T02 lot-ID order', () => {
+    const inventory = [
+      { ...lot('a-later', 'CHICKEN_BREAST', 300), expiryDate: '2026-09-20', expiryKind: 'best_before' },
+      { ...lot('z-use-by', 'CHICKEN_BREAST', 300), expiryDate: '2026-09-09', expiryKind: 'use_by' },
+    ];
+    const defaultCandidate = run(inventory).candidates[0];
+    const fefoCandidate = run(inventory, { allocationPolicy: 'expiry_first' }).candidates[0];
+
+    expect(defaultCandidate).toMatchObject({ allocationPolicy: 'independent_candidate_lot_id_witness', lotAllocations: [{ lotId: 'a-later' }] });
+    expect(fefoCandidate).toMatchObject({ allocationPolicy: 'independent_candidate_expiry_first_witness', lotAllocations: [{ lotId: 'z-use-by' }] });
+    expect(() => run(inventory, { allocationPolicy: 'id_order' as never })).toThrow();
+  });
+
   it('proves 200 g + 0.15 kg covers a 300 g recipe using both lots', () => {
     const result = run([lot('A', 'CHICKEN_BREAST', 200), lot('B', 'CHICKEN_BREAST', 0.15, 'kg')], { mode: 'cook_now' });
     expect(result.candidates).toHaveLength(1);

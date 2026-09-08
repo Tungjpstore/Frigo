@@ -31,6 +31,8 @@ export interface LotAllocation {
   expiryDate: string | null;
   expiryKind: 'unknown' | 'best_before' | 'use_by' | 'estimated';
 }
+/** T02 defaults to lot IDs; T04 can explicitly request its documented FEFO witness. */
+export type LotAllocationPolicy = 'lot_id' | 'expiry_first';
 export interface IngredientAvailability extends IngredientDemand {
   status: AvailabilityStatus;
   availableQuantity: number;
@@ -78,9 +80,10 @@ export const compareIds = (a: string, b: string): number => a < b ? -1 : a > b ?
 
 export function buildInventoryAvailability(
   rows: readonly unknown[],
-  options: { ingredientIds: readonly string[]; asOfDate: string; householdId?: string },
+  options: { ingredientIds: readonly string[]; asOfDate: string; householdId?: string; allocationPolicy?: LotAllocationPolicy },
 ): InventoryAvailabilityIndex {
   z.string().date().parse(options.asOfDate);
+  const allocationPolicy = z.enum(['lot_id', 'expiry_first']).parse(options.allocationPolicy ?? 'lot_id');
   const ingredientIds = new Set(z.array(CanonicalIngredientIdSchema).parse(options.ingredientIds));
   const byIngredient = new Map<string, IngredientStock>();
   const diagnostics: InventoryDiagnostic[] = [];
@@ -147,6 +150,20 @@ export function buildInventoryAvailability(
       if (!(error instanceof QuantityRangeError)) throw error;
       report(rowIndex, row, 'numeric_range');
     }
+  }
+  const expiryOrder = (lot: IndexedLot): [number, string, string] => {
+    if (lot.expiryKind === 'use_by' && lot.expiryDate) return [0, lot.expiryDate, lot.id];
+    if (lot.expiryKind === 'best_before' && lot.expiryDate) return [1, lot.expiryDate, lot.id];
+    if (lot.expiryKind === 'estimated' && lot.expiryDate) return [2, lot.expiryDate, lot.id];
+    return [3, '', lot.id];
+  };
+  for (const entry of byIngredient.values()) {
+    entry.lots.sort((a, b) => {
+      if (allocationPolicy !== 'expiry_first') return compareIds(a.id, b.id);
+      const left = expiryOrder(a);
+      const right = expiryOrder(b);
+      return left[0] - right[0] || compareIds(left[1], right[1]) || compareIds(left[2], right[2]);
+    });
   }
   diagnostics.sort((a, b) => a.rowIndex - b.rowIndex || compareIds(a.code, b.code));
   return { ingredientIds, byIngredient, diagnostics, asOfDate: options.asOfDate };

@@ -156,3 +156,18 @@ is an integration guard, not authentication or permission to accept client-owned
 substitution rules claiming review. T02 quantity/search behavior remains unchanged.
 
 D1 batch semantics: [Cloudflare D1 Database API](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch).
+
+## T04 opt-in consumption witness
+
+Dependency gap: T02's default lot-ID witness cannot express T04's expiry-first
+consumption policy. The additive option and its default-compatibility regression
+are isolated in a T04 dependency-compatibility commit; no T03 ranking is changed.
+
+T04 adds optional `allocationPolicy: 'expiry_first'` to candidate generation and
+the shared inventory index. It orders eligible lots by dated use-by, dated
+best-before, dated estimated expiry, then unknown evidence; date/ID ties are stable.
+Candidate metadata identifies `independent_candidate_expiry_first_witness`.
+Default `lot_id` behavior and independent-candidate arithmetic remain unchanged.
+T04 applies the selected witness to its own projected state, then regenerates T02
+for the next slot. This does not write real inventory or turn T02 into a planner.
+See `WEEKLY_PLANNER.md` and ADR-014 for conservation, bounds and proof scope.
