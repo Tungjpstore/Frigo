@@ -9,8 +9,12 @@
     color: var(--frigo-text-main);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-tap-highlight-color: transparent;
-    user-select: none;
     overscroll-behavior-y: none;
+  }
+
+  /* Text stays selectable app-wide (a11y); only interactive controls opt out. */
+  button, [role="button"] {
+    user-select: none;
   }
 
   h1, h2, h3, h4, h5, h6 {

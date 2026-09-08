@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWeekStore } from '../stores/useWeekStore';
 import { TopBar } from '../components/common/TopBar';
 import { Button } from '../components/common/Button';
+import { InlineError, InlineLoading } from '../components/common/AsyncState';
 import { getIngredientImage } from '../lib/ingredient-images';
+import { capturePrivateSession } from '../lib/private-session';
+import { queryKeys } from '../lib/queryKeys';
+import { api } from '../services/api';
 import { FRIGO_ASSETS } from '../lib/frigo-assets';
-import { mapCategoryToShoppingSection } from '@frigo/domain';
+import { mapCategoryToShoppingSection, type AggregatedShoppingItem } from '@frigo/domain';
 import { ArrowRight, Refrigerator, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -14,8 +19,7 @@ export const WeekShoppingPage: React.FC = () => {
   const navigate = useNavigate();
 
   const {
-    currentPlan,
-    loadPlanById,
+    error: workflowError,
     toggleShoppingItem,
     completeShopping,
   } = useWeekStore();
@@ -27,18 +31,35 @@ export const WeekShoppingPage: React.FC = () => {
   const [shoppingMode, setShoppingMode] = useState<'list' | 'active' | 'complete'>('list');
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [completionError, setCompletionError] = useState<string | null>(null);
+  const [completedShopping, setCompletedShopping] = useState<{
+    items: AggregatedShoppingItem[];
+    count: number;
+  } | null>(null);
+  const planQuery = useQuery({
+    queryKey: queryKeys.weekPlan(planId || ''),
+    queryFn: () => api.getWeekPlan(planId!),
+    enabled: Boolean(planId),
+  });
+  const currentPlan = planQuery.data ?? null;
 
   useEffect(() => {
-    if (planId && !currentPlan) {
-      loadPlanById(planId);
-    }
-  }, [planId, currentPlan]);
+    if (currentPlan) useWeekStore.setState({ currentPlan });
+  }, [currentPlan]);
 
-  if (!currentPlan) {
+  if (planQuery.isError || !currentPlan) {
     return (
       <div className="min-h-screen bg-[#F8FAF9] pb-24">
         <TopBar showBack title="Danh sách đi chợ" />
-        <div className="py-20 text-center text-xs text-slate-500 font-medium">Đang tải...</div>
+        <div className="p-4">
+          {planQuery.isError ? (
+            <InlineError error={planQuery.error} onRetry={() => planQuery.refetch()} />
+          ) : planId && planQuery.isPending ? (
+            <InlineLoading label="Đang tải danh sách đi chợ…" />
+          ) : (
+            <p role="status" className="py-12 text-center text-sm text-slate-600">Không tìm thấy thực đơn này.</p>
+          )}
+        </div>
       </div>
     );
   }
@@ -64,21 +85,28 @@ export const WeekShoppingPage: React.FC = () => {
     : items.filter((i) => mapCategoryToShoppingSection(i.category) === selectedSection);
 
   const handleFinishShopping = async () => {
+    if (isSubmitting || checkedItems.length === 0) return;
+    const isCurrent = capturePrivateSession();
+    const submittedItems = checkedItems.map((item) => ({ ...item }));
+    setCompletionError(null);
     setIsSubmitting(true);
     try {
-      await completeShopping();
+      const result = await completeShopping();
+      if (!isCurrent()) return;
+      if (!result.success) throw new Error('Shopping not completed');
+      setCompletedShopping({ items: submittedItems, count: result.count });
       setShoppingMode('complete');
-    } catch (err) {
-      console.error('Failed complete shopping:', err);
+    } catch {
+      if (isCurrent()) setCompletionError('Chưa nhập được nguyên liệu vào tủ lạnh. Vui lòng thử lại.');
     } finally {
-      setIsSubmitting(false);
+      if (isCurrent()) setIsSubmitting(false);
     }
   };
 
   // 6.3 HOÀN TẤT ĐI CHỢ
-  if (shoppingMode === 'complete') {
+  if (shoppingMode === 'complete' && completedShopping) {
     return (
-      <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between p-6 select-none max-w-md mx-auto animate-fade-in">
+      <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between p-6 max-w-md mx-auto animate-fade-in">
         <div className="text-center pt-8 space-y-2">
           <h2 className="font-heading font-extrabold text-2xl text-slate-900 tracking-tight">
             Tuyệt vời! 🎉
@@ -103,13 +131,13 @@ export const WeekShoppingPage: React.FC = () => {
         <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-card space-y-2.5 mb-6">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
             <span className="font-heading font-bold text-xs text-slate-800 uppercase tracking-wider">
-              Đã mua ({checkedCount > 0 ? checkedCount : totalCount} món)
+              Đã chọn ({completedShopping.items.length} món)
             </span>
-            <span className="text-xs font-bold text-emerald-700">✓ Đã nhập kho</span>
+            <span className="text-xs font-bold text-emerald-700">Đã nhập {completedShopping.count} món</span>
           </div>
 
           <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-            {(checkedCount > 0 ? checkedItems : items).map((item) => (
+            {completedShopping.items.map((item) => (
               <div
                 key={item.ingredientId}
                 className="flex items-center justify-between text-xs py-1"
@@ -154,12 +182,15 @@ export const WeekShoppingPage: React.FC = () => {
 
   // 6.1 (LIST) & 6.2 (ACTIVE SHOPPING MODE)
   return (
-    <div className="min-h-screen bg-[#F8FAF9] pb-32 select-none max-w-md mx-auto">
+    <div className="min-h-screen bg-[#F8FAF9] pb-32 max-w-md mx-auto">
       <TopBar
         showBack
         title={shoppingMode === 'active' ? 'Đang đi chợ' : 'Danh sách đi chợ'}
         subtitle={`${items.length} món • ${currentPlan.budget.displayText}`}
       />
+      {(completionError || workflowError) && (
+        <div className="px-4 pt-3"><InlineError message={completionError || workflowError || undefined} /></div>
+      )}
 
       <div className="px-4 pt-3 space-y-4 animate-fade-in">
         {/* Header Progress (Active mode 6.2) */}
@@ -189,7 +220,7 @@ export const WeekShoppingPage: React.FC = () => {
                 Danh sách đi chợ
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                {items.length} món · ~650k - 720k
+                {items.length} món · {currentPlan.budget.displayText}
               </p>
             </div>
 
@@ -236,11 +267,14 @@ export const WeekShoppingPage: React.FC = () => {
             const isChecked = item.checked;
 
             return (
-              <div
+              <button
                 key={item.ingredientId}
+                type="button"
+                aria-pressed={isChecked}
+                disabled={isSubmitting}
                 onClick={() => toggleShoppingItem(item.ingredientId, !isChecked)}
                 className={clsx(
-                  'p-3.5 rounded-2xl flex items-center justify-between cursor-pointer transition-all border shadow-xs active:scale-99',
+                  'w-full text-left p-3.5 rounded-2xl flex items-center justify-between cursor-pointer transition-all border shadow-xs active:scale-99',
                   isChecked
                     ? 'bg-slate-50/80 border-slate-200/60 opacity-60'
                     : 'bg-white border-slate-200/80 hover:border-slate-300'
@@ -295,7 +329,7 @@ export const WeekShoppingPage: React.FC = () => {
                     ~{Math.round(item.estimatedPriceMin / 1000)}–{Math.round(item.estimatedPriceMax / 1000)}k
                   </span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -318,6 +352,7 @@ export const WeekShoppingPage: React.FC = () => {
             size="lg"
             onClick={handleFinishShopping}
             isLoading={isSubmitting}
+            disabled={checkedCount === 0}
             className="bg-[#22C55E] hover:bg-[#1ea750] text-white font-heading font-bold text-base py-3.5 rounded-2xl shadow-md flex items-center justify-center gap-2"
           >
             <span>Hoàn tất đi chợ</span>

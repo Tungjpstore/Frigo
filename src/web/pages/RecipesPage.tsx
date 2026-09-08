@@ -1,18 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { TopBar } from '../components/common/TopBar';
 import { RecipeCard } from '../components/common/RecipeCard';
 import { EmptyState } from '../components/common/EmptyState';
+import { InlineError } from '../components/common/AsyncState';
 import { api } from '../services/api';
-import { RecipeMatchResult, VietnameseCategory } from '@frigo/recipes';
+import { queryKeys } from '../lib/queryKeys';
+import { VietnameseCategory } from '@frigo/recipes';
 import { Search, Clock, CheckCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export const RecipesPage: React.FC = () => {
   const navigate = useNavigate();
 
-  const [recipes, setRecipes] = useState<RecipeMatchResult[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [cuisineFilter, setCuisineFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<VietnameseCategory | null>(null);
@@ -20,24 +21,24 @@ export const RecipesPage: React.FC = () => {
   const [noBuyOnly, setNoBuyOnly] = useState(false);
   const [under20MinsOnly, setUnder20MinsOnly] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const results = await api.getRecommendations({
-          noBuy: noBuyOnly,
-          cuisine: cuisineFilter || undefined,
-          category: categoryFilter || undefined,
-          region: regionFilter || undefined,
-          maxTime: under20MinsOnly ? 20 : undefined,
-        });
-        setRecipes(results);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [noBuyOnly, cuisineFilter, categoryFilter, regionFilter, under20MinsOnly]);
+  const recommendationsQuery = useQuery({
+    queryKey: queryKeys.recommendations({
+      noBuy: noBuyOnly,
+      cuisine: cuisineFilter,
+      category: categoryFilter,
+      region: regionFilter,
+      maxTime: under20MinsOnly ? 20 : undefined,
+    }),
+    queryFn: () => api.getRecommendations({
+      noBuy: noBuyOnly,
+      cuisine: cuisineFilter || undefined,
+      category: categoryFilter || undefined,
+      region: regionFilter || undefined,
+      maxTime: under20MinsOnly ? 20 : undefined,
+    }),
+  });
+  const recipes = recommendationsQuery.data ?? [];
+  const loading = recommendationsQuery.isPending;
 
   const filtered = recipes.filter((r) => {
     if (categoryFilter && r.recipe.category !== categoryFilter) {
@@ -240,6 +241,8 @@ export const RecipesPage: React.FC = () => {
               <div className="animate-spin w-7 h-7 border-2 border-emerald-600 border-t-transparent rounded-full mx-auto mb-2" />
               <p className="text-xs text-slate-500 font-medium">Đang tìm món...</p>
             </div>
+          ) : recommendationsQuery.isError ? (
+            <InlineError error={recommendationsQuery.error} onRetry={() => recommendationsQuery.refetch()} />
           ) : filtered.length === 0 ? (
             <EmptyState
               type="no-recipes"

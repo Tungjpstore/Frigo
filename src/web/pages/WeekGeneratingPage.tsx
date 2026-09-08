@@ -1,124 +1,63 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { MealPlan } from '@frigo/domain';
 import { useWeekStore } from '../stores/useWeekStore';
 import { FRIGO_ASSETS } from '../lib/frigo-assets';
-import { Check } from 'lucide-react';
-import { clsx } from 'clsx';
-
-const GENERATION_STEPS = [
-  'Kiểm tra đồ trong tủ lạnh',
-  'Tìm thực phẩm nên dùng sớm',
-  'Cân đối khẩu phần cho gia đình',
-  'Chọn món ăn phù hợp khẩu vị',
-  'Kiểm tra và tối ưu ngân sách',
-  'Tính nguyên liệu cần mua thêm',
-  'Tối ưu chuyến đi chợ',
-];
+import { capturePrivateSession, currentPrivateScope } from '../lib/private-session';
+import { todayLocalIso } from '../lib/format';
+import { InlineError, InlineLoading } from '../components/common/AsyncState';
+import { Button } from '../components/common/Button';
 
 export const WeekGeneratingPage: React.FC = () => {
   const navigate = useNavigate();
   const { setupDraft, generatePlan } = useWeekStore();
-  const [completedStepIndex, setCompletedStepIndex] = useState(0);
+  const request = useRef<Promise<MealPlan> | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
-    let timer: any;
-    let isCancelled = false;
-
-    async function run() {
-      const currentHouseholdId = localStorage.getItem('frigo_household_id') || 'household_user';
-      const planPromise = generatePlan({
-        householdId: currentHouseholdId,
-        startDate: new Date().toISOString().split('T')[0],
-        householdSize: setupDraft.householdSize || 3,
-        mealSlotsPreset: setupDraft.mealSlotsPreset as any || 'dinner_only',
-        budgetTargetVnd: setupDraft.budgetTargetVnd !== undefined ? setupDraft.budgetTargetVnd : 750000,
-        priorities: setupDraft.priorities || ['use_fridge'],
-        shoppingFrequency: setupDraft.shoppingFrequency || 'once',
-      });
-
-      // Quick progression animation through the 7 real steps
-      for (let i = 0; i < GENERATION_STEPS.length; i++) {
-        if (isCancelled) return;
-        setCompletedStepIndex(i);
-        await new Promise((resolve) => {
-          timer = setTimeout(resolve, 350);
-        });
-      }
-
-      const plan = await planPromise;
-      if (!isCancelled) {
-        navigate(`/week/${plan.id}`);
-      }
+    let cancelled = false;
+    const isCurrent = capturePrivateSession();
+    const { userId, householdId } = currentPrivateScope();
+    if (!userId || !householdId) {
+      setError(new Error('Vui lòng xác minh phiên trước khi tạo thực đơn.'));
+      return;
     }
-
-    run();
-
-    return () => {
-      isCancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  }, []);
+    // Reuse the command during StrictMode's effect replay.
+    request.current ??= generatePlan({
+      householdId,
+      startDate: todayLocalIso(),
+      householdSize: setupDraft.householdSize || 2,
+      mealSlotsPreset: setupDraft.mealSlotsPreset || 'dinner_only',
+      budgetTargetVnd: setupDraft.budgetTargetVnd ?? 750000,
+      priorities: setupDraft.priorities || ['use_fridge'],
+      shoppingFrequency: setupDraft.shoppingFrequency || 'once',
+    });
+    void request.current.then((plan) => {
+      if (!cancelled && isCurrent()) navigate(`/week/${plan.id}`, { replace: true });
+    }).catch((err: unknown) => {
+      if (!cancelled && isCurrent()) setError(err);
+    });
+    return () => { cancelled = true; };
+  }, [generatePlan, navigate, setupDraft]);
 
   return (
-    <div className="min-h-screen bg-[#FFFDF6] text-slate-900 flex flex-col justify-between p-6 select-none max-w-md mx-auto animate-fade-in">
-      {/* Top Brand Mark */}
-      <div className="pt-8 text-center">
-        <div className="w-20 h-20 mx-auto mb-4 overflow-hidden flex items-center justify-center">
-          <img
-            src={FRIGO_ASSETS.brand.mark}
-            alt="Frigo Planner"
-            className="w-16 h-16 object-contain animate-bounce-slow"
-          />
-        </div>
-
+    <div className="min-h-screen bg-[#FFFDF6] text-slate-900 flex flex-col justify-center gap-8 p-6 max-w-md mx-auto">
+      <div className="text-center">
+        <img src={FRIGO_ASSETS.brand.mark} alt="Frigo Planner" className="w-16 h-16 mx-auto mb-4" />
         <h2 className="font-heading font-bold text-2xl text-slate-900">
-          Frigo đang lên thực đơn tuần...
+          {error ? 'Chưa tạo được thực đơn' : 'Frigo đang lên thực đơn tuần…'}
         </h2>
-        <p className="text-xs text-slate-500 mt-1">
-          Ăn đủ • Mua đủ • Dùng hết
-        </p>
+        <p className="text-xs text-slate-500 mt-2">Ăn đủ • Mua đủ • Dùng hết</p>
       </div>
-
-      {/* Real Progression Steps List */}
-      <div className="bg-white rounded-2xl p-6 space-y-3.5 border border-slate-200/80 shadow-card">
-        {GENERATION_STEPS.map((stepText, idx) => {
-          const isDone = idx < completedStepIndex;
-          const isCurrent = idx === completedStepIndex;
-
-          return (
-            <div
-              key={stepText}
-              className={clsx(
-                'flex items-center gap-3 text-xs transition-all duration-200',
-                isDone
-                  ? 'text-slate-900 font-semibold'
-                  : isCurrent
-                  ? 'text-emerald-700 font-bold scale-[1.01]'
-                  : 'text-slate-400'
-              )}
-            >
-              <div
-                className={clsx(
-                  'w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 border transition-colors',
-                  isDone
-                    ? 'bg-[#22C55E] border-[#22C55E] text-white'
-                    : isCurrent
-                    ? 'border-emerald-600 text-emerald-600 animate-spin'
-                    : 'border-slate-200 text-transparent'
-                )}
-              >
-                {isDone ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : isCurrent ? '•' : ''}
-              </div>
-
-              <span className="font-heading">{stepText}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Bottom Hint */}
-      <div className="text-center pb-6 text-xs text-slate-500">
-        Quá trình này có thể mất 1-2 phút
+      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-card">
+        {error ? (
+          <>
+            <InlineError error={error} />
+            <Button className="w-full mt-4" onClick={() => navigate('/week/setup', { replace: true })}>
+              Quay lại thiết lập
+            </Button>
+          </>
+        ) : <InlineLoading label="Đang chờ thực đơn từ máy chủ. Bạn có thể quay lại sau." />}
       </div>
     </div>
   );

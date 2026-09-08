@@ -31,20 +31,18 @@ export const OnboardingPage: React.FC = () => {
   const [step, setStep] = useState(2); // Start at Intro 1.2 by default, can toggle to Splash 1.1
 
   // Form State
-  const [householdSize, setHouseholdSize] = useState<number>(3);
-  const [selectedCuisines, setSelectedCuisines] = useState<string[]>(['vietnamese', 'western']);
-  const [restrictions, setRestrictions] = useState<string[]>(['seafood', 'mushroom']);
-  const [primaryGoal, setPrimaryGoal] = useState<'today' | 'week' | 'both'>('both');
+  const [householdSize, setHouseholdSize] = useState<number>(2);
+  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
+  const [restrictions, setRestrictions] = useState<string[]>([]);
+  const [primaryGoal, setPrimaryGoal] = useState<'today' | 'week' | 'both'>();
 
   const CUISINE_TAGS = [
     { id: 'vietnamese', label: 'Việt Nam' },
     { id: 'korean', label: 'Hàn Quốc' },
     { id: 'japanese', label: 'Nhật Bản' },
-    { id: 'single', label: 'Độc thân' },
-    { id: 'one_plate', label: 'Tiệm 1 đĩa' },
-    { id: 'beef_lover', label: 'Thịt bò' },
     { id: 'western', label: 'Âu - Mỹ' },
     { id: 'chinese', label: 'Trung Hoa' },
+    { id: 'thai', label: 'Thái Lan' },
     { id: 'other', label: 'Khác' },
   ];
 
@@ -106,7 +104,7 @@ export const OnboardingPage: React.FC = () => {
     return (
       <div
         onClick={() => setStep(2)}
-        className="min-h-screen bg-[#0F3D2E] text-white flex flex-col justify-between items-center py-12 px-6 relative cursor-pointer select-none max-w-md mx-auto overflow-hidden animate-fade-in"
+        className="min-h-screen bg-[#0F3D2E] text-white flex flex-col justify-between items-center py-12 px-6 relative cursor-pointer max-w-md mx-auto overflow-hidden animate-fade-in"
       >
         {/* Top bar indicators */}
         <div className="w-full flex justify-between items-center text-xs text-emerald-200/60 font-medium pt-2">
@@ -162,7 +160,7 @@ export const OnboardingPage: React.FC = () => {
   // 1.2 GIỚI THIỆU (WELCOME HERO)
   if (step === 2) {
     return (
-      <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between px-6 py-10 relative select-none max-w-md mx-auto animate-fade-in">
+      <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between px-6 py-10 relative max-w-md mx-auto animate-fade-in">
         <div className="pt-2">
           {/* Subtle link back to splash */}
           <button
@@ -229,7 +227,7 @@ export const OnboardingPage: React.FC = () => {
   // 1.3 TẠO TÀI KHOẢN (SOCIAL AUTH)
   if (step === 3) {
     return (
-      <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between px-6 py-10 relative select-none max-w-md mx-auto animate-fade-in">
+      <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between px-6 py-10 relative max-w-md mx-auto animate-fade-in">
         <div>
           <button
             onClick={() => setStep(2)}
@@ -330,7 +328,7 @@ export const OnboardingPage: React.FC = () => {
   // 1.4 THÔNG TIN CƠ BẢN (FAMILY SIZE & CUISINE)
   if (step === 4) {
     return (
-      <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between px-6 py-8 relative select-none max-w-md mx-auto animate-fade-in">
+      <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between px-6 py-8 relative max-w-md mx-auto animate-fade-in">
         <div>
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
@@ -426,7 +424,7 @@ export const OnboardingPage: React.FC = () => {
   // 1.5 SỞ THÍCH & HẠN CHẾ (DIETARY RESTRICTIONS)
   if (step === 5) {
     return (
-      <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between px-6 py-8 relative select-none max-w-md mx-auto animate-fade-in">
+      <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between px-6 py-8 relative max-w-md mx-auto animate-fade-in">
         <div>
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
@@ -489,7 +487,7 @@ export const OnboardingPage: React.FC = () => {
   // 1.6 FRIGO SẼ GIÚP BẠN THẾ NÀO? (GOAL SELECTION)
   if (step === 6) {
     return (
-      <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between px-6 py-8 relative select-none max-w-md mx-auto animate-fade-in">
+      <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between px-6 py-8 relative max-w-md mx-auto animate-fade-in">
         <div>
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
@@ -605,7 +603,7 @@ export const OnboardingPage: React.FC = () => {
 
   // 1.7 HOÀN TẤT (CELEBRATION & MASCOT)
   return (
-    <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between px-6 py-10 relative select-none max-w-md mx-auto animate-fade-in">
+    <div className="min-h-screen bg-[#FFFDF6] flex flex-col justify-between px-6 py-10 relative max-w-md mx-auto animate-fade-in">
       <div className="text-center pt-6 space-y-2">
         <h2 className="font-heading font-extrabold text-2xl text-slate-900 tracking-tight flex items-center justify-center gap-2">
           <span>Tuyệt vời!</span>

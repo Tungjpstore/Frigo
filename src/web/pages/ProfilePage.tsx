@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/useAuthStore';
 import { TopBar } from '../components/common/TopBar';
 import { Card } from '../components/common/Card';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import {
   Sparkles,
   ChevronRight,
@@ -17,13 +18,15 @@ import {
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { displayName, email, isPlus, avatarUrl, logout } = useAuthStore();
+  const { displayName, email, isPlus, avatarUrl, logout, logoutError } = useAuthStore();
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   const handleLogout = async () => {
+    setConfirmLogout(false);
     if (await logout()) navigate('/auth', { replace: true });
   };
 
-  const initialLetter = (displayName || 'M').charAt(0).toUpperCase();
+  const initialLetter = (displayName || 'K').charAt(0).toUpperCase();
 
   // Menu items matching screen 7.1
   const MENU_ITEMS = [
@@ -36,7 +39,7 @@ export const ProfilePage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] pb-24 max-w-md mx-auto select-none">
+    <div className="min-h-screen bg-[#F8FAF9] pb-24 max-w-md mx-auto">
       <TopBar title="Hồ sơ" />
 
       <div className="px-4 pt-4 space-y-4">
@@ -57,11 +60,11 @@ export const ProfilePage: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-heading font-bold text-base text-slate-900 leading-tight">
-                  {displayName || 'Minh Nguyễn'}
+                  {displayName || 'Khách'}
                 </h3>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                {email || 'minh@example.com'}
+                {email || 'Chưa liên kết email'}
               </p>
             </div>
           </div>
@@ -80,10 +83,10 @@ export const ProfilePage: React.FC = () => {
           {MENU_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
-              <div
+              <button
                 key={item.label}
                 onClick={() => navigate(item.path)}
-                className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-50/60 active:bg-slate-100/80 transition-colors"
+                className="w-full text-left p-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-50/60 active:bg-slate-100/80 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
@@ -104,15 +107,16 @@ export const ProfilePage: React.FC = () => {
                 <div className="flex items-center gap-1 text-slate-400 shrink-0 ml-2">
                   <ChevronRight className="w-4 h-4" />
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
 
         {/* Logout Button */}
         <div className="pt-2">
+          {logoutError && <p role="alert" className="text-sm text-rose-700 mb-3">{logoutError}</p>}
           <button
-            onClick={handleLogout}
+            onClick={() => setConfirmLogout(true)}
             className="w-full py-3 px-4 rounded-xl border border-rose-200 bg-rose-50/60 hover:bg-rose-100/70 text-rose-700 font-medium text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
           >
             <LogOut className="w-4 h-4 stroke-[2]" />
@@ -125,6 +129,15 @@ export const ProfilePage: React.FC = () => {
           <p className="text-[11px] text-slate-400">Frigo • Ăn đủ. Mua đủ. Dùng hết.</p>
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmLogout}
+        title="Đăng xuất tài khoản?"
+        description="Frigo sẽ thu hồi phiên trên máy chủ trước khi xóa dữ liệu riêng tư trên thiết bị này."
+        confirmText="Đăng xuất"
+        destructive
+        onConfirm={handleLogout}
+        onCancel={() => setConfirmLogout(false)}
+      />
     </div>
   );
 };

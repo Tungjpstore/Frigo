@@ -11,7 +11,6 @@ interface AuthUser {
   displayName: string;
   avatarUrl?: string;
   householdId?: string;
-  token?: string;
 }
 
 interface AuthState {
@@ -47,7 +46,7 @@ interface AuthState {
 const anonymousState = {
   userId: '', householdId: '', email: '', displayName: 'Khách ghé thăm', avatarUrl: undefined,
   isGuest: true, isOnboarded: false, isPlus: false, householdSize: 2, spicyLevel: 'medium',
-  favoriteCuisines: ['vietnamese', 'korean'], dietaryRestrictions: [], primaryGoal: undefined,
+  favoriteCuisines: [] as string[], dietaryRestrictions: [], primaryGoal: undefined,
 };
 let logoutRequest: Promise<boolean> | null = null;
 let guestSessionRequest: Promise<void> | null = null;
@@ -76,7 +75,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     isPlus: savedPlus,
     householdSize: 2,
     spicyLevel: 'medium',
-    favoriteCuisines: ['vietnamese', 'korean'],
+    favoriteCuisines: [],
     dietaryRestrictions: [],
     logoutStatus: privateSessionBlocked() ? 'error' : 'idle',
     logoutError: privateSessionBlocked() ? LOGOUT_WARNING : null,
@@ -106,7 +105,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
     setAuthSession: (user: AuthUser) => {
       if (privateSessionBlocked()) throw new Error(LOGOUT_WARNING);
-      const hid = user.householdId || `hh_${user.id}`;
+      if (!user.id || !user.householdId) throw new Error('Máy chủ chưa xác nhận danh tính và hộ gia đình.');
+      const hid = user.householdId;
       const current = currentPrivateScope();
       if (current.userId !== user.id || current.householdId !== hid) {
         resetPrivateSession();
@@ -157,7 +157,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
           }
           if (!isCurrent()) throw new Error('Phiên làm việc đã thay đổi. Vui lòng thử lại.');
           if (!res.ok) throw new Error('Không thể khởi tạo phiên khách. Vui lòng thử lại.');
-          const data = await res.json() as { success?: boolean; token?: string; user?: AuthUser };
+          const data = await res.json() as { success?: boolean; user?: AuthUser };
           if (!isCurrent()) throw new Error('Phiên làm việc đã thay đổi. Vui lòng thử lại.');
           if (!data.success || !data.user?.id || !data.user?.householdId) {
             throw new Error('Máy chủ chưa xác nhận phiên khách.');
@@ -169,7 +169,6 @@ export const useAuthStore = create<AuthState>((set, get) => {
           localStorage.setItem('frigo_household_id', hid);
           localStorage.setItem('frigo_is_guest', 'true');
           localStorage.removeItem('frigo_token');
-          if (data.token) sessionStorage.setItem('frigo_guest_token', data.token);
           set({
             userId: id,
             householdId: hid,

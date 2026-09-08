@@ -96,7 +96,7 @@ export const WeekSetupPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] pb-28 select-none">
+    <div className="min-h-screen bg-[#F8FAF9] pb-28">
       <TopBar
         showBack
         onBack={handleBack}

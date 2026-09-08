@@ -73,7 +73,6 @@ export const AuthPage: React.FC = () => {
             displayName: res.user.displayName,
             avatarUrl: res.user.avatarUrl,
             householdId: res.user.householdId,
-            token: res.token,
           });
           setSuccessMessage('Đăng nhập Google thành công!');
           const isNewSession = capturePrivateSession();
@@ -142,7 +141,6 @@ export const AuthPage: React.FC = () => {
           displayName: res.user.displayName,
           avatarUrl: res.user.avatarUrl,
           householdId: res.user.householdId,
-          token: res.token,
         });
         navigate('/onboarding');
       }
@@ -262,7 +260,6 @@ export const AuthPage: React.FC = () => {
               displayName: res.user.displayName,
               avatarUrl: res.user.avatarUrl,
               householdId: res.user.householdId,
-              token: res.token,
             });
           }
           setSuccessMessage('Xác thực tài khoản thành công!');
@@ -392,7 +389,6 @@ export const AuthPage: React.FC = () => {
           displayName: res.user.displayName,
           avatarUrl: res.user.avatarUrl,
           householdId: res.user.householdId,
-          token: res.token,
         });
         navigate('/onboarding');
       }

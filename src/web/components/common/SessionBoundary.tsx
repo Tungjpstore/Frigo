@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { api } from '../../services/api';
 import { isOfflineGuestSession } from '../../lib/private-session';
+import { queryClient } from '../../lib/query-client';
+import { queryKeys } from '../../lib/queryKeys';
 
 export const SessionBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { userId, householdId, isGuest, logoutStatus, logoutError, logout } = useAuthStore();
@@ -15,7 +17,12 @@ export const SessionBoundary: React.FC<{ children: React.ReactNode }> = ({ child
     if (logoutStatus !== 'idle' || !userId) return;
     let cancelled = false;
     setVerificationFailed(false);
-    void api.getMe({ requireServer: !isOfflineGuestSession() }).then(() => {
+    void queryClient.fetchQuery({
+      queryKey: queryKeys.me(),
+      queryFn: () => api.getMe({ requireServer: !isOfflineGuestSession() }),
+      staleTime: 0,
+      retry: false,
+    }).then(() => {
       if (!cancelled) setVerifiedIdentity(identity);
     }).catch(() => {
       if (!cancelled) setVerificationFailed(true);

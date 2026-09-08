@@ -457,18 +457,19 @@ describe('server-confirmed logout and private session isolation', () => {
     expect(client.sync.getPendingOps()[0]).toMatchObject({ userId: 'guest-a', householdId: 'hh_guest_a' });
   });
 
-  it('isolates guest bearer requests from a possibly unrelated browser cookie', async () => {
+  it('ignores legacy guest tokens and uses the server cookie with owner fencing', async () => {
     const client = await loadClient();
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json({ success: true, token: 'guest-only-token', user: user('guest-a', 'house-guest') }))
       .mockResolvedValueOnce(json({ items: [] })));
     await client.auth.getState().setGuestSession();
     await client.api.getInventory();
     expect(fetch).toHaveBeenNthCalledWith(1, '/api/v1/auth/guest', { method: 'POST', credentials: 'include' });
-    expect(fetch).toHaveBeenNthCalledWith(2, '/api/v1/inventory', expect.objectContaining({ credentials: 'omit',
-      headers: expect.objectContaining({ Authorization: 'Bearer guest-only-token',
+    expect(fetch).toHaveBeenNthCalledWith(2, '/api/v1/inventory', expect.objectContaining({ credentials: 'include',
+      headers: expect.objectContaining({
         'X-Frigo-Expected-User-Id': 'guest-a', 'X-Frigo-Expected-Household-Id': 'house-guest' }) }));
+    expect(new Headers(vi.mocked(fetch).mock.calls[1][1]?.headers).has('Authorization')).toBe(false);
     expect(localStorage.getItem('frigo_token')).toBeNull();
-    expect(sessionStorage.getItem('frigo_guest_token')).toBe('guest-only-token');
+    expect(sessionStorage.getItem('frigo_guest_token')).toBeNull();
   });
 
   it.each(['account', 'household'] as const)('invalidates projections and in-flight guards when another tab changes the %s', async (change) => {

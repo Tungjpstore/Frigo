@@ -9,6 +9,7 @@ import { getIngredientImage } from '../lib/ingredient-images';
 import { CheckCircle2, ShoppingBag, Trash2, Store, Calendar, CalendarCheck } from 'lucide-react';
 import { StandardUnit } from '@frigo/domain';
 import { capturePrivateSession } from '../lib/private-session';
+import { invalidateInventoryDependents } from '../lib/query-invalidation';
 
 interface ReceiptItemState {
   id: string;
@@ -109,12 +110,14 @@ const ReceiptReview: React.FC<{ receiptScanId: string | null }> = ({ receiptScan
     try {
       await api.confirmScan(liveReceipt.id, items);
       if (!mounted.current || !isCurrent()) return;
+      void invalidateInventoryDependents();
       setSuccessToast('Đã nhập nguyên liệu hóa đơn vào tủ lạnh thành công!');
       setTimeout(() => {
         if (mounted.current && isCurrent()) navigate('/fridge');
       }, 1200);
-    } catch (err) {
-      console.error('Failed to import receipt items:', err);
+    } catch {
+      if (!mounted.current || !isCurrent()) return;
+      setPollError('Chưa nhập được nguyên liệu. Vui lòng thử lại.');
       setIsSubmitting(false);
     }
   };

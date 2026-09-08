@@ -150,7 +150,7 @@ export const CameraViewfinder: React.FC<CameraViewfinderProps> = ({
             </p>
             <p className="text-xs text-slate-300 mt-1 max-w-xs leading-relaxed">
               {hasCameraError
-                ? 'Bạn có thể chọn ảnh từ thư viện hoặc dùng ảnh mẫu để trải nghiệm'
+                ? 'Bạn có thể chọn ảnh từ thư viện để tiếp tục'
                 : 'Vui lòng cấp quyền truy cập camera nếu được hỏi'}
             </p>
           </div>

@@ -1,56 +1,49 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { TopBar } from '../components/common/TopBar';
 import { EmptyState } from '../components/common/EmptyState';
 import { Button } from '../components/common/Button';
+import { InlineError } from '../components/common/AsyncState';
 import { api } from '../services/api';
+import { queryKeys } from '../lib/queryKeys';
 import { Plus, Trash2, CheckCircle2, Circle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export const ShoppingPage: React.FC = () => {
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const shoppingKey = queryKeys.shoppingList();
+  const shoppingQuery = useQuery({ queryKey: shoppingKey, queryFn: () => api.getShoppingList() });
+  const items = shoppingQuery.data ?? [];
+  const loading = shoppingQuery.isPending;
   const [newItemName, setNewItemName] = useState('');
   const [newItemQty, setNewItemQty] = useState(1);
   const [newItemUnit, setNewItemUnit] = useState('piece');
 
-  const loadList = async () => {
-    setLoading(true);
-    try {
-      const list = await api.getShoppingList();
-      setItems(list);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const refreshList = () => queryClient.invalidateQueries({ queryKey: shoppingKey });
+  const toggleItem = useMutation({
+    mutationFn: ({ id, current }: { id: string; current: boolean }) => api.toggleShoppingItem(id, !current),
+    onSuccess: refreshList,
+  });
+  const deleteItem = useMutation({ mutationFn: api.deleteShoppingItem, onSuccess: refreshList });
+  const addItem = useMutation({
+    mutationFn: api.addShoppingItem,
+    onSuccess: () => {
+      setNewItemName('');
+      setNewItemQty(1);
+      return refreshList();
+    },
+  });
 
-  useEffect(() => {
-    loadList();
-  }, []);
-
-  const handleToggleCheck = async (id: string, current: boolean) => {
-    const updatedStatus = !current;
-    await api.toggleShoppingItem(id, updatedStatus);
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, isChecked: updatedStatus } : i)));
-  };
-
-  const handleDelete = async (id: string) => {
-    await api.deleteShoppingItem(id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
-  };
-
-  const handleAddItem = async (e: React.FormEvent) => {
+  const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim()) return;
 
-    const created = await api.addShoppingItem({
+    addItem.mutate({
       name: newItemName.trim(),
       quantity: Number(newItemQty),
       unit: newItemUnit,
     });
 
-    setItems((prev) => [created, ...prev]);
-    setNewItemName('');
-    setNewItemQty(1);
   };
 
   return (
@@ -58,12 +51,16 @@ export const ShoppingPage: React.FC = () => {
       <TopBar showBack title="Danh sách mua sắm" subtitle="Các nguyên liệu cần mua thêm" />
 
       <div className="px-4 pt-3 space-y-4">
+        {(toggleItem.isError || deleteItem.isError || addItem.isError) && (
+          <InlineError message="Chưa lưu được thay đổi. Vui lòng thử lại thao tác." />
+        )}
 
         {/* Quick Add Bar */}
         <form onSubmit={handleAddItem} className="flex gap-2">
           <input
             type="text"
             required
+            aria-label="Tên nguyên liệu cần mua"
             value={newItemName}
             onChange={(e) => setNewItemName(e.target.value)}
             placeholder="Thêm món: Hành tím, Tiêu, Nấm..."
@@ -71,6 +68,7 @@ export const ShoppingPage: React.FC = () => {
           />
 
           <select
+            aria-label="Đơn vị"
             value={newItemUnit}
             onChange={(e) => setNewItemUnit(e.target.value)}
             className="h-11 px-2.5 rounded-xl border border-slate-200/80 text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:border-emerald-600 transition-colors"
@@ -90,7 +88,9 @@ export const ShoppingPage: React.FC = () => {
 
         {/* Shopping Items List */}
         <div className="space-y-2 pt-1">
-          {loading ? (
+          {shoppingQuery.isError ? (
+            <InlineError error={shoppingQuery.error} onRetry={() => shoppingQuery.refetch()} />
+          ) : loading ? (
             <div className="text-center py-10">
               <div className="animate-spin w-7 h-7 border-2 border-emerald-600 border-t-transparent rounded-full mx-auto" />
             </div>
@@ -104,7 +104,7 @@ export const ShoppingPage: React.FC = () => {
             items.map((item) => (
               <div
                 key={item.id}
-                onClick={() => handleToggleCheck(item.id, item.isChecked)}
+                onClick={() => !toggleItem.isPending && toggleItem.mutate({ id: item.id, current: item.isChecked })}
                 className={clsx(
                   'p-3 rounded-xl flex items-center justify-between cursor-pointer transition-all border border-slate-200/80 shadow-xs active:scale-[0.99]',
                   item.isChecked ? 'bg-slate-50/70 opacity-60' : 'bg-white hover:border-slate-300'
@@ -141,7 +141,7 @@ export const ShoppingPage: React.FC = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDelete(item.id);
+                    deleteItem.mutate(item.id);
                   }}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors tap-target flex items-center justify-center"
                   aria-label="Xóa món"

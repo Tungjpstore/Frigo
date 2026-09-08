@@ -25,14 +25,12 @@ export function isOfflineGuestSession(): boolean {
 export function capturePrivateSession() {
   const scope = currentPrivateScope();
   const version = generation;
-  const guestToken = sessionStorage.getItem('frigo_guest_token');
   const offlineGuest = isOfflineGuestSession();
   return () => {
     const current = currentPrivateScope();
     return version === generation && !privateSessionBlocked() &&
       current.userId === scope.userId && current.householdId === scope.householdId &&
-      isOfflineGuestSession() === offlineGuest &&
-      sessionStorage.getItem('frigo_guest_token') === guestToken;
+      isOfflineGuestSession() === offlineGuest;
   };
 }
 
@@ -45,7 +43,7 @@ export function removePrivateCaches(): void {
   for (let index = localStorage.length - 1; index >= 0; index--) {
     const key = localStorage.key(index);
     if (key && (key.startsWith('frigo_cache_v2:') || key.startsWith('frigo_inventory_') ||
-      key.startsWith('frigo_shopping_list_') || key === 'frigo_active_meal_plan')) {
+      key.startsWith('frigo_shopping_list_') || key.startsWith('frigo_active_meal_plan'))) {
       localStorage.removeItem(key);
     }
   }
@@ -53,10 +51,11 @@ export function removePrivateCaches(): void {
 
 export function removeLegacyPrivateCaches(): void {
   localStorage.removeItem('frigo_token');
+  sessionStorage.removeItem('frigo_guest_token');
   for (let index = localStorage.length - 1; index >= 0; index--) {
     const key = localStorage.key(index);
     if (key && (key.startsWith('frigo_inventory_') || key.startsWith('frigo_shopping_list_') ||
-      key === 'frigo_active_meal_plan')) localStorage.removeItem(key);
+      key.startsWith('frigo_active_meal_plan'))) localStorage.removeItem(key);
   }
 }
 

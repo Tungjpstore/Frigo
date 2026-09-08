@@ -2,9 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useScanStore } from '../stores/useScanStore';
 import { api } from '../services/api';
-import { FRIGO_ASSETS } from '../lib/frigo-assets';
 import { CameraViewfinder } from '../components/scan/CameraViewfinder';
-import { ArrowLeft, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Sparkles, AlertCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { capturePrivateSession } from '../lib/private-session';
 import { readPrivateImage } from '../lib/private-image';
@@ -108,13 +107,6 @@ export const ScanPage: React.FC = () => {
     }
   };
 
-  const handleUseMockImage = async () => {
-    commandRef.current = null;
-    reset();
-    setImage(FRIGO_ASSETS.illustrations['scan-fridge']);
-    await startAIScan('mock-fridge-base64');
-  };
-
   return (
     <div className="min-h-screen bg-[#0F3D2E] text-white flex flex-col justify-between p-4 relative overflow-hidden select-none">
       {/* Top Header */}
@@ -206,17 +198,6 @@ export const ScanPage: React.FC = () => {
         className="hidden"
       />
 
-      {/* Bottom Mock Trigger fallback */}
-      <div className="z-10 pb-4 text-center">
-        <button
-          onClick={handleUseMockImage}
-          disabled={isProcessing}
-          className="text-xs text-slate-300 hover:text-white underline underline-offset-4 flex items-center justify-center gap-1.5 mx-auto tap-target transition-colors"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Thử quét ảnh mẫu {activeTab === 'receipt' ? 'hóa đơn WinMart' : 'tủ lạnh'}</span>
-        </button>
-      </div>
     </div>
   );
 };

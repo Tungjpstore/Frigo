@@ -4,15 +4,18 @@ import { TopBar } from '../components/common/TopBar';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/useAuthStore';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { Globe, Shield, LogOut, Check, Smartphone, Trash2, Info, Wifi } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuthStore();
+  const { logout, logoutError } = useAuthStore();
   const [language, setLanguage] = useState('vi');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState(false);
   const [cacheCleared, setCacheCleared] = useState(false);
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
     // Check if app is running in standalone mode (installed PWA)
@@ -36,7 +39,7 @@ export const SettingsPage: React.FC = () => {
         setDeferredPrompt(null);
       }
     } else {
-      alert('Để cài đặt Frigo:\n• Trên iPhone/Safari: Nhấn nút "Chia sẻ" (Share) rồi chọn "Thêm vào MH chính" (Add to Home Screen).\n• Trên Android/Chrome: Nhấn menu 3 chấm rồi chọn "Cài đặt ứng dụng".');
+      setShowInstallHelp(true);
     }
   };
 
@@ -50,9 +53,8 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    if (confirm('Bạn có chắc muốn đăng xuất? Dữ liệu cục bộ sẽ được làm mới.')) {
-      if (await logout()) navigate('/landing', { replace: true });
-    }
+    setConfirmLogout(false);
+    if (await logout()) navigate('/landing', { replace: true });
   };
 
   return (
@@ -157,7 +159,7 @@ export const SettingsPage: React.FC = () => {
             variant="danger"
             fullWidth
             size="md"
-            onClick={handleLogout}
+            onClick={() => setConfirmLogout(true)}
             className="flex items-center justify-center gap-2"
           >
             <LogOut className="w-4 h-4" />
@@ -165,6 +167,25 @@ export const SettingsPage: React.FC = () => {
           </Button>
         </div>
       </div>
+      {logoutError && <p role="alert" className="px-4 text-sm text-rose-700">{logoutError}</p>}
+      <ConfirmDialog
+        open={confirmLogout}
+        title="Đăng xuất tài khoản?"
+        description="Frigo sẽ thu hồi phiên trên máy chủ trước khi xóa dữ liệu riêng tư trên thiết bị này."
+        confirmText="Đăng xuất"
+        destructive
+        onConfirm={handleLogout}
+        onCancel={() => setConfirmLogout(false)}
+      />
+      <ConfirmDialog
+        open={showInstallHelp}
+        title="Cài đặt Frigo lên màn hình chính"
+        description={'Trên iPhone (Safari): nhấn nút Chia sẻ rồi chọn "Thêm vào MH chính". Trên Android (Chrome): nhấn menu ba chấm rồi chọn "Cài đặt ứng dụng".'}
+        confirmText="Đã hiểu"
+        cancelText="Đóng"
+        onConfirm={() => setShowInstallHelp(false)}
+        onCancel={() => setShowInstallHelp(false)}
+      />
     </div>
   );
 };
