@@ -13,7 +13,11 @@ required_migrations(name) AS (
     ('0010_week_schema_shadow_canonical.sql'),
     ('0011_meal_plan_tenant_ownership.sql'),
     ('0012_scan_queue_jobs.sql'),
-    ('0013_scan_receipt_metadata.sql')
+    ('0013_scan_receipt_metadata.sql'),
+    ('0014_scan_queue_fencing.sql'),
+    ('0015_auth_session_otp_hardening.sql'),
+    ('0016_scan_quota_ledger.sql'),
+    ('0017_auth_otps_remove_plaintext.sql')
 ),
 required_tables(name) AS (
   VALUES
@@ -28,6 +32,10 @@ required_tables(name) AS (
     ('meal_plan_slots_v2'),
     ('meal_plan_shopping_items_v2')
     ,('scan_queue_jobs')
+    ,('sessions_v2')
+    ,('auth_otps')
+    ,('scan_quota_periods')
+    ,('scan_quota_ledger')
 ),
 required_columns(table_name, column_name) AS (
   VALUES
@@ -52,6 +60,18 @@ required_columns(table_name, column_name) AS (
     ,('scan_queue_jobs', 'attempts')
     ,('scan_queue_jobs', 'max_attempts')
     ,('scan_queue_jobs', 'idempotency_key')
+    ,('scan_queue_jobs', 'claim_token')
+    ,('scan_queue_jobs', 'claim_attempt')
+    ,('sessions_v2', 'token_hash')
+    ,('sessions_v2', 'revoked_at')
+    ,('auth_otps', 'code_digest')
+    ,('auth_otps', 'digest_version')
+    ,('auth_otps', 'attempt_count')
+    ,('auth_otps', 'locked_until')
+    ,('auth_otps', 'used_at')
+    ,('scan_quota_ledger', 'idempotency_key')
+    ,('scan_quota_ledger', 'status')
+    ,('scan_quota_periods', 'used_count')
     ,('scans', 'merchant_name')
     ,('scans', 'invoice_number')
     ,('scans', 'purchase_date')

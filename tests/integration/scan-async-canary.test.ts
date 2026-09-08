@@ -126,7 +126,7 @@ describe('Fridge scan async canary (in-memory D1)', () => {
     );
 
     expect(response.status).toBe(202);
-    const payload = await response.json();
+    const payload = await response.json<{ scan: { id: string } }>();
     expect(payload).toMatchObject({ success: true, queued: true, scan: { status: 'pending' } });
 
     const [message] = sentMessages as any[];

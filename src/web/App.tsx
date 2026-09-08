@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './lib/query-client';
+import { SessionBoundary } from './components/common/SessionBoundary';
 import { useAuthStore } from './stores/useAuthStore';
 import { AppLayout } from './components/layout/AppLayout';
 
@@ -30,15 +32,14 @@ import { MealDetailPage } from './pages/MealDetailPage';
 import { WeekShoppingPage } from './pages/WeekShoppingPage';
 import { WeekSettingsPage } from './pages/WeekSettingsPage';
 
-const queryClient = new QueryClient();
-
 export const App: React.FC = () => {
-  const { isOnboarded } = useAuthStore();
+  const { isOnboarded, userId, householdId } = useAuthStore();
 
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Routes>
+        <SessionBoundary>
+        <Routes key={`${userId}:${householdId}`}>
           {/* Public / Intro Routes */}
           <Route path="/landing" element={<LandingPage />} />
           <Route path="/auth" element={<AuthPage />} />
@@ -89,6 +90,7 @@ export const App: React.FC = () => {
           {/* Catch-all fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </SessionBoundary>
       </BrowserRouter>
     </QueryClientProvider>
   );

@@ -7,6 +7,7 @@ import { generateSessionToken, hmacSha256Hex, sha256Hex, SESSION_COOKIE } from '
 import { verifyGoogleToken } from '../utils/oauth';
 import { verifyTurnstileToken } from '../utils/turnstile';
 import { getJwtSecret } from '../middleware/auth';
+import { hasTrustedOrigin } from '../middleware/csrf';
 import { sendEmail, buildOtpEmail } from '../services/email';
 import { shouldConsumeOtpOnVerify } from '../utils/otp';
 
@@ -51,6 +52,16 @@ import {
 
 export const authRoutes = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
 
+// Session bootstrap also needs CSRF protection before a cookie exists.
+for (const path of ['login', 'register', 'verify-otp', 'resend-otp', 'forgot-password', 'reset-password', 'google', 'guest', 'logout']) {
+  authRoutes.use(`/auth/${path}`, async (c, next) => {
+    if (c.req.method === 'POST' && c.env.ENVIRONMENT === 'production' && !hasTrustedOrigin(c)) {
+      return c.json({ error: 'Cross-site request blocked', code: 'CSRF_ORIGIN_DENIED' }, 403);
+    }
+    return next();
+  });
+}
+
 // Apply rate limiting to all auth endpoints (max 15 requests per minute)
 authRoutes.use('/auth/*', rateLimiter({ maxRequests: 15, windowSeconds: 60, prefix: 'rl_auth' }));
 
@@ -86,11 +97,22 @@ async function markOtpFailure(db: any, otp: any): Promise<number> {
     `UPDATE auth_otps
         SET attempt_count = attempt_count + 1,
             locked_until = CASE WHEN attempt_count + 1 >= ? THEN datetime('now', '+15 minutes') ELSE locked_until END
-      WHERE id = ? AND used = 0 AND (locked_until IS NULL OR datetime(locked_until) <= datetime('now'))`
+      WHERE id = ? AND used = 0 AND attempt_count < 5
+        AND (locked_until IS NULL OR datetime(locked_until) <= datetime('now'))`
   ).bind(OTP_MAX_FAILURES, otp.id).run();
   if (result?.meta?.changes !== 1) return OTP_MAX_FAILURES;
   const row: any = await db.prepare('SELECT attempt_count FROM auth_otps WHERE id = ?').bind(otp.id).first();
   return Number(row?.attempt_count || 0);
+}
+
+async function consumeOtp(db: Env['DB'], id: string): Promise<boolean> {
+  const result = await db.prepare(
+    `UPDATE auth_otps SET used = 1, used_at = datetime('now')
+      WHERE id = ? AND used = 0 AND datetime(expires_at) > datetime('now')
+        AND attempt_count < ?
+        AND (locked_until IS NULL OR datetime(locked_until) <= datetime('now'))`
+  ).bind(id, OTP_MAX_FAILURES).run();
+  return result.meta?.changes === 1;
 }
 
 async function verifyOtpDigest(code: string, digestHex: string, secret: string): Promise<boolean> {
@@ -99,12 +121,13 @@ async function verifyOtpDigest(code: string, digestHex: string, secret: string):
   return crypto.subtle.verify('HMAC', key, sig, new TextEncoder().encode(code));
 }
 
-// Issue cryptographically signed JWT and persist session to D1
+// Persist only the hash of the opaque cookie credential.
 async function createSessionAndToken(
   db: any,
-  env: Env,
+  _env: Env,
   user: { id: string; email: string; householdId: string; role?: string; isGuest?: boolean }
 ): Promise<string> {
+  if (!db) throw new Error('SESSION_PERSIST_FAILED');
   const token = generateSessionToken();
   const tokenHash = await sha256Hex(token);
   const expSec = Math.floor(Date.now() / 1000) + 7 * 86400;
@@ -364,7 +387,7 @@ authRoutes.post('/auth/verify-otp', async (c) => {
   try {
     const otpRow: any = await getLatestOtp(db, normalizedEmail, purpose);
     if (!otpRow) return c.json({ error: 'Mã OTP không chính xác hoặc đã được sử dụng' }, 400);
-    if (otpRow.locked_until && new Date(otpRow.locked_until).getTime() > Date.now()) {
+    if (otpRow.attempt_count >= OTP_MAX_FAILURES || (otpRow.locked_until && new Date(otpRow.locked_until).getTime() > Date.now())) {
       c.header('Retry-After', String(OTP_LOCK_SECONDS));
       return c.json(
         { error: 'Bạn đã nhập sai quá 5 lần. Vui lòng đợi 15 phút rồi thử lại.' },
@@ -392,11 +415,9 @@ authRoutes.post('/auth/verify-otp', async (c) => {
       return c.json({ error: 'Mã OTP đã hết hạn. Vui lòng bấm gửi lại mã mới.' }, 400);
     }
 
-    // Only a valid, unexpired OTP clears the shared attempt counter.
-    // Registration/login OTPs are consumed here. Password-reset OTPs must stay
-    // available for /auth/reset-password, which performs the final consume.
-    if (shouldConsumeOtpOnVerify(purpose)) {
-      await db.prepare("UPDATE auth_otps SET used = 1, used_at = datetime('now') WHERE id = ? AND used = 0").bind(otpRow.id).run();
+    // Reset verification is preliminary; only the final reset consumes it.
+    if (shouldConsumeOtpOnVerify(purpose) && !await consumeOtp(db, otpRow.id)) {
+      return c.json({ error: 'Mã OTP không chính xác hoặc đã được sử dụng' }, 400);
     }
 
     if (purpose === 'register') {
@@ -418,15 +439,23 @@ authRoutes.post('/auth/verify-otp', async (c) => {
       // household so nothing they scanned disappears after signing up.
       const guestHouseholdId = rawBody?.migrateFromHouseholdId;
 
-      // S1 FIX: only migrate a guest household the caller can *prove* they own.
-      // Proof = presenting the same signed guest JWT (Authorization: Bearer) whose
-      // `hid` equals migrateFromHouseholdId and `isGuest` is true. Guest ids are
-      // predictable (`hh_guest_${Date.now()}`), so the string prefix check alone
-      // let any registrant reassign another visitor's inventory/shopping to their
-      // account. Without a matching, validly-signed guest token we skip migration.
+      // New guests use D1-authoritative cookies; retain signed guest migration compatibility.
       let ownsGuestHousehold = false;
+      const guestCookie = c.req.header('cookie')?.split(';').map((v) => v.trim())
+        .find((v) => v.startsWith(`${SESSION_COOKIE}=`))?.slice(SESSION_COOKIE.length + 1);
+      if (guestCookie && typeof guestHouseholdId === 'string') {
+        let token = '';
+        try { token = decodeURIComponent(guestCookie); } catch { /* invalid cookie */ }
+        const guest = await db.prepare(
+          `SELECT s.user_id FROM sessions_v2 s JOIN users u ON u.id = s.user_id
+            WHERE s.token_hash = ? AND s.household_id = ? AND u.is_guest = 1
+              AND s.revoked_at IS NULL AND datetime(s.expires_at) > datetime('now')`
+        ).bind(await sha256Hex(token), guestHouseholdId).first();
+        ownsGuestHousehold = Boolean(guest);
+      }
       const reqAuthHeader = c.req.header('authorization');
       if (
+        !ownsGuestHousehold &&
         typeof guestHouseholdId === 'string' &&
         guestHouseholdId.startsWith('hh_guest_') &&
         reqAuthHeader?.startsWith('Bearer ')
@@ -514,7 +543,7 @@ authRoutes.post('/auth/verify-otp', async (c) => {
         }
       }
 
-      // SEC-04 FIX: Return signed cryptographic JWT instead of plain string
+      // The reusable credential is returned only via the HttpOnly cookie.
       const token = await createSessionAndToken(db, c.env, {
         id: userId,
         email: normalizedEmail,
@@ -526,6 +555,7 @@ authRoutes.post('/auth/verify-otp', async (c) => {
       return c.json({
         success: true,
         message: 'Xác thực tài khoản thành công!',
+        migratedFromHouseholdId: ownsGuestHousehold ? guestHouseholdId : undefined,
         user: {
           id: userId,
           email: userRow?.email,
@@ -838,7 +868,7 @@ authRoutes.post('/auth/reset-password', async (c) => {
     const otpPurpose = 'forgot_password';
     const otpRow: any = await getLatestOtp(db, normalizedEmail, otpPurpose);
     if (!otpRow) return c.json({ error: 'Mã OTP không chính xác hoặc đã được sử dụng' }, 400);
-    if (otpRow.locked_until && new Date(otpRow.locked_until).getTime() > Date.now()) {
+    if (otpRow.attempt_count >= OTP_MAX_FAILURES || (otpRow.locked_until && new Date(otpRow.locked_until).getTime() > Date.now())) {
       c.header('Retry-After', String(OTP_LOCK_SECONDS));
       return c.json(
         { error: 'Bạn đã nhập sai quá 5 lần. Vui lòng đợi 15 phút rồi thử lại.' },
@@ -867,11 +897,7 @@ authRoutes.post('/auth/reset-password', async (c) => {
     }
 
     // Consume atomically so concurrent reset requests cannot both succeed.
-    const consumeResult: any = await db
-      .prepare("UPDATE auth_otps SET used = 1, used_at = datetime('now') WHERE id = ? AND used = 0")
-      .bind(otpRow.id)
-      .run();
-    if (consumeResult?.meta && consumeResult.meta.changes !== 1) {
+    if (!await consumeOtp(db, otpRow.id)) {
       return c.json({ error: 'Mã OTP không chính xác hoặc đã được sử dụng' }, 400);
     }
 
@@ -879,10 +905,13 @@ authRoutes.post('/auth/reset-password', async (c) => {
     const salt = generateSalt();
     const hash = await hashPassword(newPassword, salt);
 
-    await db
-      .prepare("UPDATE auth_accounts SET password_hash = ?, salt = ?, updated_at = datetime('now') WHERE email = ?")
-      .bind(hash, salt, normalizedEmail)
-      .run();
+    await db.batch([
+      db.prepare("UPDATE auth_accounts SET password_hash = ?, salt = ?, updated_at = datetime('now') WHERE email = ?")
+        .bind(hash, salt, normalizedEmail),
+      db.prepare(`UPDATE sessions_v2 SET revoked_at = datetime('now')
+        WHERE user_id = (SELECT user_id FROM auth_accounts WHERE email = ?) AND revoked_at IS NULL`)
+        .bind(normalizedEmail),
+    ]);
 
     // UX: auto-login after successful reset — issue a fresh session so the user
     // lands straight in the app instead of re-typing the new password.

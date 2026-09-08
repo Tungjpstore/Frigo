@@ -16,6 +16,8 @@
 
 const STORAGE_KEY = 'frigo_sync_outbox_v1';
 
+import { onPrivateSessionReset, privateSessionBlocked } from './private-session';
+
 export interface PendingOp {
   id: string;
   /** Stable operation identifier used for server idempotency/audit. */
@@ -49,7 +51,11 @@ function load(): PendingOp[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? (arr as PendingOp[]) : [];
+    if (!Array.isArray(arr)) return [];
+    const owned = arr.filter((op) => op && typeof op.userId === 'string' && op.userId &&
+      typeof op.householdId === 'string' && op.householdId && typeof op.operationId === 'string' && op.operationId);
+    if (owned.length !== arr.length) localStorage.setItem(STORAGE_KEY, JSON.stringify(owned));
+    return owned;
   } catch {
     return [];
   }
@@ -76,6 +82,9 @@ function emit(): void {
 }
 
 export function pushOp(op: Omit<PendingOp, 'id' | 'ts'>): PendingOp {
+  if (privateSessionBlocked() || !op.userId || !op.householdId) {
+    throw new Error('Private operation requires an active owner');
+  }
   const operationId = op.operationId || `op_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const full: PendingOp = {
     ...op,
@@ -185,17 +194,18 @@ export function subscribe(fn: Listener): () => void {
 async function flushOnce(
   replay: (op: PendingOp) => Promise<void>,
   isNonRetryable?: (err: unknown) => boolean,
-  options?: { scope?: PendingScope | (() => PendingScope) }
+  options?: { scope?: PendingScope | (() => PendingScope); canReplay?: () => boolean }
 ): Promise<{ attempted: number; remaining: number }> {
   const ops = load();
   let attempted = 0;
   for (const op of ops) {
+    if (privateSessionBlocked() || options?.canReplay?.() === false) break;
     // Operations from a different account/household stay queued for that
-    // identity. Replaying them with the current JWT would be a data leak.
+    // identity. Replaying them with another session would be a data leak.
     const scope = typeof options?.scope === 'function' ? options.scope() : options?.scope;
     if (
-      scope &&
-      (op.userId !== scope.userId || op.householdId !== scope.householdId)
+      !scope || !scope.userId || !scope.householdId ||
+      op.userId !== scope.userId || op.householdId !== scope.householdId
     ) {
       continue;
     }
@@ -224,7 +234,7 @@ let flushChain: Promise<void> = Promise.resolve();
 export function flush(
   replay: (op: PendingOp) => Promise<void>,
   isNonRetryable?: (err: unknown) => boolean,
-  options?: { scope?: PendingScope | (() => PendingScope) }
+  options?: { scope?: PendingScope | (() => PendingScope); canReplay?: () => boolean }
 ): Promise<{ attempted: number; remaining: number }> {
   const result = flushChain.then(() => flushOnce(replay, isNonRetryable, options));
   flushChain = result.then(
@@ -252,3 +262,5 @@ export function initSync(retry: () => Promise<unknown>): void {
     if (navigator.onLine) void retry();
   });
 }
+
+onPrivateSessionReset(emit);

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { MealPlan, MealPlanSetupInput, MealSwapAlternative } from '@frigo/domain';
 import { api } from '../services/api';
+import { capturePrivateSession, onPrivateSessionReset } from '../lib/private-session';
 
 interface WeekStoreState {
   currentPlan: MealPlan | null;
@@ -43,24 +44,30 @@ export const useWeekStore = create<WeekStoreState>((set, get) => ({
   isLoadingAlternatives: false,
 
   loadCurrentPlan: async () => {
+    const isCurrent = capturePrivateSession();
     set({ isLoading: true, error: null });
     try {
       const plan = await api.getCurrentWeekPlan();
+      if (!isCurrent()) return null;
       set({ currentPlan: plan, isLoading: false });
       return plan;
     } catch (err: any) {
+      if (!isCurrent()) return null;
       set({ error: err?.message || 'Không thể tải thực đơn tuần', isLoading: false });
       return null;
     }
   },
 
   loadPlanById: async (id: string) => {
+    const isCurrent = capturePrivateSession();
     set({ isLoading: true, error: null });
     try {
       const plan = await api.getWeekPlan(id);
+      if (!isCurrent()) return null;
       set({ currentPlan: plan, isLoading: false });
       return plan;
     } catch (err: any) {
+      if (!isCurrent()) return null;
       set({ error: err?.message || 'Không thể tìm thấy thực đơn', isLoading: false });
       return null;
     }
@@ -85,29 +92,34 @@ export const useWeekStore = create<WeekStoreState>((set, get) => ({
   },
 
   generatePlan: async (input) => {
+    const isCurrent = capturePrivateSession();
     set({ isGenerating: true, error: null });
     try {
       const plan = await api.createWeekPlan(input);
+      if (!isCurrent()) throw new Error('Session changed');
       set({ currentPlan: plan, isGenerating: false });
       return plan;
     } catch (err: any) {
-      set({ error: err?.message || 'Không thể tạo thực đơn tuần', isGenerating: false });
+      if (isCurrent()) set({ error: err?.message || 'Không thể tạo thực đơn tuần', isGenerating: false });
       throw err;
     }
   },
 
   openSwap: async (slotId: string) => {
+    const isCurrent = capturePrivateSession();
     const { currentPlan } = get();
     if (!currentPlan) return;
 
     set({ swapSlotId: slotId, isLoadingAlternatives: true, swapAlternatives: [] });
     try {
       const res = await api.swapMeal(currentPlan.id, slotId);
+      if (!isCurrent()) return;
       set({
         swapAlternatives: res.alternatives || [],
         isLoadingAlternatives: false,
       });
     } catch (err) {
+      if (!isCurrent()) return;
       console.error('Failed fetching alternatives:', err);
       set({ isLoadingAlternatives: false });
     }
@@ -118,23 +130,27 @@ export const useWeekStore = create<WeekStoreState>((set, get) => ({
   },
 
   executeSwap: async (recipeId: string) => {
+    const isCurrent = capturePrivateSession();
     const { currentPlan, swapSlotId } = get();
     if (!currentPlan || !swapSlotId) return;
 
     set({ isLoading: true });
     try {
       const res = await api.swapMeal(currentPlan.id, swapSlotId, recipeId);
+      if (!isCurrent()) return;
       if (res.plan) {
         set({ currentPlan: res.plan, swapSlotId: null, swapAlternatives: [], isLoading: false });
       } else {
         set({ isLoading: false });
       }
     } catch (err: any) {
+      if (!isCurrent()) return;
       set({ error: err?.message || 'Không thể đổi món', isLoading: false });
     }
   },
 
   markMealCooked: async (mealId: string) => {
+    const isCurrent = capturePrivateSession();
     const { currentPlan } = get();
     if (!currentPlan) return;
 
@@ -142,7 +158,7 @@ export const useWeekStore = create<WeekStoreState>((set, get) => ({
       const updated = await api.updateMealSlot(currentPlan.id, mealId, {
         status: 'COOKED',
       });
-      if (updated) {
+      if (isCurrent() && updated) {
         set({ currentPlan: updated });
       }
     } catch (err) {
@@ -176,3 +192,5 @@ export const useWeekStore = create<WeekStoreState>((set, get) => ({
     };
   },
 }));
+
+onPrivateSessionReset(() => useWeekStore.setState(useWeekStore.getInitialState()));

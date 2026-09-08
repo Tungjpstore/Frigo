@@ -3,6 +3,7 @@ import { HTTPException } from 'hono/http-exception';
 import { Env, AuthContext } from '../types';
 import { verifyJwt, JwtPayload } from '../utils/jwt';
 import { sha256Hex, SESSION_COOKIE } from '../utils/session';
+import { hasTrustedOrigin } from './csrf';
 
 // SEC-01: No default JWT secret. If JWT_SECRET is not configured as a Wrangler
 // secret, auth fails closed (503) instead of silently trusting a public key.
@@ -32,31 +33,35 @@ const PUBLIC_PATHS = [
   '/billing/payos/webhook',
 ];
 
+function hasExpectedOwner(
+  c: Context<{ Bindings: Env; Variables: { auth: AuthContext } }>,
+  auth: Pick<AuthContext, 'userId' | 'householdId'>,
+): boolean {
+  const userId = c.req.header('X-Frigo-Expected-User-Id');
+  const householdId = c.req.header('X-Frigo-Expected-Household-Id');
+  // Legacy clients omit both; owner-bound reads and writes must match both exactly.
+  if (userId === undefined && householdId === undefined) return true;
+  return Boolean(userId && householdId && userId === auth.userId && householdId === auth.householdId);
+}
+
 export async function authMiddleware(
   c: Context<{ Bindings: Env; Variables: { auth: AuthContext } }>,
   next: Next
 ) {
   const path = c.req.path;
 
-  // Allow public paths through without token
-  if (PUBLIC_PATHS.some((p) => path.endsWith(p))) {
-    return await next();
-  }
-
   const cookieHeader = c.req.header('cookie') || '';
   const cookieToken = cookieHeader.split(';').map((v) => v.trim()).find((v) => v.startsWith(`${SESSION_COOKIE}=`))?.slice(SESSION_COOKIE.length + 1);
   const authHeader = c.req.header('authorization');
 
-  // Cookie-authenticated mutations must originate from the configured app.
-  // SameSite cookies provide a second layer, while this check blocks cross-site
-  // POST/PATCH/DELETE requests from browsers that relax cookie policy.
-  if (cookieToken && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(c.req.method)) {
-    const origin = c.req.header('origin') || c.req.header('referer');
-    const allowed = c.env.APP_URL;
-    if (origin && allowed && !origin.startsWith(allowed)) {
+  const isPublic = PUBLIC_PATHS.some((p) => path.endsWith(p));
+  if (cookieToken && (!isPublic || path.includes('/auth/')) && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(c.req.method)) {
+    if (!hasTrustedOrigin(c)) {
       return c.json({ error: 'Cross-site request blocked', code: 'CSRF_ORIGIN_DENIED' }, 403);
     }
   }
+
+  if (isPublic) return await next();
 
   // Cookie-only sessions are authoritative. Bearer JWTs are retained only for
   // guest migration/reset compatibility and are never accepted for normal API access.
@@ -72,6 +77,9 @@ export async function authMiddleware(
           WHERE s.token_hash = ? AND s.revoked_at IS NULL AND datetime(s.expires_at) > datetime('now') LIMIT 1`
       ).bind(tokenHash).first();
       if (row) {
+        if (!hasExpectedOwner(c, { userId: row.user_id, householdId: row.household_id })) {
+          return c.json({ error: 'Request owner does not match authenticated session', code: 'SESSION_OWNER_MISMATCH' }, 403);
+        }
         c.set('auth', { userId: row.user_id, householdId: row.household_id, email: row.email, isGuest: Boolean(row.is_guest), sessionId: row.id });
         await c.env.DB.prepare("UPDATE sessions_v2 SET last_seen_at = datetime('now') WHERE id = ?").bind(row.id).run().catch(() => {});
         return await next();
@@ -123,6 +131,9 @@ export async function authMiddleware(
       );
     }
 
+    if (!hasExpectedOwner(c, { userId: p.sub, householdId: p.hid })) {
+      return c.json({ error: 'Request owner does not match authenticated session', code: 'SESSION_OWNER_MISMATCH' }, 403);
+    }
     c.set('auth', {
       userId: p.sub,
       householdId: p.hid,

@@ -18,6 +18,7 @@ import { clsx } from 'clsx';
 export const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
   const { setOnboardingData, setGuestSession } = useAuthStore();
+  const [guestError, setGuestError] = useState<string | null>(null);
 
   // 7 steps matching Master Board:
   // 1: Splash (1.1)
@@ -76,6 +77,13 @@ export const OnboardingPage: React.FC = () => {
   };
 
   const handleFinish = async () => {
+    setGuestError(null);
+    try {
+      await setGuestSession();
+    } catch (error) {
+      setGuestError(error instanceof Error ? error.message : 'Không thể khởi tạo phiên khách. Vui lòng thử lại.');
+      return;
+    }
     setOnboardingData({
       householdSize,
       spicyLevel: restrictions.includes('spicy') ? 'none' : 'medium',
@@ -83,7 +91,6 @@ export const OnboardingPage: React.FC = () => {
       dietaryRestrictions: restrictions,
       primaryGoal,
     });
-    await setGuestSession();
     if (primaryGoal === 'week') {
       navigate('/week/setup');
     } else {
@@ -297,10 +304,16 @@ export const OnboardingPage: React.FC = () => {
 
         {/* Footer info */}
         <div className="text-center pt-8 space-y-3">
+          {guestError && <p role="alert" className="text-sm text-rose-700">{guestError}</p>}
           <button
             onClick={async () => {
-              await setGuestSession();
-              setStep(4);
+              setGuestError(null);
+              try {
+                await setGuestSession();
+                setStep(4);
+              } catch (error) {
+                setGuestError(error instanceof Error ? error.message : 'Không thể khởi tạo phiên khách. Vui lòng thử lại.');
+              }
             }}
             className="text-xs font-semibold text-emerald-700 hover:underline"
           >
@@ -613,6 +626,7 @@ export const OnboardingPage: React.FC = () => {
 
       {/* Message and Start Action */}
       <div className="space-y-6 pb-4 text-center">
+        {guestError && <p role="alert" className="text-sm text-rose-700">{guestError}</p>}
         <p className="text-xs text-slate-600 leading-relaxed max-w-xs mx-auto">
           Frigo sẽ đồng hành cùng bạn trong hành trình ăn ngon, sống khỏe, tiết kiệm và không lãng phí.
         </p>

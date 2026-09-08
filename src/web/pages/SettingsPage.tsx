@@ -49,10 +49,9 @@ export const SettingsPage: React.FC = () => {
     setTimeout(() => setCacheCleared(false), 3000);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (confirm('Bạn có chắc muốn đăng xuất? Dữ liệu cục bộ sẽ được làm mới.')) {
-      logout();
-      navigate('/landing');
+      if (await logout()) navigate('/landing', { replace: true });
     }
   };
 

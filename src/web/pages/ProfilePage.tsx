@@ -19,9 +19,8 @@ export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { displayName, email, isPlus, avatarUrl, logout } = useAuthStore();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/auth');
+  const handleLogout = async () => {
+    if (await logout()) navigate('/auth', { replace: true });
   };
 
   const initialLetter = (displayName || 'M').charAt(0).toUpperCase();

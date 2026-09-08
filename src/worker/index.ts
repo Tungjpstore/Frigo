@@ -91,7 +91,8 @@ app.use('*', cors({
   // The SPA sends tenant context headers on every request and idempotency
   // keys on durable commands. Include them in preflight responses for a
   // separately-hosted frontend as well as same-origin deployments.
-  allowHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'x-household-id', 'Idempotency-Key', 'If-Match'],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'x-household-id',
+    'X-Frigo-Expected-User-Id', 'X-Frigo-Expected-Household-Id', 'Idempotency-Key', 'If-Match'],
   credentials: true,
   maxAge: 86400,
 }));

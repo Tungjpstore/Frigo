@@ -105,6 +105,7 @@ async function claimScanJobWithLease(env: Env, message: ScanQueueMessage): Promi
   if (scan.scan_type !== scanType) {
     throw new ScanQueueError('Queue scan type does not match persisted scan', 'SCAN_TYPE_MISMATCH', false);
   }
+  if (['ready', 'confirmed', 'failed'].includes(scan.status)) return { status: 'done' };
 
   const jobId = message.jobId || `scan_job_${message.scanId}`;
   const idempotencyKey = message.idempotencyKey || jobId;
@@ -117,67 +118,84 @@ async function claimScanJobWithLease(env: Env, message: ScanQueueMessage): Promi
   }
   if (!existingByKey) {
     await env.DB.prepare(
-      `INSERT INTO scan_queue_jobs
+      `INSERT OR IGNORE INTO scan_queue_jobs
         (id, scan_id, household_id, user_id, idempotency_key)
-       VALUES (?, ?, ?, ?, ?)`,
-    ).bind(jobId, message.scanId, message.householdId, message.userId, idempotencyKey).run();
-  }
-
-  if (scan.status === 'ready' || scan.status === 'confirmed') {
-    await env.DB.prepare(
-      `UPDATE scan_queue_jobs SET status = 'ready', completed_at = COALESCE(completed_at, datetime('now')),
-         updated_at = datetime('now') WHERE id = ? AND status IN ('pending', 'processing')`,
-    ).bind(jobId).run();
-    return { status: 'done' };
+       SELECT ?, ?, ?, ?, ? WHERE EXISTS (
+         SELECT 1 FROM scans WHERE id = ? AND user_id = ? AND household_id = ?
+           AND status IN ('pending', 'processing'))`,
+    ).bind(jobId, message.scanId, message.householdId, message.userId, idempotencyKey,
+      message.scanId, message.userId, message.householdId).run();
   }
 
   const existing = await env.DB.prepare(
-    `SELECT status, locked_at, attempts, max_attempts, scan_id, user_id, household_id, claim_token
-       FROM scan_queue_jobs WHERE id = ?`,
-  ).bind(jobId).first<{ status: string; locked_at: string | null; attempts: number; max_attempts: number; scan_id: string; user_id: string; household_id: string; claim_token: string | null }>();
-  if (existing && (existing.scan_id !== message.scanId || existing.user_id !== message.userId || existing.household_id !== message.householdId)) {
+    `SELECT id, status, scan_id, user_id, household_id, idempotency_key
+       FROM scan_queue_jobs WHERE id = ? OR idempotency_key = ?`,
+  ).bind(jobId, idempotencyKey).first<{ id: string; status: string; scan_id: string; user_id: string; household_id: string; idempotency_key: string }>();
+  if (existing && (existing.id !== jobId || existing.scan_id !== message.scanId || existing.user_id !== message.userId || existing.household_id !== message.householdId || existing.idempotency_key !== idempotencyKey)) {
     throw new ScanQueueError('Queue idempotency key is bound to another scan tenant', 'IDEMPOTENCY_CONFLICT', false);
   }
   if (existing?.status === 'ready' || existing?.status === 'failed') return { status: 'done' };
-  if (existing?.status === 'processing') {
-    // A duplicate delivery must not run AI twice. Only reclaim a lease that
-    // has been processing for more than ten minutes (e.g. a crashed isolate).
-    const stale = await env.DB.prepare(
-      `SELECT 1 AS stale FROM scan_queue_jobs
-       WHERE id = ? AND (locked_at IS NULL OR locked_at < datetime('now', '-10 minutes'))`,
-    ).bind(jobId).first();
-    if (!stale) {
-      throw new ScanQueueError('Scan job is already being processed', 'JOB_IN_PROGRESS', true);
-    }
-    if (existing.attempts >= existing.max_attempts) {
-      await env.DB.prepare(
-        `UPDATE scan_queue_jobs SET status = 'failed', error_code = 'MAX_ATTEMPTS_EXCEEDED',
-           error_message = 'Processing lease expired after maximum attempts', updated_at = datetime('now')
-         WHERE id = ? AND status = 'processing'`,
-      ).bind(jobId).run();
-      return { status: 'done' };
-    }
-    await env.DB.prepare(
-      `UPDATE scan_queue_jobs SET status = 'pending', updated_at = datetime('now') WHERE id = ? AND status = 'processing'`,
-    ).bind(jobId).run();
-  }
 
   const claimToken = newClaimToken();
-  const result = await env.DB.prepare(
-    `UPDATE scan_queue_jobs
+  const exhaustedToken = newClaimToken();
+  const eligible = `(status = 'pending' OR (status = 'processing'
+    AND (locked_at IS NULL OR datetime(locked_at) <= datetime('now', '-10 minutes'))))`;
+  const results = await env.DB.batch([
+    env.DB.prepare(`UPDATE scan_queue_jobs SET status = 'failed', error_code = 'MAX_ATTEMPTS_EXCEEDED',
+      error_message = 'Processing lease expired after maximum attempts', completed_at = datetime('now'), updated_at = datetime('now'), claim_token = ?
+      WHERE id = ? AND attempts >= max_attempts AND ${eligible}
+        AND EXISTS (SELECT 1 FROM scans WHERE id = ? AND user_id = ? AND household_id = ? AND status IN ('pending', 'processing'))`)
+      .bind(exhaustedToken, jobId, message.scanId, message.userId, message.householdId),
+    env.DB.prepare(`UPDATE scans SET status = 'failed', updated_at = datetime('now')
+      WHERE id = ? AND user_id = ? AND household_id = ? AND status IN ('pending', 'processing')
+        AND EXISTS (SELECT 1 FROM scan_queue_jobs WHERE id = ? AND status = 'failed' AND claim_token = ?)`)
+      .bind(message.scanId, message.userId, message.householdId, jobId, exhaustedToken),
+    env.DB.prepare(`UPDATE scan_queue_jobs
        SET status = 'processing', attempts = attempts + 1,
            locked_at = datetime('now'), updated_at = datetime('now'),
            error_code = NULL, error_message = NULL,
            claim_token = ?, claim_attempt = attempts + 1
-     WHERE id = ? AND status = 'pending' AND attempts < max_attempts`,
-  ).bind(claimToken, jobId).run();
-  if (!result.meta?.changes) return { status: 'done' };
+     WHERE id = ? AND attempts < max_attempts AND ${eligible}
+       AND EXISTS (SELECT 1 FROM scans WHERE id = ? AND user_id = ? AND household_id = ?
+         AND status IN ('pending', 'processing'))`)
+      .bind(claimToken, jobId, message.scanId, message.userId, message.householdId),
+    env.DB.prepare(`UPDATE scans SET status = 'processing', updated_at = datetime('now')
+      WHERE id = ? AND status IN ('pending', 'processing')
+        AND EXISTS (SELECT 1 FROM scan_queue_jobs WHERE id = ? AND status = 'processing' AND claim_token = ?)`)
+      .bind(message.scanId, jobId, claimToken),
+  ]);
+  if (results.some((result) => !result.success)) throw new ScanQueueError('Scan claim failed', 'CLAIM_FAILED', true);
+  if (results[2].meta?.changes === 1) return { status: 'claimed', jobId, claimToken };
+  const current = await env.DB.prepare(`SELECT scans.status AS scan_status, scan_queue_jobs.status AS job_status
+    FROM scans LEFT JOIN scan_queue_jobs ON scan_queue_jobs.id = ? WHERE scans.id = ?`)
+    .bind(jobId, message.scanId).first<{ scan_status: string; job_status: string | null }>();
+  if (!current) return { status: 'missing' };
+  if (['ready', 'confirmed', 'failed'].includes(current.scan_status) || ['ready', 'failed'].includes(current.job_status || '')) {
+    return { status: 'done' };
+  }
+  throw new ScanQueueError('Scan job is already being processed', 'JOB_IN_PROGRESS', true);
+}
 
-  await env.DB.prepare(
-    `UPDATE scans SET status = 'processing', updated_at = datetime('now')
-     WHERE id = ? AND status IN ('pending', 'processing')`,
-  ).bind(message.scanId).run();
-  return { status: 'claimed', jobId, claimToken };
+function commitFence(env: Env, message: ScanQueueMessage, jobId: string, claimToken: string) {
+  const token = newClaimToken();
+  // Rotate to a transaction-only token before any side effects. A lost/expired
+  // claim cannot produce this token, so every later statement becomes a no-op.
+  const acquire = env.DB.prepare(`UPDATE scan_queue_jobs SET claim_token = ?
+    WHERE id = ? AND scan_id = ? AND user_id = ? AND household_id = ?
+      AND status = 'processing' AND claim_token = ?
+      AND datetime(locked_at) > datetime('now', '-10 minutes')
+      AND EXISTS (SELECT 1 FROM scans WHERE id = ? AND status = 'processing')`)
+    .bind(token, jobId, message.scanId, message.userId, message.householdId, claimToken, message.scanId);
+  const guard = `EXISTS (SELECT 1 FROM scan_queue_jobs WHERE id = ? AND status = 'processing' AND claim_token = ?)`;
+  const bindings = [jobId, token] as const;
+  return { acquire, guard, bindings };
+}
+
+function assertFencedCommit(results: { success: boolean; meta: Record<string, unknown> }[]): void {
+  if (results.some((result) => !result.success)) throw new ScanQueueError('Scan persistence failed', 'DATABASE_ERROR', true);
+  if (results[0].meta?.changes !== 1 || results[results.length - 1].meta?.changes !== 1) {
+    throw new ScanQueueError('Scan result claim was lost before commit', 'CLAIM_LOST', true);
+  }
 }
 
 /** Backward-compatible status helper for tests and operational tooling. */
@@ -199,16 +217,17 @@ export async function processScanJob(env: Env, messageBody: unknown): Promise<vo
     const image = await loadImage(env, message);
     const router = getRouter(env);
     const scanType = message.scanType || 'fridge';
+    const fence = commitFence(env, message, jobId, claimToken);
     if (scanType === 'receipt') {
       const receipt = await router.receiptScan({ imageBase64OrUrl: image.data, mimeType: image.mimeType });
       const statements = receipt.items.map((item, index) => {
         const canonical = findCanonicalIngredient(item.raw_name);
         const providerCanonical = item.canonical_id ? findCanonicalIngredient(item.canonical_id) : null;
         return env.DB.prepare(
-          `INSERT OR IGNORE INTO scan_items
+          `INSERT INTO scan_items
             (id, scan_id, raw_name, canonical_id, estimated_quantity, unit, confidence, category, storage,
              unit_price_vnd, total_price_vnd)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE ${fence.guard}`,
         ).bind(
           `scan_item_${message.scanId}_${index}`,
           message.scanId,
@@ -221,25 +240,25 @@ export async function processScanJob(env: Env, messageBody: unknown): Promise<vo
           item.storage || 'fridge',
           item.unit_price_vnd ?? null,
           item.total_price_vnd ?? null,
+          ...fence.bindings,
         );
       });
       const commitStatements = [
-        env.DB.prepare('DELETE FROM scan_items WHERE scan_id = ?').bind(message.scanId),
+        fence.acquire,
+        env.DB.prepare(`DELETE FROM scan_items WHERE scan_id = ? AND ${fence.guard}`).bind(message.scanId, ...fence.bindings),
         ...statements,
         env.DB.prepare(
           `UPDATE scans SET status = 'ready', merchant_name = ?, invoice_number = ?, purchase_date = ?,
              total_amount_vnd = ?, updated_at = datetime('now')
-           WHERE id = ? AND status = 'processing'`,
-        ).bind(receipt.merchant_name ?? null, receipt.invoice_number ?? null, receipt.purchase_date ?? null, receipt.total_amount_vnd ?? null, message.scanId),
+           WHERE id = ? AND status = 'processing' AND ${fence.guard}`,
+        ).bind(receipt.merchant_name ?? null, receipt.invoice_number ?? null, receipt.purchase_date ?? null, receipt.total_amount_vnd ?? null, message.scanId, ...fence.bindings),
         env.DB.prepare(
           `UPDATE scan_queue_jobs SET status = 'ready', completed_at = datetime('now'), updated_at = datetime('now')
            WHERE id = ? AND status = 'processing' AND claim_token = ?`,
-        ).bind(jobId, claimToken),
+        ).bind(...fence.bindings),
       ];
       const commitResults = await env.DB.batch(commitStatements);
-      if (commitResults.some((result: any) => result?.meta?.changes === 0 && result !== commitResults[0])) {
-        throw new ScanQueueError('Scan result claim was lost before commit', 'CLAIM_LOST', true);
-      }
+      assertFencedCommit(commitResults);
     } else {
       const result = await router.vision({
         imageBase64OrUrl: image.data,
@@ -248,9 +267,9 @@ export async function processScanJob(env: Env, messageBody: unknown): Promise<vo
       const statements = result.items.map((item, index) => {
       const canonical = findCanonicalIngredient(item.raw_name);
       return env.DB.prepare(
-        `INSERT OR IGNORE INTO scan_items
+        `INSERT INTO scan_items
           (id, scan_id, raw_name, canonical_id, estimated_quantity, unit, confidence, category, storage)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE ${fence.guard}`,
       ).bind(
         `scan_item_${message.scanId}_${index}`,
         message.scanId,
@@ -261,37 +280,44 @@ export async function processScanJob(env: Env, messageBody: unknown): Promise<vo
         item.confidence,
         canonical?.category || item.category || 'other',
         item.storage || 'fridge',
+        ...fence.bindings,
       );
       });
       const commitStatements = [
-        env.DB.prepare('DELETE FROM scan_items WHERE scan_id = ?').bind(message.scanId),
+        fence.acquire,
+        env.DB.prepare(`DELETE FROM scan_items WHERE scan_id = ? AND ${fence.guard}`).bind(message.scanId, ...fence.bindings),
         ...statements,
-        env.DB.prepare(`UPDATE scans SET status = 'ready', updated_at = datetime('now') WHERE id = ? AND status = 'processing'`)
-          .bind(message.scanId),
+        env.DB.prepare(`UPDATE scans SET status = 'ready', updated_at = datetime('now') WHERE id = ? AND status = 'processing' AND ${fence.guard}`)
+          .bind(message.scanId, ...fence.bindings),
         env.DB.prepare(
           `UPDATE scan_queue_jobs SET status = 'ready', completed_at = datetime('now'), updated_at = datetime('now')
            WHERE id = ? AND status = 'processing' AND claim_token = ?`,
-        ).bind(jobId, claimToken),
+        ).bind(...fence.bindings),
       ];
       const commitResults = await env.DB.batch(commitStatements);
-      if (commitResults.some((result: any) => result?.meta?.changes === 0 && result !== commitResults[0])) {
-        throw new ScanQueueError('Scan result claim was lost before commit', 'CLAIM_LOST', true);
-      }
+      assertFencedCommit(commitResults);
     }
   } catch (error) {
     const code = error instanceof ScanQueueError ? error.code : 'AI_SCAN_FAILED';
     const requestedRetry = error instanceof ScanQueueError ? error.retryable : true;
     const attemptsRow = await env.DB.prepare(
-      `SELECT attempts, max_attempts FROM scan_queue_jobs WHERE id = ?`,
-    ).bind(jobId).first<{ attempts: number; max_attempts: number }>();
-    const retryable = requestedRetry && Boolean(attemptsRow && attemptsRow.attempts < attemptsRow.max_attempts);
-    await env.DB.prepare(
-      `UPDATE scan_queue_jobs SET status = ?, error_code = ?, error_message = ?, updated_at = datetime('now')
-       WHERE id = ? AND status = 'processing' AND claim_token = ?`,
-    ).bind(retryable ? 'pending' : 'failed', code, error instanceof Error ? error.message.slice(0, 500) : String(error), jobId, claimToken).run().catch(() => undefined);
-    await env.DB.prepare(
-      `UPDATE scans SET status = ?, updated_at = datetime('now') WHERE id = ? AND status = 'processing'`,
-    ).bind(retryable ? 'pending' : 'failed', message.scanId).run().catch(() => undefined);
+      `SELECT attempts, max_attempts FROM scan_queue_jobs WHERE id = ? AND status = 'processing' AND claim_token = ?`,
+    ).bind(jobId, claimToken).first<{ attempts: number; max_attempts: number }>();
+    if (!attemptsRow) throw new ScanQueueError('Scan job claim is no longer owned', 'CLAIM_LOST', true);
+    const retryable = requestedRetry && attemptsRow.attempts < attemptsRow.max_attempts;
+    const fence = commitFence(env, message, jobId, claimToken);
+    const failureResults = await env.DB.batch([
+      fence.acquire,
+      env.DB.prepare(`UPDATE scans SET status = ?, updated_at = datetime('now')
+        WHERE id = ? AND status = 'processing' AND ${fence.guard}`)
+        .bind(retryable ? 'pending' : 'failed', message.scanId, ...fence.bindings),
+      env.DB.prepare(`UPDATE scan_queue_jobs SET status = ?, error_code = ?, error_message = ?,
+        completed_at = CASE WHEN ? = 'failed' THEN datetime('now') ELSE NULL END, updated_at = datetime('now')
+        WHERE id = ? AND status = 'processing' AND claim_token = ?`)
+        .bind(retryable ? 'pending' : 'failed', code, error instanceof Error ? error.message.slice(0, 500) : String(error),
+          retryable ? 'pending' : 'failed', ...fence.bindings),
+    ]);
+    assertFencedCommit(failureResults);
     throw new ScanQueueError(error instanceof Error ? error.message : String(error), code, retryable);
   }
 }

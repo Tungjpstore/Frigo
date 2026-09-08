@@ -52,6 +52,12 @@ VALUES ('migration_smoke_req_only', 'migration_smoke_plan', 'GINGER', 'Gừng', 
 .read migrations/0010_week_schema_shadow_canonical.sql
 .read migrations/0011_meal_plan_tenant_ownership.sql
 .read migrations/0011_meal_plan_tenant_ownership.sql
+.read migrations/0013_scan_receipt_metadata.sql
+.read migrations/0014_scan_queue_fencing.sql
+.read migrations/0015_auth_session_otp_hardening.sql
+.read migrations/0016_scan_quota_ledger.sql
+.read migrations/0017_auth_otps_remove_plaintext.sql
+.read migrations/0018_payments.sql
 
 CREATE TEMP TABLE assert_zero (value INTEGER NOT NULL CHECK (value = 0));
 INSERT INTO assert_zero SELECT COUNT(*) FROM pragma_foreign_key_check;
@@ -64,6 +70,13 @@ INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('meal_plan_slots')
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('meal_plan_shopping_items') WHERE name = 'snapshot_json';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('inventory_items') WHERE name = 'version';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('scan_queue_jobs') WHERE name = 'attempts';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('scan_queue_jobs') WHERE name = 'claim_token';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('sessions_v2') WHERE name = 'token_hash';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('auth_otps') WHERE name = 'attempt_count';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('auth_otps') WHERE name = 'used_at';
+INSERT INTO assert_zero SELECT COUNT(*) FROM pragma_table_info('auth_otps') WHERE name = 'code';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('scan_quota_ledger') WHERE name = 'idempotency_key';
+INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('scan_quota_periods') WHERE name = 'used_count';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('meal_plan_days_v2') WHERE name = 'snapshot_json';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('meal_plan_slots_v2') WHERE name = 'leftover_source_id';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('meal_plan_shopping_items_v2') WHERE name = 'required_quantity';

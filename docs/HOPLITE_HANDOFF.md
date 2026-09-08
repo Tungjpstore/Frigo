@@ -81,13 +81,10 @@ and overrides in `src/worker/config/retention.ts`. Replay-safe; production
 skips cleanup while the config gate is fatal. Timestamps normalized with
 `datetime()` (app writes ISO strings; D1 defaults write `YYYY-MM-DD HH:MM:SS`).
 
-**Integration dependency:** `cleanupExpiredSessions` in
-`src/worker/services/cleanup.ts` deletes from `sessions` by
-`datetime(expires_at) < datetime('now', ?)`. Thread 2's session redesign may
-rename/reshape the sessions table. The query is isolated in one function and
-the cron degrades gracefully (per-task `error` result, nothing else affected)
-until the schema is updated there. KV `revoked_*` revocation keys rely on KV
-TTL; there is no scheduled KV sweep (KV namespaces cannot be enumerated here).
+**Current integration:** `cleanupExpiredSessions` deletes expired rows from
+`sessions_v2` using normalized timestamps. D1 `revoked_at` is authoritative;
+legacy KV `revoked_*` records are not used for web authentication. Cleanup
+preserves active sessions, pending/processing jobs, and all quota-ledger rows.
 
 ## Rate-limit behavior
 
@@ -154,3 +151,86 @@ gracefully until the schema lands).
 Test baseline: 126 (pre-Thread-5) → 163 (with Thread 5 platform tests),
 lint/typecheck/build/migration-smoke all green. Production deployment:
 **NOT PERFORMED**.
+
+# PR #2 Stabilization
+
+Starting head was fetched and confirmed as
+`26a98b9064145d80f93e4dc799e3ff4fc2564192` on
+`codex/security-hardening-sync`. Main was
+`3f33d11e4cbf438e2bc3fa35ccb1de2f9856c071`.
+`BASELINE_AUDIT.md` is absent from the fetched repository/history; the existing
+handoff, PR description, changed files and migrations 0014–0018 were inspected.
+
+- **CI root cause:** the outbox registration test omitted `sessionStorage` after
+  guest credentials moved there. Header initialization threw before mocked
+  `fetch`, and the broad network catch mislabeled it offline. Browser mocks now
+  model the cookie/legacy-guest contract, without weakening authentication.
+- **CSRF:** compare parsed origins exactly. Cookie mutations fail closed without
+  a valid Origin or trusted Referer. Malformed/prefix-lookalike/null origins fail.
+  Production session-bootstrap endpoints require a trusted signal even without
+  a cookie. Development loopback origins are explicit; development bearer-only
+  protected API requests remain separate from cookie CSRF.
+- **OTP:** registration consume and final password-reset consume both require
+  `meta.changes === 1`, `used = 0`, unexpired D1 time, attempts below five and no
+  active lock. Attempt increments are bounded in D1, independent of KV. Reset
+  verification remains preliminary; final reset consumes and revokes old
+  `sessions_v2` in the password-change batch. HMAC v1 is unchanged: outstanding
+  digests remain compatible. No new migration or OTP invalidation was introduced.
+- **Sessions/logout:** opaque HttpOnly/Secure/Path=/SameSite=Lax cookies and
+  token hashes remain. Logout is awaitable and deduplicated. It immediately
+  blocks replay, removes private storage, resets all private stores/queries,
+  then awaits server revocation and cookie expiry. Failure displays an explicit
+  unconfirmed-revocation warning and a retry action; a durable marker blocks
+  private access after reload. Only confirmed success navigates anonymously.
+- **Client ownership:** inventory, shopping and Week persistence use user plus
+  household keys; unverifiable legacy keys are deleted. Session generations
+  reject stale responses/continuations. `/me` verifies ownership before private
+  replay; logout/account/household changes cannot replay another owner's outbox.
+  Expected-owner headers are checked against the session on each private request,
+  closing cookie-switch races between `/me` and replay/read. Receipt history
+  contains only a scan ID; legacy receipt payloads are ignored and reauthorized.
+  File reads capture ownership before starting and cancel on unmount/replacement.
+  New guests use cookies, offline-only guests cannot attach an unrelated cookie,
+  and guest migration requires explicit D1-backed server ownership proof.
+- **Quota:** the unique D1 ledger is the authority. One serialized batch performs
+  conditional ledger acquisition/reclaim and derives `used_count` from active
+  rows. Duplicate/released races cannot double charge or double refund.
+  Reservation IDs rotate on reclaim, fencing late finalizers. Entitlement is
+  read from existing server subscription state; expired Plus does not bypass quota.
+  Released historical commands reclaim only against the current month's allowance;
+  active historical commands remain idempotent without a new charge.
+- **Scan requests:** a UUID is created before the UI's first upload and reused
+  by its retry action. The server scopes the key to user/household and recovers
+  the same scan. An ambiguous queue send retains its reservation; retry resends
+  the same job rather than refunding an operation that may already be processing.
+- **Queue:** claim/reclaim is conditional in a D1 batch. Completion/failure first
+  rotates a valid, unexpired claim to a unique transaction-only token; every
+  result mutation requires that token. Zero-row ownership acquisition therefore
+  produces zero side effects, not a late failure after unguarded writes.
+  Exhausted attempts and terminal-scan replay are fenced as well.
+- **Cleanup/schema:** real SQLite tests replay all 18 migrations and verify
+  session/OTP retention and active job/quota preservation. Migration smoke used
+  to stop at 0012; it now includes 0013–0018. The auth/quota schema gate checks
+  0014–0017. Existing migration files are unchanged.
+
+Verification: initial CI/local baseline **162 pass / 1 fail**; final full local
+suite **297 pass / 0 fail** in 32 files. `pnpm lint`, `pnpm typecheck`, `pnpm test`,
+`pnpm build`, `pnpm check:migrations`, all local Wrangler migrations and
+`pnpm schema:check:local` passed. Latest hosted CI must be checked at the
+published head, not inferred from this local result.
+
+`scripts/security-preview.mjs` runs the real Vite app and worker routes against
+fresh in-memory SQLite, stubs only the unsupported local email runtime module,
+uses mock AI, and disables outbound backend fetches. It never loads production
+bindings/secrets. Use `node scripts/security-preview.mjs` (Node 22+); the server
+port follows `PORT`, default 3000, and `PREVIEW_APP_URL` can name the exact trusted
+preview origin. The project Preview override selects this isolated runner rather
+than Vite's production API proxy. Browser verification is not yet complete:
+the sandbox repeatedly killed browser/Vite processes and rejected resize/setup
+with an active-lifecycle error. This is not a passing UI result.
+
+**PayOS/payment explicitly deferred:** no provider, webhook, payment migration,
+payment UI, settlement, secrets or amount/status logic was changed. The existing
+`PLUS_GRANT_SECRET` activation route also remains owner work. See
+`PR2_STABILIZATION_REPORT.md` for the audit and merge conditions. No production
+deployment, remote D1 command, remote migration or remote data mutation ran.
