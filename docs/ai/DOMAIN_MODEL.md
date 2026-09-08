@@ -1,6 +1,7 @@
 # Domain Model — T01 contracts and extension points
 
-Implemented SQL is `migrations/0019_recipe_domain_foundation.sql`; validated inputs
+Implemented SQL is `migrations/0019_recipe_domain_foundation.sql` plus append-only
+`0020_t01_foundation_hardening.sql`; validated inputs
 are `packages/domain/src/foundation.ts` and `packages/recipes/src/foundation.ts`.
 These supplement, not replace, existing runtime `CanonicalIngredient`, `InventoryItem`
 and `Recipe` DTOs. Do not cast a database row to those camelCase DTOs.
@@ -22,8 +23,16 @@ and `Recipe` DTOs. Do not cast a database row to those camelCase DTOs.
 
 ## Canonical ingredient and localized identity
 
-Keep stable existing uppercase IDs; IDs are opaque, never generated from a current
-translation. Existing `name_vi`, `name_en`, category, default unit/shelf-life and icon
+Canonical ingredient IDs match `^[A-Z][A-Z0-9_]*$`, maximum 100 ASCII characters,
+with no surrounding whitespace, NUL, case coercion or translation-derived IDs.
+`CanonicalIngredientIdSchema` applies to ingredient definitions, alias targets,
+storage guidelines, recipe lines and family options. SQL INSERT/ID-UPDATE guards
+enforce the same identity convention; existing 45 seeded/static IDs remain valid.
+Importers must map source IDs explicitly, not silently uppercase unknown IDs.
+General recipe/family/profile IDs and slugs retain the separate, case-flexible
+`CatalogIdSchema` contract (ADR-008).
+
+Existing `name_vi`, `name_en`, category, default unit/shelf-life and icon
 remain. New nullable `default_name` and `subcategory` add presentation/category
 detail; legacy default name is `name_vi` until explicitly authored.
 
@@ -72,6 +81,14 @@ incompatible-unit numeric fallback retained for old guarded callers; no new
 arithmetic may use it unguarded. SQL catalog units are controlled reference data,
 not user-editable conversion definitions.
 
+`areUnitsCompatible` answers quantity-unit compatibility, not package-content
+equivalence. `pack -> pack` and `slice -> slice` can count a specified same-size
+package/slice context; `piece -> piece` can count the same canonical item. All
+return identity quantities, not grams or volume. Use the unit dimension to
+distinguish physical conversion from count/contextual identity. A pack or bunch
+against 300 g stays unresolved; matching two `pack` labels alone cannot justify
+pooling different products/sizes. No product-specific conversion is implemented.
+
 Even `pack -> pack` identity needs compatible product/size context before adding
 different retail lots. T01 does not establish that context. An egg, onion, slice
 or package never acquires a universal gram equivalent. T05 can model sourced,
@@ -93,14 +110,22 @@ Sources: `authoritative`, `imported`, `calculated`, `estimated`, always with a
 nonempty reference (dataset/version/record, calculation revision or estimate note).
 Source classification records provenance, not externally verified truth. Multiple
 profiles may coexist; choosing an applicable trusted source is future policy.
-`ingredient_nutrition` links ingredient observations. `recipe_nutrition` includes
-`recipe_version`; readers must join the current matching version and correct basis,
-not reuse stale totals after recipe edits. There is no calculation engine yet.
+`ingredient_nutrition` links ingredient observations. `recipe_nutrition` belongs
+**only to the current recipe version**: `recipe_version == recipes.version`.
+0020 rejects mismatched INSERT/UPDATE links and blocks changing the parent version
+while links remain, including replacement INSERTs. To revise nutritional inputs,
+the catalog author explicitly removes old links, updates the recipe/version,
+and links validated profiles in one D1 batch; failure restores the old state.
+The DB does not relabel links or recompute nutrition. Profiles remain stored, but
+there is no historical recipe-version identity/archive. Readers still select the
+correct current version and basis. There is no calculation engine (ADR-009).
 
 `ingredient_tags` distinguishes `allergen` and `dietary`, with a source reference.
 `ingredients.allergen_review_state` defaults to `unknown`. An empty tag set is not
 proof of absence. Even `reviewed` needs an agreed allergen taxonomy/completeness
 scope before hard safety claims; brand cross-contamination remains product-specific.
+Missing dietary tags also mean unknown: no meat assertion does not establish
+vegetarian suitability. AI/import labels alone cannot establish allergy safety.
 `recipe_classifications` contains meal type/dietary/allergen/method/equipment/
 suitability tags for querying; tags are descriptive assertions, not a safety
 certificate. No current recipes or ingredients are automatically marked safe.
@@ -141,7 +166,14 @@ new uniqueness constraint that would delete detail.
 New recipe columns: optional family FK and prep minutes; source type (`legacy`,
 `curated`, `imported`, `ai_generated`, `user_generated`), source reference, review
 state (`unverified`, `reviewed`, `rejected`) and positive integer version. Old rows
-are legacy/unverified/version 1. `RecipeDefinitionSchema` validates the core demand
+are legacy/unverified/version 1. Imported/AI recipes and families require a
+nonblank, NUL-free reference (including Unicode-whitespace rejection) in both Zod
+and SQL INSERT/UPDATE guards. Internal import/dataset/generation IDs are valid;
+a public URL is unnecessary. Legacy/curated/user-generated references may be
+omitted/NULL; any supplied reference must satisfy the same text-presence rule.
+Source/review remain independent and defaults are unchanged (ADR-010).
+
+`RecipeDefinitionSchema` validates the core demand
 and identity block, **not a complete recipe publication payload** (instructions,
 images, translations and safety review need separate validation when integrated).
 No existing static recipe is force-cast or auto-imported through this schema.
@@ -159,6 +191,9 @@ that cross-row aggregate during staged inserts; authors must validate the comple
 family and write all rows in a D1 batch before making it available. T02 owns bounded
 variant generation, selected-slot traces, coherent steps and deterministic
 substitution rules. T01 stores neither every permutation nor a generic rules engine.
+T02 must enforce named candidate and search-work budgets during expansion (ADR-005,
+T02 packet), not build a Cartesian product then truncate it. Slot/option counts
+alone do not provide a safe computational bound. T01 implements no generator.
 
 ## Provenance, ownership and deferred fields
 
@@ -177,6 +212,13 @@ edges, retailer products/prices, detailed ingredient metadata, family translatio
 nutrition goals, new nutrient registries and private recipe ownership are deferred
 until a task needs them. No generic JSON metadata bag is introduced speculatively.
 
+Input schemas are authoring contracts, not raw-row decoders. Map SQL NULL to
+omitted optional fields where required; recipe source references explicitly accept
+NULL. SQL protects identities, relations and scalar invariants. Zod additionally
+bounds input text/array sizes, canonicalizes BCP-47/alias Unicode and validates
+complete-family option counts; those require validated importers plus atomic
+writes, not unrestricted SQL imports. Legacy date syntax remains as noted above.
+
 ## Migration constraints and rollout
 
 0019 adds ten tables, nullable/defaulted columns, FK/unique/check constraints,
@@ -186,10 +228,23 @@ servings/time/difficulty and line quantity/unit/optional flags without rebuildin
 historical tables. Existing malformed rows are not silently fixed; ordinary writes
 to guarded fields must satisfy the new invariant. T02 audits old rows before import.
 
-Migration is applied **once via ledger**, not idempotently re-executed. Existing
-migrations and all data are preserved. `pnpm check:migrations` covers full replay;
-integration tests cover populated upgrade and real SQL rejection/rollback. The
-schema gate now requires 0019 for releases containing this code. No production
-migration ran in T01. On rollback prefer the prior application code while leaving
-additive schema; if schema rollback is required, use an operator-approved backup
-restore, never drop new tables or delete new data blindly.
+0020 adds ten guards for canonical identity, current-version nutrition and traceable
+recipe/family provenance. It checks existing rows first using named preflight
+constraints, then removes the transient guard table. Invalid IDs, nutrition-version
+mismatches or missing/blank/NUL source evidence abort the ledger transaction before
+any lasting schema change. The catalog/D1 owner must review affected rows and supply
+authentic mapping/evidence before retrying; no automatic rename, backfill or delete.
+
+Migrations are applied **once via ledger**, not idempotently re-executed. 0001–0019
+remain unchanged because 0019 was published and applied locally before hardening.
+`pnpm check:migrations` covers full replay; integration tests cover populated 0019
+upgrade, preflight rollback and real SQL rejection. The schema gate requires 0019,
+0020 and all ten hardening triggers for releases containing this code. Release/D1
+owners must apply pending migrations to the target database before deployment;
+the remote release gate is read-only. No production migration ran in T01.
+
+Prefer application rollback with additive schema retained after compatibility
+review. The existing release gate rejects an older release's shorter migration
+ledger, so rollback is operator-reviewed, not an automatic redeploy of an old SHA.
+If schema rollback is necessary, use an approved backup restore; never drop new
+tables/triggers or delete data blindly (`DEPLOYMENT.md`).

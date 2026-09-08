@@ -1,5 +1,5 @@
 import {
-  CatalogIdSchema,
+  CanonicalIngredientIdSchema,
   CatalogTextSchema,
   IngredientAliasSchema,
   IngredientDefinitionSchema,
@@ -79,7 +79,7 @@ export async function addIngredientAlias(
   ingredientId: string,
   input: unknown,
 ): Promise<void> {
-  const id = CatalogIdSchema.parse(ingredientId);
+  const id = CanonicalIngredientIdSchema.parse(ingredientId);
   const alias = IngredientAliasSchema.parse(input);
   const result = await db
     .prepare(

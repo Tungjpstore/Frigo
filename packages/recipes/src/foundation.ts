@@ -1,26 +1,47 @@
 import { z } from 'zod';
 import {
+  CanonicalIngredientIdSchema,
   CatalogIdSchema,
   CatalogTextSchema,
   PositiveQuantitySchema,
   StandardUnitSchema,
 } from '../../domain/src/foundation';
 
-export const RecipeProvenanceSchema = z
+const RecipeProvenanceFieldsSchema = z
   .object({
     sourceType: z
       .enum(['legacy', 'curated', 'imported', 'ai_generated', 'user_generated'])
       .default('legacy'),
-    sourceReference: CatalogTextSchema.optional(),
+    sourceReference: CatalogTextSchema.refine(
+      (reference) => !reference.includes('\u0000'),
+      'Invalid recipe source reference',
+    ).nullish(),
     verificationState: z.enum(['unverified', 'reviewed', 'rejected']).default('unverified'),
     version: z.number().int().positive().default(1),
   })
   .strict();
+function requireSourceReference(
+  provenance: z.infer<typeof RecipeProvenanceFieldsSchema>,
+  ctx: z.RefinementCtx,
+): void {
+  if (
+    (provenance.sourceType === 'imported' || provenance.sourceType === 'ai_generated') &&
+    !provenance.sourceReference
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['sourceReference'],
+      message: 'Imported and AI recipes require a source reference',
+    });
+  }
+}
+export const RecipeProvenanceSchema =
+  RecipeProvenanceFieldsSchema.superRefine(requireSourceReference);
 export type RecipeProvenance = z.infer<typeof RecipeProvenanceSchema>;
 
 export const StructuredRecipeIngredientSchema = z
   .object({
-    ingredientId: CatalogIdSchema,
+    ingredientId: CanonicalIngredientIdSchema,
     name: CatalogTextSchema,
     requiredQuantity: PositiveQuantitySchema,
     unit: StandardUnitSchema,
@@ -48,7 +69,7 @@ export type RecipeDefinition = z.infer<typeof RecipeDefinitionSchema>;
 
 const FamilyOptionSchema = z
   .object({
-    ingredientId: CatalogIdSchema,
+    ingredientId: CanonicalIngredientIdSchema,
     quantity: PositiveQuantitySchema,
     unit: StandardUnitSchema,
   })
@@ -81,11 +102,13 @@ export const RecipeFamilySchema = z
     slug: CatalogIdSchema,
     name: CatalogTextSchema,
     baseServings: z.number().int().positive(),
-    provenance: RecipeProvenanceSchema.extend({
+    provenance: RecipeProvenanceFieldsSchema.extend({
       sourceType: z
         .enum(['curated', 'imported', 'ai_generated', 'user_generated'])
         .default('curated'),
-    }).default({}),
+    })
+      .superRefine(requireSourceReference)
+      .default({}),
     slots: z.array(FamilySlotSchema).min(1).max(30),
   })
   .strict()

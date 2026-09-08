@@ -10,6 +10,12 @@ export const CatalogIdSchema = z
   .min(1)
   .max(100)
   .regex(/^[A-Za-z0-9][A-Za-z0-9_-]*$/);
+export const CanonicalIngredientIdSchema = z
+  .string()
+  .min(1)
+  .max(100)
+  .regex(/^[A-Z][A-Z0-9_]*$/, 'Invalid canonical ingredient ID')
+  .refine((id) => id === id.trim(), 'Invalid canonical ingredient ID');
 export const CatalogTextSchema = z.string().trim().min(1).max(300);
 
 export const UNIT_DEFINITIONS = {
@@ -63,7 +69,7 @@ export const IngredientNameSchema = z
 
 export const IngredientDefinitionSchema = z
   .object({
-    id: CatalogIdSchema,
+    id: CanonicalIngredientIdSchema,
     defaultName: CatalogTextSchema,
     names: z.array(IngredientNameSchema).max(100).default([]),
     aliases: z.array(IngredientAliasSchema).max(300).default([]),
@@ -128,7 +134,7 @@ export type NutritionProfile = z.infer<typeof NutritionProfileSchema>;
 
 export const StorageGuidelineSchema = z
   .object({
-    ingredientId: CatalogIdSchema,
+    ingredientId: CanonicalIngredientIdSchema,
     storage: z.enum(['fridge', 'freezer', 'pantry']),
     packageState: z.enum(['sealed', 'opened']),
     shelfLifeDays: z.number().int().positive(),

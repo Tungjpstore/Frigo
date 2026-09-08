@@ -27,7 +27,7 @@ Today, `@frigo/recipes` evaluates/ranks static `ALL_RECIPES`; its inventory map 
 - Aggregate inventory by canonical ingredient across eligible lots while retaining lot-level allocation details and conversion failures.
 - Calculate required versus optional coverage, shortages by quantity/unit, and `canCookWithoutBuying`; distinguish missing, insufficient, incompatible-unit, unknown-canonical, and unavailable/expired states.
 - Scale structured recipe requirements from base servings to requested servings with documented quantity rounding. Do not turn contextual retail units into mass/volume.
-- Expand only finite, persisted recipe-family slots into valid variants. Require explicit slot constraints and stable identifiers/provenance for generated variants.
+- Expand only finite, persisted recipe-family slots into valid variants. Require explicit slot constraints and stable identifiers/provenance for generated variants. Enforce `MAX_VARIANT_CANDIDATES_PER_FAMILY` (initial default 64) and `MAX_VARIANT_SEARCH_STATES_PER_FAMILY` (initial default 1024) during traversal; never enumerate a Cartesian product and only then slice the results. Count attempted partial states, including rejected/dead-end branches, toward the work budget. Validate configured budgets as positive bounded integers. Use deterministic ordering and expose which budget truncated exploration; truncated search does not prove infeasibility. The implementation may use pruning, lazy traversal or a simple hard cap; no complex optimizer is required.
 - Implement deterministic, data-backed substitutions; retain reason, eligibility constraints, quantity conversion requirement, and source. Never invent a substitution via a heuristic or LLM.
 - Produce rescue candidates that consume eligible near-expiry lots where their structured requirements support it.
 - Add unit and integration tests covering multiple lots, compatible and incompatible conversion, required/optional rows, partial shortages, zero/invalid servings, no inventory, family bounds, substitution safety, and no candidates.
@@ -51,6 +51,8 @@ Today, `@frigo/recipes` evaluates/ranks static `ALL_RECIPES`; its inventory map 
 - Optional ingredients never prevent candidacy, but are reported separately.
 - With empty inventory and shopping allowed, otherwise valid candidates report zero availability and full missing requirements. In no-buy mode they are excluded. Unknown stock never creates invented coverage; invalid recipes, unsafe substitutions and no valid family variants yield explicit exclusion reasons, not guessed candidates.
 - All generated family variants are finite, satisfy required slots, preserve source/template provenance, and remain compatible with existing structured recipe ingredients.
+- A family with a theoretical combination count far above the configured limits must not enumerate the whole search space. Tests assert emitted candidates and attempted search states stay within their respective budgets, including when most branches are invalid and no candidate is emitted. Repeated identical inputs produce identical bounded outputs/truncation metadata.
+- Two lots containing 200 g and 0.15 kg of the same canonical ingredient yield 350 g availability against a 300 g requirement. A 1-pack lot alone leaves that 300 g requirement unresolved, not satisfied; identical contextual unit labels are not proof of equal package contents.
 - Existing `ALL_RECIPES` remains available and unchanged as the legacy runtime source until an explicitly approved cutover.
 
 ## Verification

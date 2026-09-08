@@ -53,7 +53,7 @@ describe('recipe domain foundation migration and catalog', () => {
 
   it('replays the full migration chain and keeps TypeScript unit definitions synchronized with SQLite', () => {
     const db = database();
-    expect(db.migrations.at(-1)).toBe('0019_recipe_domain_foundation.sql');
+    expect(db.migrations.at(-1)).toBe('0020_t01_foundation_hardening.sql');
     expect(db.query('PRAGMA integrity_check')).toEqual([{ integrity_check: 'ok' }]);
     expect(db.query('PRAGMA foreign_key_check')).toEqual([]);
 
@@ -93,7 +93,7 @@ describe('recipe domain foundation migration and catalog', () => {
     const db = database();
     await createIngredientDefinition(
       db,
-      ingredientInput('catalog_chicken', [
+      ingredientInput('CATALOG_CHICKEN', [
         { language: 'vi', alias: 'Ức gà' },
         { language: 'en', alias: 'Chicken breast' },
         { language: 'ja', alias: '鶏むね肉' },
@@ -104,14 +104,14 @@ describe('recipe domain foundation migration and catalog', () => {
 
     await expect(resolveIngredientAlias(db, '  ỨC   GÀ ', 'VI')).resolves.toEqual({
       status: 'matched',
-      ingredientId: 'catalog_chicken',
+      ingredientId: 'CATALOG_CHICKEN',
     });
     await expect(
       resolveIngredientAlias(db, 'Ｃｈｉｃｋｅｎ\u00a0ＢＲＥＡＳＴ', 'en'),
-    ).resolves.toEqual({ status: 'matched', ingredientId: 'catalog_chicken' });
+    ).resolves.toEqual({ status: 'matched', ingredientId: 'CATALOG_CHICKEN' });
     await expect(resolveIngredientAlias(db, '鶏むね肉', 'ja')).resolves.toEqual({
       status: 'matched',
-      ingredientId: 'catalog_chicken',
+      ingredientId: 'CATALOG_CHICKEN',
     });
     await expect(resolveIngredientAlias(db, '鶏むね肉 500g', 'ja')).resolves.toEqual({
       status: 'unmapped',
@@ -127,7 +127,7 @@ describe('recipe domain foundation migration and catalog', () => {
   it('bridges canonical default names into legacy Vietnamese/English columns and writes catalog definitions atomically', async () => {
     const db = database();
     await createIngredientDefinition(db, {
-      ...ingredientInput('catalog_default_bridge'),
+      ...ingredientInput('CATALOG_DEFAULT_BRIDGE'),
       defaultName: 'Fallback chicken',
       names: [],
       aliases: [{ language: 'en', alias: 'Shared chicken alias' }],
@@ -135,7 +135,7 @@ describe('recipe domain foundation migration and catalog', () => {
     expect(
       db.query(
         'SELECT name_vi, name_en, default_name FROM ingredients WHERE id = ?',
-        'catalog_default_bridge',
+        'CATALOG_DEFAULT_BRIDGE',
       ),
     ).toEqual([
       {
@@ -147,15 +147,15 @@ describe('recipe domain foundation migration and catalog', () => {
 
     await expect(
       createIngredientDefinition(db, {
-        ...ingredientInput('catalog_rollback'),
+        ...ingredientInput('CATALOG_ROLLBACK'),
         aliases: [{ language: 'en', alias: 'Shared chicken alias' }],
       }),
     ).rejects.toThrow();
-    expect(db.query('SELECT id FROM ingredients WHERE id = ?', 'catalog_rollback')).toEqual([]);
+    expect(db.query('SELECT id FROM ingredients WHERE id = ?', 'CATALOG_ROLLBACK')).toEqual([]);
     expect(
       db.query(
         'SELECT ingredient_id FROM ingredient_aliases WHERE ingredient_id = ?',
-        'catalog_rollback',
+        'CATALOG_ROLLBACK',
       ),
     ).toEqual([]);
   });
@@ -164,35 +164,35 @@ describe('recipe domain foundation migration and catalog', () => {
     const db = database();
     await createIngredientDefinition(
       db,
-      ingredientInput('catalog_first', [{ language: 'vi', alias: 'gà nhà' }]),
+      ingredientInput('CATALOG_FIRST', [{ language: 'vi', alias: 'gà nhà' }]),
     );
     await createIngredientDefinition(
       db,
-      ingredientInput('catalog_second', [{ language: 'en', alias: 'gà nhà' }]),
+      ingredientInput('CATALOG_SECOND', [{ language: 'en', alias: 'gà nhà' }]),
     );
     await expect(
-      addIngredientAlias(db, 'catalog_second', { language: 'vi', alias: '  GÀ   NHÀ ' }),
+      addIngredientAlias(db, 'CATALOG_SECOND', { language: 'vi', alias: '  GÀ   NHÀ ' }),
     ).rejects.toThrow();
     await expect(resolveIngredientAlias(db, 'gà nhà', 'vi')).resolves.toEqual({
       status: 'matched',
-      ingredientId: 'catalog_first',
+      ingredientId: 'CATALOG_FIRST',
     });
     await expect(resolveIngredientAlias(db, 'gà nhà', 'en')).resolves.toEqual({
       status: 'matched',
-      ingredientId: 'catalog_second',
+      ingredientId: 'CATALOG_SECOND',
     });
 
     await createIngredientDefinition(
       db,
-      ingredientInput('catalog_und', [{ language: 'und', alias: 'shared poultry' }]),
+      ingredientInput('CATALOG_UND', [{ language: 'und', alias: 'shared poultry' }]),
     );
     await createIngredientDefinition(
       db,
-      ingredientInput('catalog_vi', [{ language: 'vi', alias: 'shared poultry' }]),
+      ingredientInput('CATALOG_VI', [{ language: 'vi', alias: 'shared poultry' }]),
     );
     await expect(resolveIngredientAlias(db, 'shared poultry', 'vi')).resolves.toEqual({
       status: 'ambiguous',
-      ingredientIds: ['catalog_und', 'catalog_vi'],
+      ingredientIds: ['CATALOG_UND', 'CATALOG_VI'],
     });
     await expect(resolveIngredientAlias(db, 'unknown food', 'vi')).resolves.toEqual({
       status: 'unmapped',
@@ -327,8 +327,8 @@ describe('recipe domain foundation migration and catalog', () => {
       ),
     ).toThrow();
 
-    db.seed(`INSERT INTO recipes (id, slug, title, cuisine, cook_time_minutes, servings, difficulty, source_type)
-      VALUES ('future_recipe', 'future-recipe', 'Future recipe', 'vietnamese', 20, 2, 'easy', 'ai_generated');
+    db.seed(`INSERT INTO recipes (id, slug, title, cuisine, cook_time_minutes, servings, difficulty, source_type, source_reference)
+      VALUES ('future_recipe', 'future-recipe', 'Future recipe', 'vietnamese', 20, 2, 'easy', 'ai_generated', 'fixture:future-recipe');
       INSERT INTO recipe_ingredients (id, recipe_id, ingredient_id, name, required_quantity, unit, is_optional)
       VALUES ('future_recipe_chicken', 'future_recipe', 'CHICKEN_BREAST', 'Chicken breast', 200, 'g', 0);`);
     expect(

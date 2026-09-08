@@ -33,6 +33,10 @@ domain-week/recipes barrel dependency cycle.
   aliases and optional recipe macro summaries absent from those SQL tables.
 - T01 does **not** reconcile/import the whole catalog or switch any live reader.
   T02 must introduce an explicit validated catalog adapter and a drift report.
+- T02 may inspect either catalog through that adapter while retaining source and
+  incompatibility evidence. It must not merge conflicting identities, hydrate old
+  runtime readers from D1, or change catalog authority without a separately reviewed
+  import/cutover. Foundation persistence is not runtime publication.
 - D1 is authoritative for household inventory and commands. KV caches are not a
   replacement for failed authoritative reads; command paths already use strict
   reads, transactions/idempotency and version checks.
@@ -91,7 +95,9 @@ context and package arithmetic, not T01.
   local gates. `typecheck` checks source/packages, not all test types.
 - Existing `.github/workflows/{ci,deploy}.yml` and `DEPLOYMENT.md` govern release.
   T01 makes no deployment/config/auth/payment change. Existing migrations are
-  immutable; 0019 is additive and ledger-applied once.
+  immutable; 0019 is additive and ledger-applied once. Published 0019 is retained;
+  follow-up 0020 preflights existing data and adds identity/version/provenance guards.
+  Only sandbox-local migrations are authorized by T01; deployment remains operator-owned.
 
 Historical `docs/HOPLITE_HANDOFF.md` and root hardening/frontend reports retain
 security integration context. For this seven-task program, `docs/ai/HANDOFF.md`

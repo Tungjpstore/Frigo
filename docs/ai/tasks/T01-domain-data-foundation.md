@@ -20,7 +20,7 @@ None. Read the existing repository and all AI protocol files before implementati
 
 Frigo is a React/Vite PWA with a Hono Cloudflare Worker and D1 accessed through raw SQL; it does not use an ORM. The static `@frigo/domain` ingredient catalog and `@frigo/recipes` `ALL_RECIPES` catalog are currently the principal runtime catalogues, while D1 recipes are seeded/persisted but are not the runtime source of truth. Existing recipe matching/ranking uses a last-lot-wins inventory map. Existing Week logic produces a sequential seven-day plan using first-lot matching and has an unsafe fallback when no eligible recipe exists. Preserve legacy behavior while creating a safe, explicit migration path.
 
-The expected Task 1 implementation is an additive migration `0019` plus shared, validated ingredient/alias/unit/nutrition/storage and recipe-family contracts. It may add optional recipe metadata. It must not switch production runtime reads from the static catalog to D1.
+The Task 1 implementation is additive migration `0019` plus shared, validated ingredient/alias/unit/nutrition/storage and recipe-family contracts. Its focused hardening appends `0020`; published/applied 0019 is not rewritten. It must not switch production runtime reads from the static catalog to D1.
 
 ## In Scope
 
@@ -44,7 +44,7 @@ The expected Task 1 implementation is an additive migration `0019` plus shared, 
 
 ## Required Deliverables
 
-- An audited, additive migration `0019` that can be replayed with all prior migrations.
+- Audited, additive migration `0019` and follow-up `0020`, replayable with prior migrations and safe for a populated 0019 database; dirty preflight failures must preserve data.
 - Shared TypeScript contracts/validation for the accepted foundation, integrated through current package conventions.
 - Tests that exercise meaningful positive and fail-closed cases, including duplicate normalized aliases, incompatible units, invalid quantities/bases, recipe ingredient constraints, and family-slot integrity as applicable.
 - `docs/ai/{MASTER_SPEC,AGENT_RULES,ARCHITECTURE,DOMAIN_MODEL,DECISIONS,TASK_BOARD,CURRENT_STATE,HANDOFF}.md` and all seven packets under `docs/ai/tasks/`.
@@ -59,6 +59,10 @@ The expected Task 1 implementation is an additive migration `0019` plus shared, 
 - Inventory lot, canonical ingredient, and retail product remain distinct; household ownership stays on household-scoped records.
 - Recipe ingredients are structured and queryable; recipe families express bounded slots/allowed choices without materializing infinite variants.
 - AI/imported recipes can be distinguished from curated/verified content.
+- Canonical ingredient IDs remain uppercase ASCII snake case in validation and SQL; case variants cannot create separate identities. General recipe/family/profile IDs remain separate.
+- Recipe nutrition links equal the current recipe version in the database; inconsistent INSERT/UPDATE and parent version changes are blocked until links are explicitly replaced transactionally.
+- Imported/AI recipes and families require traceable nonblank references in validation and SQL. A source reference never establishes verification or private publication authority.
+- T02 has explicit candidate/work budgets and an oversized-family acceptance case; no expansion algorithm is implemented in T01.
 - The existing Week dual-write/reconciliation strategy, auth cookies/tenancy/idempotency/version controls, and scan-confirm flow remain untouched.
 - Documentation reports implementation reality, exact verification results, known legacy limitations, and a precise T02 start action.
 
@@ -72,6 +76,8 @@ pnpm typecheck
 pnpm test
 pnpm check:migrations
 pnpm build
+pnpm exec wrangler d1 migrations apply frigo-db --local
+pnpm schema:check:local
 ```
 
 The SQLite/D1 integration helper is `tests/helpers/sqlite-d1.ts`; its `node:sqlite` dependency requires Node 22.13 or newer (the current development runtime is Node 24). Review migration replay/foreign-key behavior and the final diff; record any command not run or failed verbatim in the handoff.

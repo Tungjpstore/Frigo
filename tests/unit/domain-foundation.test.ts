@@ -8,11 +8,22 @@ import {
   UNIT_DEFINITIONS,
   normalizeIngredientAlias,
 } from '../../packages/domain/src/foundation';
-import { UnitConversionError, convertUnitStrict, tryConvertUnit } from '../../packages/domain/src';
-import { RecipeDefinitionSchema, RecipeFamilySchema } from '../../packages/recipes/src/foundation';
+import {
+  CANONICAL_INGREDIENTS,
+  UnitConversionError,
+  areUnitsCompatible,
+  convertUnitStrict,
+  tryConvertUnit,
+} from '../../packages/domain/src';
+import { ALL_RECIPES } from '../../packages/recipes/src';
+import {
+  RecipeDefinitionSchema,
+  RecipeFamilySchema,
+  RecipeProvenanceSchema,
+} from '../../packages/recipes/src/foundation';
 
 const ingredient = {
-  id: 'chicken_breast',
+  id: 'CHICKEN_BREAST',
   defaultName: 'Chicken breast',
   category: 'meat' as const,
   defaultUnit: 'g' as const,
@@ -29,7 +40,7 @@ const recipe = {
   difficulty: 'easy' as const,
   ingredients: [
     {
-      ingredientId: 'chicken_breast',
+      ingredientId: 'CHICKEN_BREAST',
       name: 'Chicken breast',
       requiredQuantity: 250,
       unit: 'g' as const,
@@ -38,6 +49,63 @@ const recipe = {
 };
 
 describe('domain foundation schemas', () => {
+  it('accepts every existing static canonical ID and recipe ingredient reference', () => {
+    const ids = new Set([
+      ...CANONICAL_INGREDIENTS.map((item) => item.id),
+      ...ALL_RECIPES.flatMap((item) => item.ingredients.map((line) => line.ingredientId)),
+    ]);
+    expect(CANONICAL_INGREDIENTS).toHaveLength(45);
+    for (const id of ids) {
+      expect(IngredientDefinitionSchema.parse({ ...ingredient, id }).id).toBe(id);
+    }
+  });
+
+  it.each([
+    'chicken_breast',
+    'Chicken_Breast',
+    'CHICKEN-BREAST',
+    '1RICE',
+    ' RICE',
+    'RICE\n',
+    'RICE\u0000tail',
+    'RÍCE',
+    'A'.repeat(101),
+  ])('rejects noncanonical ingredient identity %j without coercion', (id) => {
+    expect(IngredientDefinitionSchema.safeParse({ ...ingredient, id }).success).toBe(false);
+    expect(
+      StorageGuidelineSchema.safeParse({
+        ingredientId: id,
+        storage: 'fridge',
+        packageState: 'sealed',
+        shelfLifeDays: 3,
+        sourceType: 'estimated',
+        sourceReference: 'fixture:storage',
+      }).success,
+    ).toBe(false);
+    expect(
+      RecipeDefinitionSchema.safeParse({
+        ...recipe,
+        ingredients: [{ ...recipe.ingredients[0], ingredientId: id }],
+      }).success,
+    ).toBe(false);
+    expect(
+      RecipeFamilySchema.safeParse({
+        id: 'id_validation',
+        slug: 'id-validation',
+        name: 'ID validation',
+        baseServings: 1,
+        slots: [
+          {
+            key: 'base',
+            minSelections: 1,
+            maxSelections: 1,
+            options: [{ ingredientId: id, quantity: 100, unit: 'g' }],
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
   it('keeps unknown lot conditions distinct from sourced storage guidance', () => {
     expect(InventoryConditionSchema.parse({})).toEqual({
       expiryKind: 'unknown',
@@ -130,6 +198,76 @@ describe('domain foundation schemas', () => {
     expect(tryConvertUnit(1, 'pack', 'g')).toBeNull();
   });
 
+  it.each(['pack', 'bunch', 'slice', 'piece'] as const)(
+    'allows %s quantity identity without asserting package size or physical equivalence',
+    (unit) => {
+      expect(areUnitsCompatible(unit, unit)).toBe(true);
+      expect(convertUnitStrict(1, unit, unit)).toBe(1);
+      expect(tryConvertUnit(1, unit, 'g')).toBeNull();
+      expect(tryConvertUnit(1, unit, 'ml')).toBeNull();
+      expect(UNIT_DEFINITIONS[unit].dimension).toBe(unit === 'piece' ? 'count' : 'contextual');
+    },
+  );
+
+  it.each(['imported', 'ai_generated'] as const)(
+    'requires traceability for %s recipes and families without conferring review',
+    (sourceType) => {
+      const family = {
+        id: 'rice_family',
+        slug: 'rice-family',
+        name: 'Rice family',
+        baseServings: 1,
+        slots: [
+          {
+            key: 'base',
+            minSelections: 1,
+            maxSelections: 1,
+            options: [{ ingredientId: 'RICE', quantity: 100, unit: 'g' }],
+          },
+        ],
+      };
+      for (const sourceReference of [
+        undefined,
+        null,
+        '',
+        ' \t\r\n',
+        '\u00a0\u3000',
+        'job\u0000id',
+      ]) {
+        const provenance = { sourceType, sourceReference };
+        expect(RecipeProvenanceSchema.safeParse(provenance).success).toBe(false);
+        expect(RecipeDefinitionSchema.safeParse({ ...recipe, provenance }).success).toBe(false);
+        expect(RecipeFamilySchema.safeParse({ ...family, provenance }).success).toBe(false);
+      }
+      const provenance = { sourceType, sourceReference: 'internal:job-42' };
+      expect(RecipeDefinitionSchema.parse({ ...recipe, provenance }).provenance).toEqual({
+        ...provenance,
+        verificationState: 'unverified',
+        version: 1,
+      });
+      expect(RecipeFamilySchema.parse({ ...family, provenance }).provenance).toEqual({
+        ...provenance,
+        verificationState: 'unverified',
+        version: 1,
+      });
+    },
+  );
+
+  it('keeps legacy/curated/user references optional but rejects blank supplied evidence', () => {
+    for (const sourceType of ['legacy', 'curated', 'user_generated']) {
+      for (const sourceReference of [undefined, null]) {
+        expect(RecipeProvenanceSchema.parse({ sourceType, sourceReference })).toMatchObject({
+          sourceType,
+          verificationState: 'unverified',
+          version: 1,
+        });
+      }
+      expect(
+        RecipeProvenanceSchema.safeParse({ sourceType, sourceReference: '\u3000' }).success,
+      ).toBe(false);
+    }
+  });
+
   it('accepts known nutrition values, including known zero, but never treats unknown macros as zero', () => {
     const profile = {
       id: 'nutrition_chicken',
@@ -180,13 +318,13 @@ describe('domain foundation schemas', () => {
           key: 'base',
           minSelections: 1,
           maxSelections: 1,
-          options: [{ ingredientId: 'rice', quantity: 300, unit: 'g' as const }],
+          options: [{ ingredientId: 'RICE', quantity: 300, unit: 'g' as const }],
         },
         {
           key: 'protein',
           minSelections: 0,
           maxSelections: 1,
-          options: [{ ingredientId: 'chicken_breast', quantity: 150, unit: 'g' as const }],
+          options: [{ ingredientId: 'CHICKEN_BREAST', quantity: 150, unit: 'g' as const }],
         },
       ],
     };
@@ -206,7 +344,7 @@ describe('domain foundation schemas', () => {
             maxSelections: 2,
             options: [
               ...family.slots[0].options,
-              { ingredientId: 'rice', quantity: 200, unit: 'g' as const },
+              { ingredientId: 'RICE', quantity: 200, unit: 'g' as const },
             ],
           },
         ],
