@@ -1,157 +1,147 @@
 # Current State — Recipe / Meal Planning Program
 
-Verified 2026-09-08. **T01 complete; T02 ready.** This is the actual repository
-checkpoint, not a claim that the seven-task platform is finished.
+Verified 2026-09-08. **T01 COMPLETE — T02 READY**, including the focused T01
+foundation hardening. This is not completion of the seven-task platform.
 
-Verified implementation commit: `e2a63bbd09e31b4f9d2628a0ad459653a9527056` on
-`hoplite/olbia-borysthenes-fbc61adc`. This state document is in the subsequent
-documentation-only checkpoint. Published for team review on 2026-09-08 in
-[PR #5](https://github.com/tun-vn/Frigo/pull/5), targeting `main`. Automatic CI/review
-feedback tracking is enabled. No merge or deployment was performed; consult live
-PR checks rather than interpreting the local results below as hosted-CI evidence.
+Last verified implementation commit: `a730da85967284afb2071140d51a3ea1c39dac9f`
+(`fix(recipe-foundation): harden T01 domain invariants`) on
+`hoplite/olbia-borysthenes-fbc61adc`. This document is in the following
+state/handoff-only checkpoint. Review target remains [PR #5](https://github.com/tun-vn/Frigo/pull/5)
+against `main`, with automatic CI/review feedback tracking. No merge, squash,
+remote migration or deployment was performed. Read live PR checks for hosted CI;
+the results below are local evidence for the hardened implementation.
 
 ## Implemented
 
-- Architecture/Git audit: React/Vite frontend, Hono Worker, raw SQL D1, no ORM or
-  independent package workspaces; existing inventory/OCR/recipe/Week/user/household
-  flows mapped in `ARCHITECTURE.md`.
-- Additive migration `0019_recipe_domain_foundation.sql`: constrained eight-unit
-  catalog; ingredient default name/subcategory/allergen review state; language
-  and unique normalized alias keys; ingredient dietary/allergen tags and sourced
-  storage guidelines; optional lot opening/date-kind/date-source evidence;
-  basis-aware nutrition and ingredient/recipe-version links; recipe provenance,
-  prep time/version/review/family link; relational families/slots/options and
-  recipe classifications. No existing row deleted, seed replaced or pre-existing migration edited.
-- Validated domain/recipe schemas and inferred types, NFKC exact alias normalization,
-  explicit matched/unmapped/ambiguous outcomes; atomic ingredient/name/alias creation
-  and alias addition via trusted catalog-only D1 helpers.
-- Future-write recipe quantity/servings/unit constraints and expiry evidence/date
-  constraints, lookup/query indexes, full migration smoke/schema gate integration.
-- Seventeen new focused tests in two files, including real SQLite upgrade/rollback/
-  FK/unique/check failures. No mass seed: only eight unit definitions are seeded;
-  ingredients/recipes/families used for demonstrations are isolated test fixtures.
-- Root `AGENTS.md`, eight `docs/ai` protocol files, seven precise task packets and
-  ADR-001 through ADR-007. Existing historical reports are linked, not rewritten.
+- Audited React/Vite, Hono Worker, raw SQL D1, inventory/OCR/recipe/Week and household
+  boundaries; see `ARCHITECTURE.md`. Existing runtime catalogs/readers are retained.
+- Migration `0019_recipe_domain_foundation.sql`: ten relational foundation tables,
+  eight constrained unit definitions, multilingual aliases/default names,
+  nutrition/storage/safety metadata, recipe/family/provenance and lot condition
+  evidence, compatible columns, indexes and future-write validation.
+- Append-only `0020_t01_foundation_hardening.sql`: preflight existing data and add
+  ten guards for canonical ingredient IDs, current-version nutrition links and
+  traceable recipe/family sources. No persistent new table, data backfill or deletion.
+- `CanonicalIngredientIdSchema` enforces uppercase ASCII snake case (max 100,
+  no whitespace/case coercion) at ingredient/alias/storage/recipe-line/family-option
+  boundaries. General recipe/family/profile IDs and slugs keep their separate contract.
+- Recipe nutrition links must match the current recipe version in SQL. Version
+  changes with attached links are rejected, including replacement INSERTs. An author
+  must explicitly unlink/update/relink in a D1 batch; failed revisions roll back.
+  Historical recipe versions are not modeled; nutrition is never automatically relabeled.
+- Imported/AI recipes and families require nonblank, NUL-free source references in
+  Zod and SQL. Unicode whitespace is rejected; internal job/dataset IDs are valid.
+  Optional references may be omitted/NULL for legacy/curated/user sources. Neither
+  source nor reference confers verification or catalog publication authority.
+- Exact multilingual alias lookup with explicit matched/unmapped/ambiguous results;
+  atomic ingredient/name/alias authoring remains a trusted library operation, not an API.
+- 47 focused tests across three files (17 initial + 30 hardening), including real
+  SQLite constraints, rollback, populated upgrade and migration/trigger gate failures.
+- Root `AGENTS.md`, eight protocol files, seven task packets and ADR-001–ADR-010.
+  T02 now requires explicit candidate/search-work budgets and oversized-family tests;
+  no generator or runtime configuration was introduced in T01.
 
-## Partially implemented / compatibility foundations only
+## Hardening findings verified against the pre-fix implementation
 
-- D1 canonical/recipe tables and runtime static catalogs coexist. New helpers are
-  exported, but no current HTTP/scan/recipe/Week reader is switched to them.
-- Nutrition, tags, family choices and condition evidence are storable/validated;
-  no bulk authoritative data, variant generator, new nutrition calculation,
-  allergy policy or condition-edit endpoint is implemented.
-- Recipe source/review fields describe global catalog provenance. They do not
-  implement private user drafts, publication permissions or a review workflow.
+| Issue | Classification | Evidence / disposition |
+| --- | --- | --- |
+| A — Canonical ID case | CONFIRMED | General validation and binary SQL PK admitted casing variants. All 45 D1/static IDs and 385 static recipe references (43 distinct) fit the chosen strict convention; application + SQL guards added. |
+| B — Nutrition version | CONFIRMED | Positive link versions could differ from the sole current recipe row. Current-only semantics and link/parent guards added; transactional replacement tested. |
+| C — Contextual units | ALREADY_SAFE | Strict conversion already rejects contextual-to-physical conversion; typed dimensions distinguish identity. Added identity/conversion regressions and explicit documentation, not new conversion behavior. |
+| D — Provenance | CONFIRMED | Imported/AI source references were optional in recipes/families. Required evidence now enforced on INSERT/UPDATE and by shared Zod validation. |
+| E — Family expansion | PARTIALLY_CONFIRMED | Finite slots/options existed, but no computational budget was required. ADR-005/T02 now name candidate and search-state budgets, deterministic truncation and over-limit acceptance cases. |
+| F — Unknown safety | ALREADY_SAFE | Unknown-default allergen review plus sourced assertions preserve absence of evidence. Documentation explicitly rejects inferring vegetarian/allergy safety from missing tags. No filtering was added. |
+| G — Catalog coexistence | ALREADY_SAFE | Static runtime catalogs, D1 household authority and internal-only future adapters were already separated. Cutover remains separately reviewed future work. |
 
-## Not implemented in this task
+## Compatibility / non-blocking limitations
 
-New candidate engine, substitutions, ranking/personalization feedback, constrained
-lot-aware planner, budget/waste optimizer, product/SKU/price integration, AI recipe
-generation or new planner UI. These are T02–T07 scope, regardless of legacy features
-that overlap. No public API, auth, PayOS, checkout, billing or deployment behavior
-was changed.
+1. `ALL_RECIPES` and `CANONICAL_INGREDIENTS` still power legacy runtime catalog paths.
+   D1 seeds contain 45 ingredients/59 recipes; aliases/translations start empty.
+   New D1 entries do not automatically reach screens. T02 owns the internal adapter
+   and drift report, not a silent source-of-truth switch.
+2. Historical aliases retain NULL normalized keys. SQL uniqueness does not perform
+   NFKC/BCP-47 normalization; direct/import writers must use the validated contract.
+   Locale + `und` ambiguity remains explicit; no fuzzy/quantity-stripping fallback.
+3. Old engine last-lot and Week first-lot behavior, unsafe empty-eligible fallback
+   and string dietary checks remain for T02–T04. T01 is not allergy-safe planning.
+4. `pack -> pack`, `slice -> slice` and `piece -> piece` preserve quantity identity,
+   not known physical contents. Unknown nutrients/prices/dietary data stay unknown.
+   Product/SKU/package equivalence and conversion metadata remain T05 work.
+5. Zod adds authoring text/array limits and full-family option-count checks beyond
+   SQL scalar/FK guards. Input schemas are not raw SQL row decoders; map nullable
+   optional fields deliberately. No unrestricted importer/publication endpoint exists.
+6. Missing tags, even with descriptive AI/import labels, do not establish safety.
+   No complete nutrition/allergen database, safety policy or calculation engine exists.
+7. Private user-recipe drafts/publication ownership must be implemented before T06
+   accepts user submissions. Source type alone never grants global catalog authority.
+8. Lot expiry evidence requires a date; SQL legacy date syntax/timezone policy and
+   condition-edit endpoints remain deferred. Mutations must preserve versions/events.
+9. Household isolation, inventory commands, scan-confirm transactions and Week
+   legacy/`_v2` dual-write/reconciliation remain unchanged. No T02 engine, ranker,
+   planner, optimizer, AI generation, UI, PayOS/payment, auth or infrastructure change.
 
-## Important existing legacy behavior / limitations
+## Database state / migration ownership
 
-1. `ALL_RECIPES` and `CANONICAL_INGREDIENTS` remain runtime catalog sources. Seeded
-   D1 has 45 ingredients/59 recipes but no baseline aliases/translations. Do not
-   assume new D1 entries appear in screens. T02 owns drift audit/internal adapter.
-2. Historical aliases keep NULL normalized keys; existing substring matching is
-   unchanged. New resolver is exact locale + `und`, with no quantity stripping,
-   cross-locale guessing or NLP. Collision-reviewed promotion is still required.
-3. Existing match engine keeps the last ingredient lot in some paths; Week finds
-   the first lot in others. Week is already sequential but has unsafe empty-eligible
-   fallback and string-only dietary tests. T02–T04 improve this deliberately;
-   T01 does not claim allergy-safe planning or fix the old algorithm.
-4. Generic runtime price/package estimates are not retailer products. Contextual
-   pack/bunch/slice identity does not authorize cross-lot pooling of different sizes.
-5. Existing recipe macros lack explicit provenance/basis and are not auto-imported.
-   Missing nutrition/allergen/price data is unknown, not zero or proof of safety.
-6. SQL family option counts need complete-object validation plus atomic writes;
-   no SQL aggregate/publication gate is built. Recipe nutrition readers must select
-   a matching recipe version. Private user recipe ownership is required before T06
-   permits end-user submissions; source type alone is not authorization.
-7. New expiry evidence needs a date, but SQL legacy date/timestamp syntax remains
-   permissive. No timezone/expiry scoring, automatic shelf-life inference or inventory
-   condition UI exists. Future condition mutations must share version/events.
-8. Existing Week legacy/`_v2` dual-write and reconciliation, inventory optimistic
-   versions/idempotency and scan-confirm transaction flow remain unchanged.
-9. Existing ESLint rules are permissive; the repository-wide TypeScript checks do
-   not include all test files. Passing those gates is not a claim of exhaustive
-   static or production security verification.
+All 0001–0020 ledger entries are present in **sandbox-local D1 only**. Wrangler
+applied 0020 onto the existing 0019 database; the local schema gate passed. Fresh
+SQLite replay and populated 0019 upgrade/preflight rollback are also tested.
+Migrations 0001–0019 are byte-for-byte unchanged by hardening. Existing ignored
+`.wrangler/state-t01-before-review` remains the earlier T01 development snapshot.
 
-## Relevant modules
+0020 uses named preflight constraints for invalid IDs, mismatched nutrition versions
+and opaque/blank source references. Failure aborts without silently repairing data;
+the catalog/D1 owner must review affected records and authentic evidence before retry.
+Always apply through Wrangler's ledger, not standalone SQL re-execution.
 
-- `packages/domain/src/foundation.ts`, `packages/recipes/src/foundation.ts`
-- `packages/db/src/catalog.ts`, existing `queries.ts`
-- `migrations/0019_recipe_domain_foundation.sql`
-- `tests/unit/domain-foundation.test.ts`, `tests/integration/recipe-foundation.test.ts`
-- Existing `packages/domain/src/index.ts`, `week/*`, `packages/recipes/src/engine.ts`
-- Existing `src/worker/routes/{inventory,recipes,scans,week,preferences}.ts`
-- `scripts/{migration-smoke.sh,d1-schema-gate.sql,d1-schema-gate.sh}`
+Before deployment, the D1/release owner must apply pending 0019/0020 migrations to
+the target database and pass the remote schema gate. This is a deployment prerequisite,
+not a merge blocker. No production credentials, remote data or configuration were used.
+Keep additive schema for an application rollback only after compatibility review;
+the existing exact-ledger release gate rejects blind deployment of an older SHA.
+Schema recovery requires an approved backup/restore, not dropping new data or guards.
 
-## Database state / recovery
+## Exact verification
 
-Final 0019 applied with Wrangler to **sandbox-local D1 only**, all 0001–0019 ledger
-entries present. Earlier development local state was preserved at ignored
-`.wrangler/state-t01-before-review` before final clean-state replay. No remote
-migration, production read/write, deployment or credential operation occurred.
-Migration smoke also verifies seeded recipe replay and historical Week upgrade;
-integration tests verify upgrade with existing unmapped inventory/aliases.
+Final full source gates ran on implementation commit `a730da85967284afb2071140d51a3ea1c39dac9f`.
+Focused tests and the actual local migration apply also ran on the same implementation
+content before commit; only state/handoff documents follow it.
 
-0019 is ledger-applied once, not rerunnable standalone SQL. Existing migrations
-0001–0018 are unchanged. Future published changes require a new migration, not
-editing 0019. Prefer application rollback with additive schema retained; any
-database restore requires approved backup/recovery work (`DEPLOYMENT.md`).
-
-## Test state — exact executed checks
-
-| Check | Result |
+| Command / check | Result |
 | --- | --- |
-| Initial `git status --short`, `git diff`, `git log --oneline -15` | Clean baseline `57c88c5140cec3cd6cbf763fda5592bcd9568e32`; history inspected |
-| Baseline `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm check:migrations` | Passed; 44 files / 621 tests |
-| Final `pnpm exec vitest run tests/unit/domain-foundation.test.ts tests/integration/recipe-foundation.test.ts` | Passed; 2 files / 17 tests |
-| Final `pnpm lint` | Passed |
-| Final `pnpm typecheck` | Passed (web/worker source packages) |
-| Final `pnpm test` | Passed; 46 files / 638 tests, no failures |
-| Final `pnpm check:migrations` | Passed, `migration-smoke=ok` |
-| Final `pnpm build` | Passed, Vite client + Worker TypeScript build |
-| Final `pnpm exec wrangler d1 migrations apply frigo-db --local` | Passed; all 19 migrations on fresh local state |
-| Final `pnpm schema:check:local` | Passed; updated 0019 gate + foreign keys |
-| `git diff --cached --check` and protected/prior-migration path diffs | Passed; protected paths and migrations 0001–0018 unchanged |
-| Protocol manifest and heading inspection using `find`/`grep` | All 15 documents present; every required packet heading appears 7 times; fixed handoff headings present |
+| Startup `git status`, `git branch --show-current`, `git log --oneline -15`, `git diff main...HEAD` | Clean original head `63ecbd9`, correct branch; inspected full T01 scope |
+| Baseline `pnpm exec vitest run tests/unit/domain-foundation.test.ts tests/integration/recipe-foundation.test.ts` | PASS — 17 tests / 2 files |
+| Pre-fix `pnpm exec vitest run tests/unit/domain-foundation.test.ts tests/integration/foundation-hardening.test.ts --reporter=dot` | Expected FAIL — 16 failed / 16 passed; demonstrated missing A/B/D guards and optional-reference NULL mismatch |
+| `pnpm exec vitest run tests/unit/domain-foundation.test.ts tests/integration/recipe-foundation.test.ts tests/integration/foundation-hardening.test.ts` | PASS — 47 tests / 3 files |
+| `pnpm lint` | PASS |
+| `pnpm typecheck` | PASS — source/package web + Worker checks |
+| `pnpm test` | PASS — 668 tests / 47 files; repeated on the exact implementation commit |
+| `pnpm check:migrations` | PASS — `migration-smoke=ok`, full chain + historical compatibility replay |
+| `pnpm build` | PASS — Vite client + Worker TypeScript build |
+| `pnpm exec wrangler d1 migrations apply frigo-db --local` | PASS — 0020 applied onto existing 0019; all 20 ledger entries present |
+| `pnpm schema:check:local` | PASS — required ledger/schema, all ten hardening triggers, foreign keys |
+| `git diff --check`, `git diff --cached --check`, `git diff main...HEAD --check` | PASS |
+| Protected-path and prior-migration diff checks | Empty for runtime/UI/auth/PayOS, config/workflows, static catalogs/engines, and hardening changes to 0001–0019 |
 
-Before final review, delegated runs also passed 14 focused tests and 635 full tests;
-three additional storage/provenance/date cases produced the final 17/638 counts.
-Final code was formatted with `pnpm exec prettier --write` on the three new source
-files and two new test files only. No repository test gate failed.
+The first red-test run also exposed a newly written recipe fixture missing cook
+minutes; it was corrected before the repeat red run, so provenance regressions
+exercise the intended guard. All intended red failures are resolved. Original
+lowercase T01 fixture IDs were changed to valid uppercase IDs, and the AI fixture
+received an internal source reference; alias/FK/transaction assertions were retained.
+Expected failure-injection/KV warnings in existing tests are not failing checks.
+Wrangler warned that its pinned v3 is old; no unrelated dependency upgrade was made.
 
-Environment issue: platform setup tools incorrectly reported no versioned setup
-file, and `sandbox_setup` rejected its lifecycle claim. The existing
-`.hoplite/settings.json` command was executed directly and succeeded:
-
-```sh
-command -v sqlite3 >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq sqlite3); pnpm install --frozen-lockfile
-```
-
-No dependency/config change was needed; platform issue reported. Node 24.19.0,
-pnpm 10.26.0 and sqlite3 3.45.1 used. Install warned about ignored native build
-scripts; actual tests, Vite and local Wrangler succeeded. Hosted CI, remote D1,
-production integrations and browser/UI checks were not run; no UI changed.
-Optional inline Node manifest commands were blocked before execution by sandbox
-shell policy; equivalent read-only `find`/`grep` validation passed. Local Git
-checkpoint operations were run separately and succeeded.
-
-Publication follow-up: only `CURRENT_STATE.md`, `TASK_BOARD.md` and `HANDOFF.md`
-changed to record PR #5. Git status/diff/history and `git diff --check` were checked;
-full local gates were not rerun because implementation commit `e2a63bb` is unchanged.
+Earlier setup-tool misdetection/workaround is recorded in the prior T01 checkpoint
+(`63ecbd9:docs/ai/CURRENT_STATE.md`); this pass used the prepared workspace without
+setup/config changes. No remote D1, deployment or browser/UI checks were run; no UI
+changed. Hosted CI for new commits must be read from PR #5, not inferred from this table.
 
 ## Next exact action
 
-Follow `AGENT_RULES.md` startup reads/Git checks, then read
-`tasks/T02-recipe-engine.md`, the new foundation files, `packages/recipes/src/engine.ts`,
-`packages/domain/src/week/{planner,portion}.ts` and their tests. Write a failing
-lot-aware availability test: 200 g + 0.15 kg of the same canonical ingredient must
-cover a 300 g required line, while a `pack` lot must not add invented grams.
-Define the shared candidate/allocation contract and catalog drift report before
-implementation. Do not switch live readers or add ranking in T02.
+Read `AGENT_RULES.md` and all required documents, then `tasks/T02-recipe-engine.md`,
+foundation contracts/migrations, `packages/recipes/src/engine.ts`,
+`packages/domain/src/week/{planner,portion}.ts` and their tests. Start with a failing
+lot-aware availability regression: 200 g + 0.15 kg of one canonical ingredient
+provides 350 g against a 300 g requirement; a 1-pack lot must not contribute invented
+grams. Define the shared candidate/allocation contract and catalog drift audit
+before implementing. Keep contextual uncertainty and family search budgets explicit;
+do not switch live readers, add ranking or begin T03.
