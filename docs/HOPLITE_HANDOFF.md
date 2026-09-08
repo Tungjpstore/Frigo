@@ -3,6 +3,40 @@
 Cross-thread integration notes for parallel Frigo work. Read this before
 rebasing or touching a system you do not own.
 
+## Frontend + Security Integration
+
+Current integration starts from hardened `25dc0ec7dfd251e366a8726983a4eedfc1a62247`
+and ports frontend PR #3 (`fafe1cc72df15481aa67b7475d508c371b49f0a4`). The attached
+repository currently resolves to `vn-gif/Frigo`. See
+`FRONTEND_SECURITY_INTEGRATION_REPORT.md` for final verification and limitations.
+
+- Browser auth, including guests, uses opaque HttpOnly cookies and
+  `credentials: include`; no normal or legacy guest Bearer client remains.
+  Auth DTOs/store contain no reusable credential. Old credential keys are deleted.
+- `services/api.ts` is a compatibility facade over secure domain modules;
+  `http.ts` owns cookie transport, structured errors and expected-owner fencing.
+  Server sessions remain authoritative; browser IDs only fence expected ownership.
+- Shared QueryClient → BrowserRouter → SessionBoundary → Suspense/lazy routes.
+  Account/household changes clear private caches/workflows and remount routes.
+  Query keys include both user and household; private projections retain
+  `frigo_cache_v2:<user>:<household>:<name>`. Unprovable legacy caches are deleted,
+  never adopted from a matching household alone. Owned outbox checks remain.
+- TanStack Query supplies core server reads. Zustand retains workflow drafts
+  and guarded offline Week projections. Invalidation targets affected scoped
+  inventory/recommendation/Week/shopping/notification queries, not every query.
+- Home displays real server-derived meals/progress/expiry or honest empty/error
+  states. Meal selection follows local-time windows and completion state.
+  Notifications do not invent unread status; recipe failure/not-found/loading
+  remain distinct. Onboarding does not infer cuisines or dietary restrictions.
+- ConfirmDialog traps Tab/Shift+Tab, supports Escape, and restores focus.
+  Text selection remains available for content.
+- Preserve every hardened security test alongside frontend/integration tests.
+  Tests expecting guest Bearer or fabricated offline scan detections now assert
+  the current cookie contract and manually reviewed offline items instead.
+
+No worker, schema, PayOS/VietQR/payment or deployment implementation is changed
+by this integration. Historical reports below are not evidence of deployed state.
+
 # Final Hardening
 
 This section and `FINAL_HARDENING_REPORT.md` supersede the historical operational
