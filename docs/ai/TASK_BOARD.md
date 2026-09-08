@@ -6,50 +6,57 @@ active packet; implementation presence or local tests alone do not imply publica
 | Task | Status | Depends on | Exit condition |
 | --- | --- | --- | --- |
 | T01 — Domain & Data Foundation | **COMPLETE** | — | Additive 0019/0020, canonical identity/version/provenance contracts and development protocol. |
-| T02 — Recipe Engine | **COMPLETE** | T01 | Merged `db09fa0`; lot-aware quantity-only candidates, scaling, substitutions, bounded families and explicit catalog adapters. All 106 T02 tests passed again in T03 preflight. |
-| T03 — Ranking & Personalization | **COMPLETE** | T02 | Implementation `01f9d87` verified: 850 tests / 56 files and all local gates pass; published on the authorized thread branch in the user-confirmed repository. |
-| T04 — Weekly Meal Planner | **READY** | T02, T03 | Sequential future meal simulation and explicit infeasibility. Not started; requires separate authorization. |
-| T05 — Budget / Shopping / Waste Optimizer | BLOCKED BY T04 | T04 | Plan-level shopping, package, budget and waste optimization. |
-| T06 — AI Layer + API + Frontend Integration | BLOCKED BY T04, T05 | T04, T05 | Authenticated integration with existing UI; AI bounded augmentation only. |
-| T07 — Hardening / Tests / Final Architecture Review | BLOCKED BY T04–T06 | T01–T06 | Final safety, integrity, concurrency and end-to-end verification. |
+| T02 — Recipe Engine | **COMPLETE** | T01 | Merged `db09fa0`; lot-aware quantity-only candidates, scaling, substitutions, bounded families and explicit catalog adapters. Default behavior retained by T04's opt-in allocation extension. |
+| T03 — Ranking & Personalization | **COMPLETE** | T02 | Immutable checkpoint `3592de9`; implementation `01f9d87`, 850 tests / 56 files and local gates verified. Ranking/personalization source unchanged by T04. |
+| T04 — Weekly Meal Planner | **COMPLETE** | T02, T03 | Published `a687a63` after compatibility commit `c28838c`; sequential copy-on-write simulation, bounded deterministic search, locks, period nutrition and explicit infeasibility. 916 tests / 61 files and all final local gates pass. |
+| T05 — Budget / Shopping / Waste Optimizer | **READY — NOT STARTED** | T04 | Consume T04 selected demands/shortages/final projection; plan-level package, budget and waste optimization only after separate authorization. |
+| T06 — AI Layer + API + Frontend Integration | BLOCKED BY T05 | T04, T05 | Authenticated integration with existing UI; read-only planner shadow/canary path, AI bounded augmentation only. |
+| T07 — Hardening / Tests / Final Architecture Review | BLOCKED BY T05, T06 | T01–T06 | Final safety, integrity, concurrency and end-to-end verification. |
 
 ## Current checkpoint — 2026-09-08
 
-Branch `hoplite/stagiros-728cc726`; implementation
-`01f9d874c72f67dc8b414caab926aba8d4be2f68`, based on merged T02 `db09fa0`.
-Historical T02 handoff's unmerged status was corrected before T03 implementation.
+Repository `ganghienteck-droid/Frigo`, confirmed by the user; branch
+`hoplite/stagiros-728cc726`. T04 is temporarily stacked on this existing branch
+because Hoplite could not allocate a dependent branch. Explicit user authorization
+permits new commits only, after immutable T03 `3592de9832a55a06d4af6fa31491c8f3c0321262`.
+Pre-edit tree was clean and HEAD matched. No history rewrite or main merge occurred.
 
-The user confirmed publication to configured `ganghienteck-droid/Frigo` on
-2026-09-08, resolving the original `tun-vn/Frigo` URL discrepancy. First-party push
-confirmed branch head `c5695d3913f7ec3340ce1a261fc263243a1dddbe`; this state-only
-checkpoint follows it. No remotes changed, PR created, merge or deployment attempted.
+T04 commits:
+1. `c28838cf22ee05c6b7eacef0a89091c95846e4ae` — isolated minimal expiry-allocation
+   compatibility change and standalone T02 regression.
+2. `a687a63817fc153849c255562bbf62c1da475e9a` — bounded sequential planner, tests,
+   contract and ADR-014. First-party push confirmed this exact head.
 
-T03 implementation: hard filters before normalized deterministic ranking;
-server-generated/evidence snapshot boundaries; nine transparent components;
-scoped owner/member preferences, latest explicit tastes and decaying cooked/skip/
-swap history; conservative unknown semantics; additive migration 0021; bulk context
-and nutrition readers. T02 arithmetic and legacy routes/Week remain unchanged.
+Implementation range: `3592de9..a687a63817fc153849c255562bbf62c1da475e9a`.
+This documentation-only checkpoint follows the confirmed implementation push and
+cannot name itself; inspect `git log --reverse --format='%H %s' 3592de9..HEAD` for
+the full T04 range including handoff. No PR, remote migration or deployment.
 
-Executed final checks: `pnpm test` (**850 / 56**, including **76 new / 3**),
-`pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm check:migrations`,
-`pnpm exec wrangler d1 migrations apply frigo-db --local` (fresh final schema),
-`pnpm schema:check:local`, `git diff --check`, `git diff --cached --check`: **PASS**.
-No remote migration, deployment, frontend verification or hosted CI claimed.
-Initial missing-module collection failure and intermediate concurrent type errors
-were resolved; exact evidence and corrections are in CURRENT_STATE/HANDOFF.
-These are the existing implementation verification results. The publication-only
-follow-up changed documentation, checked Git/diffs and confirmed push; it did not
-rerun application gates or modify implementation/migration bytes.
+Final executed gates: `pnpm test` (**916 / 61**, **66 added**), `pnpm lint`,
+`pnpm typecheck`, `pnpm build`, `pnpm check:migrations`, `pnpm schema:check:local`,
+`git diff --check`, `git diff --cached --check`: **PASS**. Final source/tests were
+unchanged after those gates. Five new test files contain 65 tests; the allocation
+regression adds one to the existing candidate suite. Stress: 21 slots / 100 recipes,
+200-state test cap, deterministic output, bounded frontier/branching and visible
+truncation. Logs: `.hoplite/artifacts/t04-final-checks/` (ignored).
+
+Initial shopping-projection failure (1 failed / 19 passed), intermediate typing
+issues and review corrections are resolved and recorded in CURRENT_STATE/HANDOFF.
+UI/preview and hosted CI **NOT RUN**; remote D1/deployment **NOT RUN / not authorized**.
+No migration needed. Protected paths, T03 ranking and legacy Week remain unchanged.
 
 ## Next action
 
-T03 COMPLETE — T04 READY. Create/link a review PR if requested; merge/deployment
-still require authorization. T04 must begin only as a separately authorized task
-after reading its packet and the T02/T03 contracts. Do not implement T04 now.
+**T04 COMPLETE — T05 READY**, not started. Review T04, then separately authorize
+T05 if desired. T05 must use the selected plan's shortages/final projection without
+subtracting original stock twice. T06 owns the documented authenticated shadow path;
+leftovers, DST handling and production acceptance remain explicit future limitations.
+Create/link a PR only if requested and subscribe to auto-fix if created. Do not
+merge or deploy without authorization.
 
 ## Operating rules
 
-- Existing legacy scoring/Week is not completion of T03–T05 or permission for cutover.
+- Existing legacy scoring/Week is not completion of T05–T07 or permission for cutover.
 - Read AGENT_RULES, required documents and active packet; inspect Git each task.
 - Never rewrite applied migrations or silently import global/free-form preferences.
 - PayOS/payment, unrelated auth/production infrastructure are protected. Preserve

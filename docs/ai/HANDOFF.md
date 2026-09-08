@@ -1,161 +1,180 @@
 # Frigo AI Handoff
 
 ## Current Task
-T03 — Recipe Ranking & Personalization
+T04 — Weekly Meal Planner
 
 ## Task Status
-**T03 COMPLETE — T04 READY**. Implementation and all local gates pass; publication
-to the user-confirmed repository succeeded. T04 has not been started.
+**T04 COMPLETE — T05 READY**. T05 has not started; separate authorization required.
+
+T04 is temporarily stacked on `hoplite/stagiros-728cc726` because Hoplite could not
+allocate a dependent branch. The user authorized new commits strictly after immutable
+T03 `3592de9832a55a06d4af6fa31491c8f3c0321262`; pre-edit HEAD matched and the tree
+was clean. No T01–T03 amendment, squash, rebase, rewrite or merge to main occurred.
+The topology limitation changes neither architecture nor scope. Keep these commits
+separable for any later authorized cherry-pick.
 
 ## Last Verified Commit
-`01f9d874c72f67dc8b414caab926aba8d4be2f68`
-(`feat(recipe-ranking): add scoped deterministic ranking and feedback`).
-Branch `hoplite/stagiros-728cc726`; base is merged T02
-`db09fa0c4353ddf4840e04c10b96a33240de3497`. This following documentation checkpoint
-cannot name its own hash. Source/test changes passed final gates before the
-implementation commit. Published implementation/handoff head:
-`c5695d3913f7ec3340ce1a261fc263243a1dddbe`. This state-only follow-up records that
-confirmed push; inspect live Git for its own hash and current clean state.
+`a687a63817fc153849c255562bbf62c1da475e9a`
+(`feat(meal-planner): add bounded sequential weekly planning`).
 
-User repository: `https://github.com/tun-vn/Frigo`.
-Configured origin: `https://github.com/ganghienteck-droid/Frigo.git`.
-The user confirmed the configured repository on 2026-09-08. First-party publication
-confirmed the branch at `c5695d3913f7ec3340ce1a261fc263243a1dddbe`, without changing
-remotes. No PR, merge, remote migration or deployment was attempted.
+Preceding T04 dependency-compatibility commit:
+`c28838cf22ee05c6b7eacef0a89091c95846e4ae`
+(`feat(recipe-engine): add opt-in expiry allocation for T04`).
+
+T03 base: `3592de9832a55a06d4af6fa31491c8f3c0321262`.
+Verified implementation range: `3592de9..a687a63817fc153849c255562bbf62c1da475e9a`.
+First-party push confirmed that exact implementation head on the existing branch
+in user-confirmed `ganghienteck-droid/Frigo`. No remote was changed, PR created,
+merge performed or deployment attempted. This following documentation-only checkpoint
+cannot name its own hash; `git log --reverse --format='%H %s' 3592de9..HEAD` enumerates
+all T04 commits including this handoff. Historical T03 evidence remains at the base.
 
 ## Completed
-- Read mandatory specs/rules/architecture/domain/decisions/state/board/handoff,
-  T01–T03 packets, T02 documentation, implementation/tests and existing consumers.
-- Verified T02 baseline with 106 tests / 6 files passing before T03 edits; corrected
-  stale unmerged documentation using actual merged Git state. No T02 code mismatch.
-- Added original-server-snapshot scope/date/fingerprint checks; existing family and
-  prep metadata retained. No T02 availability/conversion/quantity recomputation.
-- Added hard eligibility before scores, opaque evidence snapshots from trusted
-  server providers and full candidate evidence binding. Unknown requested safety
-  conditions fail closed; high preferences cannot override restrictions.
-- Added nine bounded ranking components, one validated balanced profile, explicit
-  normalized contributions/reasons, data coverage and deterministic stable ties.
-- Added conservative expiry allocation-share scoring, partial nutrition, total-time
-  uncertainty, current household/member preference precedence, durable explicit
-  tastes, decaying history/variety and weak skip/swap signals.
-- Added migration 0021 and authorized persistence. Existing cooked_meals is reused;
-  new writer cannot create cooked events. Context uses six statements in one batch,
-  nutrition one bulk query; pure ranking makes no I/O.
-- Added 76 tests / 3 files and dedicated RANKING_ENGINE contract, ADR-013, updated
-  architecture/domain/T02/T03 documentation. No legacy runtime cutover.
+- Mandatory preflight/specification/implementation review and **850-test baseline**.
+- Pure T02 regeneration → unchanged T03 eligibility/ranking → bounded sequential
+  search → exact projected consumption for each selected future slot.
+- Opaque scoped context and copy-on-write exact inventory; native lot witnesses,
+  date-aware availability, conservation and nonnegative branch isolation.
+- Isolated minimal T02 opt-in expiry ordering; default ID ordering and T03 unchanged.
+- Fixed-offset temporal reference, ordered configurable slots/servings, exact locks,
+  deterministic replay for swaps, future-only variety and period nutrition rules.
+- Explicit cook-now/shopping modes, shortages without hypothetical purchases,
+  no fallback on hard exclusions and no false infeasibility proof on truncated search.
+- Versioned generated-only output with selected facts, deltas, initial versions/final
+  stock, shortage aggregates, nutrition, signed utility and scoped diagnostics for T05.
+- `WEEKLY_PLANNER.md`, ADR-014, architecture/domain/task updates, 66 added regressions
+  and all final local gates passing. Verified implementation published.
 
 ## In Progress
-None in T03 implementation. T04 is ready but not started.
+None in T04 implementation. This documentation checkpoint follows its verified push.
 
 ## Remaining
-- Create/link a PR if requested. If creating a PR, subscribe to auto-fix and keep
-  its holistic verification evidence current. Merge/deployment remain unauthorized.
-- T04 future planning, T05 optimization, T06 authenticated integration and T07
-  hardening remain separate tasks. Do not start them under this handoff.
+- Review T04. Create/link a PR only if requested, subscribing to auto-fix if created.
+- T05 optimization and T06 authenticated shadow/canary integration remain separate
+  work. Do not start T05, merge, deploy or change production under this handoff.
 
 ## Files Changed
-- `packages/recipes/src/{personalization,ranking-policy,ranking-evidence,ranking-eligibility,ranking-features,ranking}.ts`.
-- `packages/recipes/src/candidates.ts` metadata/provenance guard; recipe barrel exports.
-- `packages/db/src/{personalization,ranking-nutrition}.ts` and DB barrel exports.
-- `migrations/0021_recipe_personalization.sql`.
-- `tests/unit/recipe-ranking.test.ts` (63 tests).
-- `tests/integration/{recipe-personalization,ranking-nutrition}.test.ts` (7 and 6 tests).
-- Existing foundation assertions, migration smoke/schema gate scripts extended for 0021.
-- `docs/ai/{RANKING_ENGINE,RECIPE_ENGINE,ARCHITECTURE,DOMAIN_MODEL,DECISIONS,CURRENT_STATE,TASK_BOARD,HANDOFF}.md`
-  and `tasks/T03-ranking-personalization.md`.
+- Compatibility: `packages/domain/src/availability.ts`, `packages/recipes/src/candidates.ts`,
+  `tests/unit/recipe-candidates.test.ts`, `docs/ai/RECIPE_ENGINE.md`.
+- Planner: `packages/recipes/src/{planner-context,planner-inventory,planner-nutrition,
+  planner-policy,planner-request,planner-types,planner-utility,weekly-planner}.ts`
+  and recipe barrel exports.
+- Tests: `tests/helpers/planner-fixtures.ts`, `tests/unit/{weekly-planner,planner-contract,
+  planner-inventory,planner-nutrition}.test.ts`, `tests/integration/weekly-planner.test.ts`.
+- Docs: `WEEKLY_PLANNER`, `ARCHITECTURE`, `DOMAIN_MODEL`, `DECISIONS`, `CURRENT_STATE`,
+  `TASK_BOARD`, `HANDOFF`, and `tasks/T04-weekly-meal-planner.md`.
 
 ## Database / Migration Changes
-Additive 0021: `household_ranking_preferences`, `member_ranking_preferences`,
-`recipe_feedback_events`, scoped recent/taste/cooked indexes. Versioned JSON and
-canonical UTC guards; composite membership FKs for personal state; canonical
-recipe/family target and swap FKs, cascading on referenced target/member deletion.
-Owner-only household writes and member-only personal writes use atomic SQL guards.
-Feedback IDs are idempotent, conflicting replays reject; cooked writes unsupported.
-No existing migrations 0001–0020 were edited and no catalog data imported.
+None. Migrations 0001–0021 and DB repositories are byte-unchanged from T03. The
+existing local D1 read-only schema gate passes; no T04 migration application needed.
+No remote D1 commands, data import, catalog publication or deployment.
 
-Final migration bytes were applied to fresh sandbox-local D1; previous local state
-is preserved at `.wrangler/state-t03-before-final-7x8GEE/state`. Full local chain
-and read-only schema gate pass. Nothing ran against remote D1 or production.
+Planning performs no database calls after trusted preload and never mutates real
+stock/events/Week. No new persistence/acceptance writer or real reservation exists.
+Source snapshot versions/fingerprint support comparison but are not authorization
+or sufficient concurrency locks. Future acceptance must reauthorize/revalidate the
+whole inventory, catalog/reviews and preferences, then use existing transactional,
+versioned/idempotent commands and Week compatibility rules.
 
 ## Architecture Decisions
-ADR-013 supplements ADR-001–012; see RANKING_ENGINE for exact formulas/API.
-- Original T02 candidates + server-owned opaque evidence; no request-to-review shortcut.
-- Hard policies union, personal soft defaults replace household defaults; tastes are
-  private per membership while cooked history is intentionally household-shared.
-- Explicit taste wins weak feedback, never hard constraints; cooked does not imply liking.
-- Expiry consumes only the existing independent witness fractions; no FEFO/reallocation.
-- Nutrition targets are per meal serving, absent dimensions remain absent, estimated
-  hard facts require explicit permission and review. Provenance alone is not review.
-- T03 utility is a T04 input, not a weekly plan or actual stock-consumption command.
+ADR-014 and `WEEKLY_PLANNER.md` define:
+- Trusted server-owned snapshot, not raw caller safety/preferences/inventory JSON.
+  The callback boundary is not authentication; review providers must be immutable,
+  deterministic in-memory server code. No I/O in beam expansion.
+- Each branch regenerates T02 and invokes T03. No duplicate ingredient conversion,
+  substitution validation, hard safety logic or historical ranking implementation.
+- Exact Quantity native-unit witness consumption; kind-prioritized usable expiry
+  order: use-by, best-before, estimated, unknown, then date/ID. No shelf-life inference.
+- Beam alternatives, deterministic path ties, explicit recipe/planner completeness;
+  best-found feasible results are not global optima, bounded failure is not proof.
+- One fixed-offset instant/date reference, chronological slots, household-total
+  period nutrition and T02 scaling/fractional counts, without invented portions.
+- Only plan-local repetition/continuity/period nutrition supplement T03. Historical
+  tastes are not duplicated and generated meals never become actual cooked events.
+- Leftovers disabled: legacy tags/titles do not provide trusted prepared-food expiry.
+- Generated-only library coexistence with a documented future T06 read-only shadow
+  path. No Week cutover or T05 purchasing/budget/waste optimizer.
+
+Default bounds: beam 6, candidates/slot 8, states 1024, recipes 80, families 4,
+variants/family 16, family traversal states 128. Maxima: 16 / 32 / 4096 / 500 / 16 /
+64 / 1024. Horizon 1–14 days, 1–42 slots; trusted snapshots bounded to 1000 lots,
+500 recipes, 16 families and 2000 history events. Limits are returned explicitly.
 
 ## Tests / Verification
 
 ### Passed
-Final content, all source/test edits included:
-- `pnpm test` — **850 tests / 56 files** (T03 adds **76 / 3** to T02's 774 / 53).
+Final source/test content, before documentation-only completion edits:
+- `pnpm test` — **916 tests / 61 files**. T04 adds **66 tests**: weekly planner 25,
+  contract 14, projection 10, nutrition 14, SQLite integration 2, T02 compatibility 1.
+  Five new test files contain 65; one regression extends the existing T02 suite.
 - `pnpm lint` — PASS.
-- `pnpm typecheck` — PASS, source/packages/TS tests and Worker.
+- `pnpm typecheck` — PASS, application/packages/tests and Worker.
 - `pnpm build` — PASS, Vite client and Worker TypeScript.
 - `pnpm check:migrations` — PASS, `migration-smoke=ok`.
-- `pnpm exec wrangler d1 migrations apply frigo-db --local` — PASS, fresh through 0021.
-- `pnpm schema:check:local` — PASS.
+- `pnpm schema:check:local` — PASS, existing schema/ledger/foreign keys.
 - `git diff --check`, `git diff --cached --check` — PASS.
-- Protected-path diff against `db09fa0` — no changes in src, domain arithmetic,
-  or migrations 0001–0020. No clock/random/network calls in new ranker modules.
-- `pnpm install --frozen-lockfile` and T02 six-file preflight suite — PASS (106 tests).
+- Protected/dependency-path diff against `3592de9` — empty for `src`, migrations,
+  scripts, DB, Week, all T03 ranking/personalization, package/lock/config files.
+- No clock/random/network/DB calls found in planner search modules; integration
+  hooks prove zero database calls during search and unchanged stock/events/Week.
+- Preflight `pnpm test` — **850 / 56** before implementation.
+- Final strengthened `pnpm exec vitest run tests/unit/weekly-planner.test.ts` —
+  **25 / 1**, then covered again by the final full suite.
 
-Ignored exact final logs: `.hoplite/artifacts/t03-checks/`.
+Final logs: ignored `.hoplite/artifacts/t04-final-checks/`. Earlier preflight and
+intermediate logs remain under `.hoplite/artifacts/t04-preflight/` and `t04-checks/`.
 
-Publication-only follow-up: inspected clean Git status, history and diff; confirmed
-remote branch absence before first push and successful first-party publication;
-checked documentation diffs. Application gates were not rerun because implementation,
-tests and migration bytes are unchanged. The 850-test result above is the prior run.
+Key regressions: sequential depletion, branch isolation, native mixed-unit and exact
+fractional conservation, substitutions/optional demand, future expiry, unknown/hard
+safety and nutrition, slot time/type, locks/version changes/replays, shortage handoff,
+greedy failure avoided by bounded lookahead, future repetition, deterministic ties,
+chosen-prefix diagnostics and tenant/stale-snapshot boundaries.
+
+Stress: 21 requested slots, 100 recipes, two identical runs. Test policy explores
+exactly 200 states, frontier ≤6, considered choices ≤8, generated recipes ≤80;
+truncation is explicit and remaining stock nonnegative. No latency guarantee claimed.
 
 ### Failed / Corrected
-- Initial `pnpm exec vitest run tests/unit/recipe-ranking.test.ts`: missing-module
-  collection failure, one failed suite/no tests. Both initial safety regressions
-  passed after implementation; do not claim two executed red assertions.
-- Concurrent intermediate `pnpm typecheck`/`pnpm build` observed incomplete nutrition
-  row typing and old evidence-index import during edits. Fixed; final full gates pass.
-- Review corrections now tested: opaque evidence and complete binding; partial
-  coverage preserved; expiry-kind shares; namespaced history IDs; SQL NULL-safe
-  JSON version/value guards; filter future tastes before selecting latest event.
-- Setup tools misreported missing repository settings. Used repository-documented
-  idempotent SQLite/dependency setup directly and reported the platform fault.
-  No dependency upgrades or project setup override changes were made.
-- Publication follow-up shell remote discovery was denied by source-control policy
-  before execution; first-party branch discovery/publication succeeded instead.
+- Initial weekly suite: **1 failed / 19 passed** because projection rejected all
+  shopping shortages. Fixed to consume the existing witness only; later slots see
+  depleted stock and missing requirements remain explicit.
+- Intermediate typecheck exposed the in-progress projection date signature,
+  provenance version access and loose fixture types. Corrected before final gates.
+- Review fixed rejected-branch failures leaking into chosen-plan diagnostics, reused
+  T02's exact quantity schema, hardened opaque projection construction and numeric
+  boundaries. Greedy/minimum-nutrition fixtures now defeat accidental ID-order passes.
+- Hoplite dependent-branch allocation failed; reported and user explicitly authorized
+  append-only stacking after T03. No unauthorized alternate branch was created.
+- Removed one temporary untracked editor artifact; no unexpected final files found.
 
 ### Not Run
-- PR/hosted CI: no PR requested/created; no hosted CI outcome claimed. Push succeeded.
-- Remote D1, migration, deployment, production integrations: not authorized.
-- Browser/preview checks: no UI/API behavior changed.
+- UI/browser/preview — no UI/API change.
+- Hosted CI/PR checks — no PR requested or created, no hosted success claimed.
+- T04 migration apply — no schema changes; existing local schema gate executed.
+- Remote D1, deployment, production integrations — not authorized.
 
 ## Known Issues
-- No comprehensive trusted safety catalog; conservative hard policies may yield
-  empty ranking until a trusted exact-dish review provider supplies evidence.
-- ID-order expiry witness may miss FEFO opportunities. T03 does not optimize consumption.
-- Static-only recipe feedback needs reviewed D1 registration. No automatic Week
-  skip/swap capture, exact generated-variant cooking history or global-preference import.
-- Missing prep time and unsupported/ambiguous nutrition stay unknown. Bulk D1 nutrition
-  is unverified and cannot independently authorize hard nutrient constraints.
-- Preferences are current snapshots, not historical versions; no household timezone
-  inferred. Legacy runtime rankers and catalog divergence remain unchanged.
+- Bounded catalog/beam search may miss better/feasible plans; completeness is explicit.
+- Fixed offsets are not IANA timezone/DST rules. Targets sum requested meals only,
+  not assumed full-day diets or per-person consumption.
+- Hard safety/nutrition needs trusted exact-dish review evidence. Unknown data stays
+  unknown; no comprehensive review catalog or primary-protein taxonomy invented.
+- Leftovers disabled pending reviewed prepared-food storage/expiry policy.
+- Generated-only API, no Week runtime cutover. Future acceptance must revalidate;
+  the display fingerprint is not a collision-proof optimistic-lock token.
 
 ## Protected / Do Not Touch
-PayOS/payment/billing/checkout/callback/webhook code and migration 0018; unrelated
-authentication and production infrastructure; household isolation, inventory
-commands/idempotency/revisions, scan confirmation and Week compatibility.
-All protected implementation paths remain untouched.
+PayOS/payment/billing/checkout/callback/webhook code and all existing migrations;
+unrelated authentication and production infrastructure; household isolation,
+inventory command/idempotency/revision semantics, scan confirmation and Week
+compatibility. All protected implementation paths remain untouched.
 
 ## Next Task
-T04 — Weekly Meal Planner (**READY**, not started). Separate authorization required.
+T05 — Budget / Shopping / Waste Optimizer (**READY**, not started).
 
 ## Next Exact Action
-1. Keep T03 on published `hoplite/stagiros-728cc726` in `ganghienteck-droid/Frigo`.
-2. Create/link a review PR if requested and subscribe to auto-fix if creating one.
-   Do not merge or deploy without authorization.
-3. When T04 is separately authorized, read AGENT_RULES, required documents, its
-   task packet and RANKING_ENGINE/RECIPE_ENGINE contracts before editing.
-4. T03 supplies candidate utility; T04 owns sequential future planning. Do not
-   implement T04 in this publication follow-up.
+1. Review published T04 commits and `WEEKLY_PLANNER.md`; do not merge/deploy implicitly.
+2. Only with separate T05 authorization, read AGENT_RULES, required documents and its
+   task packet. Consume selected demands/shortages and final projected state; never
+   independently replan meals or subtract original inventory a second time.
+3. If a review PR is requested, create/link it and subscribe to auto-fix updates.
