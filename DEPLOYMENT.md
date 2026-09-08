@@ -47,7 +47,9 @@ Manual setup (operator, once):
 1. Provision in the Cloudflare account: D1 database (`frigo-db-staging`),
    KV namespace, R2 bucket. Do not reuse production identifiers.
 2. Copy `wrangler.staging.jsonc.example` → `wrangler.staging.jsonc` and fill
-   in the real staging IDs. The template already sets safe staging vars
+   in the real staging IDs and `APP_URL` (the exact staging frontend origin).
+   Provision independent staging `JWT_SECRET` and `OTP_HASH_SECRET` Worker
+   secrets before exercising authentication. The template already sets safe staging vars
    (`ENVIRONMENT: staging`, `AI_MOCK_MODE: true`, `SCAN_QUEUE_MODE: sync`,
    Turnstile **test** keys, `workers_dev: true`).
 3. `wrangler d1 migrations apply frigo-db-staging --remote --config wrangler.staging.jsonc`
@@ -92,8 +94,11 @@ The production job re-runs lint/typecheck/tests/migration-smoke/build, then:
 
 ## Migrations
 
-- Migrations are additive and replay-safe (`IF NOT EXISTS`); the smoke test
-  proves replay idempotency locally.
+- Apply migrations once through Wrangler's migration ledger. The smoke test
+  validates the full chain against fresh SQLite and repeats only selected
+  idempotent backfills; it does not prove every migration can be run twice.
+  Migrations 0014/0015 add columns, and 0017 rebuilds `auth_otps` without the
+  plaintext `code` column. These are not unrestricted replay/rollback scripts.
 - The pipeline **never applies remote migrations automatically**. If the
   schema gate fails because a new migration is missing, an operator applies
   it explicitly and re-dispatches:
@@ -107,6 +112,25 @@ The production job re-runs lint/typecheck/tests/migration-smoke/build, then:
   `scripts/migration-smoke.sh` (and `scripts/d1-schema-gate.sql`) as part of
   the same PR.
 
+### Auth/queue hardening cutover
+
+The release owner must confirm migrations **0014–0017** in the target D1 ledger
+before deploying this hardening code. Do not assume the reported earlier
+deployment applied them to the intended environment. Keep a recoverable D1
+checkpoint and coordinate the schema/code cutover: pre-hardening auth code
+cannot issue OTPs after 0017 removes `auth_otps.code`.
+
+Migration 0015 intentionally clears legacy sessions; users must sign in again.
+Migration 0017 discards challenges without HMAC digests, while preserving
+digest-backed challenges. Keep `OTP_HASH_SECRET` stable to preserve those
+challenges. Migration 0016 starts a new quota ledger; it does not backfill
+pre-cutover scan usage. The product/release owner must accept that allowance
+reset or approve a separate reviewed reconciliation before rollout. No remote
+backfill or migration is performed by this PR.
+
+The separate payment-owner review remains responsible for migration 0018 and
+payment activation; this section does not certify payment behavior.
+
 ## Configuration safety (config gate)
 
 `validateEnvironment(env)` (`src/worker/config/validation.ts`) runs on every
@@ -116,10 +140,30 @@ messages never embed secret values or binding IDs. Non-production is never
 gated; development runs via `pnpm dev:worker`, which forces
 `--var ENVIRONMENT:development`.
 
-Fatal in production: invalid `APP_URL` (loopback), `AI_MOCK_MODE=true`,
+Fatal in production: missing/invalid `APP_URL` (including loopback), `AI_MOCK_MODE=true`,
 `WEEK_SCHEMA_MODE != dual`, `SCAN_QUEUE_MODE != async`, missing `DB`,
-`CACHE`, `JWT_SECRET`, missing `AI` binding while mock off, missing
+`CACHE`, `JWT_SECRET`, `OTP_HASH_SECRET`, missing `AI` binding while mock off, missing
 `SCAN_QUEUE` while async.
+
+`wrangler.jsonc` versions the existing production frontend origin as `APP_URL`;
+review any environment override against the exact origin sending cookie
+requests. The staging template's origin placeholder must be replaced. Missing
+or malformed origins now fail readiness instead of appearing healthy while
+CSRF denies authentication requests.
+
+The auth/release owner provisions `OTP_HASH_SECRET` as an independent random
+secret (at least 32 random bytes recommended) in each Worker environment, never
+in Wrangler vars, Git, or frontend bundles. `.dev.vars.example` lists the local
+secret names without values. No credential rotation is required by the
+stabilization patch. Rotating the OTP key invalidates outstanding challenges;
+there is no multi-key fallback, so coordinate intentional rotation and code
+resends rather than changing the key on every deployment.
+
+When `GROQ_API_KEY` is configured, vision now defaults to
+`meta-llama/llama-4-scout-17b-16e-instruct` unless `GROQ_VISION_MODEL` overrides
+it (`packages/ai/src/providers/groq.ts`). The AI/provider owner must confirm
+the intended effective model and account access before deploying that setup;
+mock-AI tests and the isolated preview do not verify live provider availability.
 
 Warnings (reported, non-blocking): Turnstile key pair half-configured, no
 email provider (`SEND_EMAIL` binding or `RESEND_API_KEY`), missing
@@ -145,7 +189,7 @@ deletes, per retention window (env-overridable, days):
 | Task | Target | Default |
 | --- | --- | --- |
 | expired OTPs | `auth_otps` past `expires_at` | `CLEANUP_OTP_RETENTION_DAYS=7` |
-| expired sessions | `sessions` past `expires_at` | `CLEANUP_SESSION_RETENTION_DAYS=30` |
+| expired sessions | `sessions_v2` past `expires_at` | `CLEANUP_SESSION_RETENTION_DAYS=30` |
 | terminal ready jobs | `scan_queue_jobs` status `ready` | `CLEANUP_READY_JOB_RETENTION_DAYS=30` |
 | terminal failed jobs | `scan_queue_jobs` status `failed` | `CLEANUP_FAILED_JOB_RETENTION_DAYS=90` |
 
@@ -154,8 +198,8 @@ Properties: replay-safe (plain DELETEs, safe to run twice), never touches
 `datetime(column)` because the app writes ISO strings while D1 defaults write
 `YYYY-MM-DD HH:MM:SS`, production skips all cleanup when the config gate is
 fatal, and per-task failures are reported (not thrown) so one bad table never
-cancels the rest. KV `revoked_*` revocation entries are not enumerable and
-rely on KV TTL — see docs/HOPLITE_HANDOFF.md.
+cancels the rest. Session revocation is authoritative in D1
+`sessions_v2.revoked_at`; historical KV `revoked_*` entries are not consulted.
 
 ## Rate limiting
 
@@ -176,20 +220,24 @@ rely on KV TTL — see docs/HOPLITE_HANDOFF.md.
 
 ## Rollback
 
-- **Code rollback:** redeploy a known-good SHA — *Actions → Deploy → Run
+- **Code rollback:** redeploy a known-good, migrated-schema-compatible SHA — *Actions → Deploy → Run
   workflow*, `environment: production`, `confirm_production: true`,
   `ref: <previous-good-sha>`. Same gates run. Concurrency is serialized
   (`cancel-in-progress: false`), so an in-flight deploy must finish first.
-- **Data rollback:** migrations are additive; going back a Worker version is
-  safe against a schema that is a superset. Do NOT revert D1 migrations in
+  After 0017, do not select a pre-hardening SHA that reads/writes plaintext
+  OTPs or authenticates legacy sessions. Prefer a forward fix or a tested
+  compatible hardening release.
+- **Data rollback:** the hardening schema is not a universal superset: 0017
+  removes the plaintext OTP column and 0015 clears old sessions. Do NOT revert D1 migrations in
   production (no down-migrations exist). If a migration must be undone,
   restore from a D1 time-travel restore / export and treat it as an incident.
 - **Week dual-write:** shadow writes keep legacy and canonical tables in sync
   during rollbacks; never flip `WEEK_SCHEMA_MODE` away from `dual` as part of
   a rollback (the config gate fails closed if you do).
-- **Queue consumer:** the scan ledger (`scan_queue_jobs`) is additive and
-  idempotent; after a rollback, in-flight jobs are re-claimed safely and
-  poison messages still land in `frigo-scan-dlq`.
+- **Queue consumer:** a rollback must retain the 0014 claim-token fencing
+  contract while jobs are in flight. A pre-fencing worker is not a safe
+  rollback target merely because the extra columns exist. Compatible workers
+  reclaim leases; poison messages still land in `frigo-scan-dlq`.
 - **Config rollback:** if a config mistake shipped, fix the var/secrets and
   redeploy; the config gate blocks any request until configuration is valid
   (fail closed, loud).

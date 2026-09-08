@@ -40,6 +40,7 @@
   "ai": { "binding": "AI" },
   "vars": {
     "ENVIRONMENT": "staging",
+    "APP_URL": "https://<REPLACE_WITH_STAGING_WORKER_HOST>",
     // Mocked AI avoids third-party cost/keys in staging; production must
     // never run with AI_MOCK_MODE=true (config gate fails closed).
     "AI_MOCK_MODE": "true",

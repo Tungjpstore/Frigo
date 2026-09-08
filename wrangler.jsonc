@@ -59,6 +59,7 @@
   ],
   "vars": {
     "ENVIRONMENT": "production",
+    "APP_URL": "https://frigo.tungjpstore.net",
     "AI_MOCK_MODE": "false",
     "SCAN_QUEUE_MODE": "async",
     "WEEK_SCHEMA_MODE": "dual",

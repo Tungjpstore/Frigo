@@ -38,7 +38,7 @@ function warning(code: string, message: string): ConfigIssue {
 }
 
 function isLoopbackHost(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname.endsWith('.localhost');
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]' || hostname.endsWith('.localhost');
 }
 
 export function validateEnvironment(env: Env): ConfigValidationResult {
@@ -60,14 +60,13 @@ export function validateEnvironment(env: Env): ConfigValidationResult {
 
   const fatalIssues: ConfigIssue[] = [];
 
-  // Network reachability: public URL must never point at a loopback address.
-  if (env.APP_URL) {
-    const parsed = /^https?:\/\//.test(env.APP_URL) ? new URL(env.APP_URL) : null;
-    if (!parsed || (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') || isLoopbackHost(parsed.hostname)) {
-      fatalIssues.push(
-        fatal('CONFIG_PRODUCTION_APP_URL', 'APP_URL must be a public HTTP(S) URL in production; loopback hosts are rejected.')
-      );
-    }
+  // Cookie mutations need a configured trusted origin, not just a reachable host.
+  let appUrl: URL | undefined;
+  try { appUrl = new URL(env.APP_URL || ''); } catch { /* reported below */ }
+  if (!appUrl || !['https:', 'http:'].includes(appUrl.protocol) || appUrl.username || appUrl.password || isLoopbackHost(appUrl.hostname)) {
+    fatalIssues.push(
+      fatal('CONFIG_PRODUCTION_APP_URL', 'APP_URL must be a public HTTP(S) URL in production; missing, invalid, credential-bearing and loopback URLs are rejected.')
+    );
   }
 
   if (env.AI_MOCK_MODE === 'true') {
@@ -93,13 +92,18 @@ export function validateEnvironment(env: Env): ConfigValidationResult {
     fatalIssues.push(
       fatal(
         'CONFIG_BINDING_CACHE_MISSING',
-        'Required KV namespace CACHE is absent; session revocation and rate limiting cannot be enforced.'
+        'Required KV namespace CACHE is absent; shared rate limiting cannot be enforced.'
       )
     );
   }
   if (!env.JWT_SECRET) {
     fatalIssues.push(
       fatal('CONFIG_JWT_SECRET_MISSING', 'Required auth secret JWT_SECRET is absent; every authenticated request fails closed.')
+    );
+  }
+  if (!env.OTP_HASH_SECRET?.trim()) {
+    fatalIssues.push(
+      fatal('CONFIG_OTP_HASH_SECRET_MISSING', 'Required OTP secret OTP_HASH_SECRET is absent; OTP issuance and verification fail closed.')
     );
   }
 

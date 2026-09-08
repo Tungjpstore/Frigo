@@ -107,8 +107,10 @@ refactor of those attributes; defer to a security review thread. Keep
 
 ## Rollback
 
-Documented in `DEPLOYMENT.md` (code rollback via workflow_dispatch ref,
-additive-only data rollback, Week dual-write stays `dual`, queue re-claim safe).
+Documented in `DEPLOYMENT.md`: code rollback requires a hardened,
+migrated-schema-compatible ref. Migration 0017 removes the plaintext OTP column;
+pre-hardening main is not a safe rollback target. Preserve queue claim fencing
+and keep Week dual-write `dual`; migration recovery needs explicit operator approval.
 
 ## Remaining manual infrastructure steps
 
@@ -212,12 +214,19 @@ handoff, PR description, changed files and migrations 0014–0018 were inspected
   session/OTP retention and active job/quota preservation. Migration smoke used
   to stop at 0012; it now includes 0013–0018. The auth/quota schema gate checks
   0014–0017. Existing migration files are unchanged.
+- **Release configuration:** production readiness now rejects missing/blank
+  `OTP_HASH_SECRET` and missing/malformed trusted `APP_URL`. The existing
+  production origin is versioned in `wrangler.jsonc`; staging requires its own
+  origin and independent runtime secret. `DEPLOYMENT.md` documents ledger-aware
+  cutover, deliberate legacy-session invalidation and compatible rollback.
 
 Verification: initial CI/local baseline **162 pass / 1 fail**; final full local
-suite **297 pass / 0 fail** in 32 files. `pnpm lint`, `pnpm typecheck`, `pnpm test`,
+suite **309 pass / 0 fail** in 32 files. `pnpm lint`, `pnpm typecheck`, `pnpm test`,
 `pnpm build`, `pnpm check:migrations`, all local Wrangler migrations and
 `pnpm schema:check:local` passed. Latest hosted CI must be checked at the
 published head, not inferred from this local result.
+Hosted CI passed 297 tests at `7611ae7`; the subsequent readiness correction adds
+12 regression cases, so its new head needs its own hosted validation.
 
 `scripts/security-preview.mjs` runs the real Vite app and worker routes against
 fresh in-memory SQLite, stubs only the unsupported local email runtime module,

@@ -14,6 +14,7 @@ function productionEnv(overrides: Partial<Env> = {}): Env {
     AI: {},
     SCAN_QUEUE: {} as Env['SCAN_QUEUE'],
     JWT_SECRET: 's'.repeat(40),
+    OTP_HASH_SECRET: 'otp'.repeat(16),
     ...overrides,
   };
 }
@@ -50,6 +51,14 @@ describe('validateEnvironment', () => {
     expect(result.fatal.map((i) => i.code)).toContain('CONFIG_PRODUCTION_APP_URL');
   });
 
+  it.each([undefined, '', 'https://', 'ftp://frigo.example.com', 'http://[::1]:8787', 'https://user:password@frigo.example.com'])
+    ('rejects an unusable production APP_URL (%s) without throwing', (APP_URL) => {
+      const result = validateEnvironment(productionEnv({ APP_URL }));
+      expect(result.ok).toBe(false);
+      expect(result.fatal.map((issue) => issue.code)).toContain('CONFIG_PRODUCTION_APP_URL');
+      expect(JSON.stringify(result)).not.toContain('user:password');
+    });
+
   it('rejects a missing required D1 binding in production', () => {
     const result = validateEnvironment(productionEnv({ DB: undefined }));
     expect(result.ok).toBe(false);
@@ -66,6 +75,12 @@ describe('validateEnvironment', () => {
     const result = validateEnvironment(productionEnv({ JWT_SECRET: undefined }));
     expect(result.ok).toBe(false);
     expect(result.fatal.map((i) => i.code)).toContain('CONFIG_JWT_SECRET_MISSING');
+  });
+
+  it.each([undefined, '', '   '])('rejects absent or blank OTP_HASH_SECRET (%s) in production', (OTP_HASH_SECRET) => {
+    const result = validateEnvironment(productionEnv({ OTP_HASH_SECRET }));
+    expect(result.ok).toBe(false);
+    expect(result.fatal.map((issue) => issue.code)).toContain('CONFIG_OTP_HASH_SECRET_MISSING');
   });
 
   it('rejects legacy Week schema mode and sync queue mode in production', () => {
@@ -106,7 +121,7 @@ describe('validateEnvironment', () => {
 
   it('never embeds secret values in diagnostics', () => {
     const secretValue = 'sk_do_not_leak_9f8e7d6c';
-    const result = validateEnvironment(productionEnv({ RESEND_API_KEY: secretValue, TURNSTILE_SECRET_KEY: secretValue }));
+    const result = validateEnvironment(productionEnv({ RESEND_API_KEY: secretValue, TURNSTILE_SECRET_KEY: secretValue, OTP_HASH_SECRET: secretValue }));
     const serialized = JSON.stringify(result);
     expect(serialized).not.toContain(secretValue);
   });

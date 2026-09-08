@@ -4,7 +4,7 @@
 
 The existing hardening architecture was preserved and concrete auth, CSRF, OTP,
 logout, isolation, quota, request-idempotency and queue-fencing regressions were
-fixed. All local release gates pass: **297 tests, zero failures**. No existing
+fixed. All local release gates pass: **309 tests, zero failures**. No existing
 migration, payment-provider implementation, AI provider or Week domain algorithm
 was modified. Merge remains conditional on hosted CI at the published head and
 completion of the blocked running-browser checks; local success is not a claim
@@ -43,6 +43,13 @@ signal before a cookie exists. Explicit development origins: localhost and
 not inherit the loopback exceptions. Development bearer-only protected API
 calls do not receive cookie-CSRF checks. Production normal users remain
 cookie-only, with no return to reusable localStorage JWT authentication.
+
+Production configuration/readiness also rejects an absent or malformed
+`APP_URL` and a missing/blank `OTP_HASH_SECRET`, with sanitized issue codes
+instead of a false healthy result or URL parsing exception. The existing
+production origin is explicit in Wrangler; staging has its own required origin
+placeholder. Runtime-secret ownership and schema-compatible rollback are
+documented in `DEPLOYMENT.md`.
 
 ## 5. OTP Atomicity Fix
 
@@ -147,7 +154,7 @@ No new migration is required for these fixes.
 
 ## 12. Tests Added
 
-134 new substantive tests/cases across seven files:
+146 new substantive tests/cases across nine files:
 
 | File | Cases | Evidence |
 | --- | ---: | --- |
@@ -158,6 +165,8 @@ No new migration is required for these fixes.
 | `tests/integration/cleanup-schema.test.ts` | 1 | Actual migrated session/OTP/job/quota retention and repeatability |
 | `tests/unit/scan-privacy.test.tsx` | 8 | Delayed/cancelled image reads across identity changes and rendering that rejects legacy private receipt history |
 | `tests/integration/worker-cors.test.mjs` | 1 | Actual Worker preflight permits the new owner-fence headers |
+| `tests/unit/config-validation.test.ts` | 9 added (23 total) | Missing/blank OTP protection, absent/malformed/credential-bearing/loopback app origins, sanitized diagnostics |
+| `tests/unit/health.test.ts` | 3 added (10 total) | Actual readiness rejects unusable auth configuration instead of reporting success |
 
 The shared SQLite adapter runs real constraints and non-interleaving batches;
 barriers outside transactions force vulnerable interleavings rather than
@@ -168,6 +177,9 @@ after the fix. The quota rollover suite likewise reproduced three failures
 before its fix (14 pass / 3 fail), then passed all 17 cases. The JavaScript
 Worker-entrypoint test avoids mixing DOM and Workers global types; the actual
 entrypoint remains checked by `tsconfig.worker.json` in both typecheck and build.
+The release-configuration suite reproduced **22 pass / 11 fail** on `7611ae7`
+with the new assertions; after the readiness fix it passes **33 / 0**. Positive
+production fixtures now supply the required OTP secret and app origin.
 
 ## 13. Final Verification
 
@@ -176,7 +188,7 @@ entrypoint remains checked by `tsconfig.worker.json` in both typecheck and build
 | Initial complete suite / hosted CI | 162 pass, 1 fail (163 total) |
 | `pnpm lint` | PASS |
 | `pnpm typecheck` | PASS |
-| `pnpm test` | PASS — 32 files, 297 pass, 0 fail |
+| `pnpm test` | PASS — 32 files, 309 pass, 0 fail |
 | `pnpm build` | PASS |
 | `pnpm check:migrations` | PASS — all 18 migrations |
 | Local Wrangler migration application | PASS — `--local` only, 18 migrations |
@@ -184,6 +196,12 @@ entrypoint remains checked by `tsconfig.worker.json` in both typecheck and build
 | `git diff --check` | PASS |
 | Hosted CI at published stabilization head | Must be read after publication; auto-fix subscription enabled |
 | Running browser logout/retry/isolation | BLOCKED by sandbox browser/Vite memory/lifecycle failures; not claimed as passing |
+
+Hosted job `101893900737` (run `34171983503`) passed all gates with 297 tests at
+`7611ae7ad4c8f6d15a3ab716aa89b4bf5a295fd7`. The subsequent release-configuration
+fix adds 12 cases; its exact head requires fresh CI rather than inheriting that
+older check. The final preview retry again lost the browser to `about:blank`;
+interactive verification remains incomplete.
 
 The isolated Vite/SQLite preview runner avoids the repository's default
 production API proxy and disables external backend fetches. The auth page

@@ -21,6 +21,9 @@ DEEPSEEK_API_KEY=your_deepseek_api_key_here
 DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
 
 # Auth Adapters
+JWT_SECRET=
+# Independent random secret for OTP HMACs; use a stable per-environment value.
+OTP_HASH_SECRET=
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 
