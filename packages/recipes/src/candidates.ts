@@ -1,0 +1,245 @@
+import { z } from 'zod';
+import {
+  buildInventoryAvailability, compareIds, createAvailabilitySession,
+  type InventoryAvailabilityIndex, type InventoryDiagnostic, type LotAllocation,
+} from '../../domain/src/availability';
+import { QuantityRangeError } from '../../domain/src/quantity';
+import { RecipeDefinitionSchema, RecipeFamilySchema, type RecipeDefinition, type RecipeProvenance } from './foundation';
+import type { RecipeCatalogSnapshot, CatalogSource, RecipeClassificationFact } from './catalog';
+import {
+  expandRecipeFamily, MAX_VARIANT_CANDIDATES_PER_FAMILY, MAX_VARIANT_SEARCH_STATES_PER_FAMILY,
+  type RecipeFamilyVariant,
+} from './families';
+import { RequestedServingsSchema, scaleRecipeRequirements } from './requirements';
+import {
+  completeRequirement, validateSubstitutions, type RequirementEvaluation,
+  type SubstitutionDiagnostic, type SubstitutionPolicy, type SubstitutionRule,
+} from './substitutions';
+
+export type CandidateMode = 'cook_now' | 'shopping_allowed';
+export interface CandidateSource {
+  catalog: CatalogSource;
+  kind: 'recipe' | 'family';
+  sourceId: string;
+  version: number;
+  provenance: RecipeProvenance;
+}
+export interface RecipeCandidate {
+  id: string;
+  title: string;
+  source: CandidateSource;
+  requestedServings: number;
+  baseServings: number;
+  cuisine?: string;
+  cookTimeMinutes?: number;
+  eligibilityScope: 'quantity_only';
+  classifications: RecipeClassificationFact[];
+  requirements: RequirementEvaluation[];
+  canCookWithoutBuying: boolean;
+  coverage: {
+    requiredRequirementCount: number;
+    satisfiedRequiredCount: number;
+    partialRequiredCount: number;
+    missingRequiredCount: number;
+    unresolvedRequiredCount: number;
+    optionalRequirementCount: number;
+    unavailableOptionalCount: number;
+  };
+  allocationPolicy: 'independent_candidate_lot_id_witness';
+  lotAllocations: LotAllocation[];
+  rescueLotIds: string[];
+  variant?: RecipeFamilyVariant;
+}
+export interface CandidateExclusion {
+  sourceId: string;
+  sourceKind: 'recipe' | 'family';
+  reason: 'invalid_recipe' | 'invalid_family' | 'rejected_source' | 'unknown_canonical'
+    | 'required_shortage' | 'required_unresolved' | 'search_truncated' | 'no_variants_for_mode' | 'numeric_range';
+}
+export interface FamilySearchMetadata {
+  familyId: string;
+  searchStates: number;
+  candidateCount: number;
+  rejectedVariantCount: number;
+  invalidVariantCount: number;
+  truncated: boolean;
+  truncationReason: 'candidate_limit' | 'search_state_limit' | null;
+  exhaustive: boolean;
+}
+export interface CandidateGenerationInput {
+  catalog: RecipeCatalogSnapshot;
+  inventory: readonly unknown[];
+  asOfDate: string;
+  householdId?: string;
+  requestedServings: number;
+  mode: CandidateMode;
+  substitutions?: readonly unknown[];
+  approvedSubstitutionIds?: readonly string[];
+  activeConstraints?: readonly string[];
+  maxVariantCandidatesPerFamily?: number;
+  maxVariantSearchStatesPerFamily?: number;
+}
+export interface CandidateGenerationResult {
+  candidates: RecipeCandidate[];
+  exclusions: CandidateExclusion[];
+  inventoryDiagnostics: readonly InventoryDiagnostic[];
+  catalogDiagnostics: RecipeCatalogSnapshot['diagnostics'];
+  substitutionDiagnostics: SubstitutionDiagnostic[];
+  familySearches: FamilySearchMetadata[];
+  truncated: boolean;
+}
+interface EvaluationContext {
+  index: InventoryAvailabilityIndex;
+  requestedServings: number;
+  rules: readonly SubstitutionRule[];
+  policy: SubstitutionPolicy;
+  classifications: ReadonlyMap<string, RecipeClassificationFact[]>;
+}
+
+function evaluateDemands(
+  definition: { title: string; servings: number; ingredients: RecipeDefinition['ingredients']; cuisine?: string; cookTimeMinutes?: number },
+  source: CandidateSource,
+  context: EvaluationContext,
+  variant?: RecipeFamilyVariant,
+): RecipeCandidate {
+  const scaled = scaleRecipeRequirements(definition.ingredients, definition.servings, context.requestedServings);
+  const session = createAvailabilitySession(context.index);
+  const rules = context.rules.filter((rule) => rule.scopeType === source.kind &&
+    rule.scopeId === source.sourceId && rule.scopeVersion === source.version);
+  // Reserve every direct required demand before any substitution or optional demand can borrow its stock.
+  const required = scaled.filter((requirement) => !requirement.isOptional)
+    .map((requirement) => ({ requirement, direct: session.take(requirement) }));
+  const requirements = required.map(({ requirement, direct }) =>
+    completeRequirement(requirement, direct, session, rules, context.policy));
+  for (const requirement of scaled.filter((item) => item.isOptional)) {
+    requirements.push(completeRequirement(requirement, session.take(requirement), session, rules, context.policy));
+  }
+  const mandatory = requirements.filter((requirement) => !requirement.isOptional);
+  const optional = requirements.filter((requirement) => requirement.isOptional);
+  const lotAllocations = requirements.flatMap((requirement) => [
+    ...requirement.direct.lotsUsed, ...requirement.substitutions.flatMap((use) => use.lotsUsed),
+  ]);
+  return {
+    id: JSON.stringify([source.catalog, source.kind, variant?.id ?? source.sourceId, source.version, context.requestedServings]),
+    title: definition.title, source, requestedServings: context.requestedServings, baseServings: definition.servings,
+    eligibilityScope: 'quantity_only',
+    classifications: source.kind === 'recipe' ? [...(context.classifications.get(source.sourceId) ?? [])] : [],
+    ...(definition.cuisine === undefined ? {} : { cuisine: definition.cuisine }),
+    ...(definition.cookTimeMinutes === undefined ? {} : { cookTimeMinutes: definition.cookTimeMinutes }),
+    requirements, canCookWithoutBuying: mandatory.every((requirement) => requirement.status === 'satisfied'),
+    coverage: {
+      requiredRequirementCount: mandatory.length,
+      satisfiedRequiredCount: mandatory.filter((item) => item.status === 'satisfied').length,
+      partialRequiredCount: mandatory.filter((item) => item.status === 'partial').length,
+      missingRequiredCount: mandatory.filter((item) => item.status === 'missing').length,
+      unresolvedRequiredCount: mandatory.filter((item) => item.status === 'unresolved').length,
+      optionalRequirementCount: optional.length,
+      unavailableOptionalCount: optional.filter((item) => item.status !== 'satisfied').length,
+    },
+    allocationPolicy: 'independent_candidate_lot_id_witness', lotAllocations,
+    rescueLotIds: [...new Set(lotAllocations.filter((lot) => lot.freshness === 'expiring' || lot.freshness === 'use_soon')
+      .map((lot) => lot.lotId))].sort(compareIds),
+    ...(variant ? { variant } : {}),
+  };
+}
+
+export function generateRecipeCandidates(input: CandidateGenerationInput): CandidateGenerationResult {
+  const requestedServings = RequestedServingsSchema.parse(input.requestedServings);
+  const mode = z.enum(['cook_now', 'shopping_allowed']).parse(input.mode);
+  const maxCandidates = z.number().int().min(1).max(MAX_VARIANT_CANDIDATES_PER_FAMILY)
+    .parse(input.maxVariantCandidatesPerFamily ?? MAX_VARIANT_CANDIDATES_PER_FAMILY);
+  const maxSearchStates = z.number().int().min(1).max(MAX_VARIANT_SEARCH_STATES_PER_FAMILY)
+    .parse(input.maxVariantSearchStatesPerFamily ?? MAX_VARIANT_SEARCH_STATES_PER_FAMILY);
+  const index = buildInventoryAvailability(input.inventory, {
+    ingredientIds: input.catalog.ingredientIds, asOfDate: input.asOfDate, householdId: input.householdId,
+  });
+  const substitutions = validateSubstitutions(z.array(z.unknown()).max(1000).parse(input.substitutions ?? []), index.ingredientIds);
+  const policy: SubstitutionPolicy = {
+    approvedIds: new Set(z.array(z.string().min(1)).max(1000).parse(input.approvedSubstitutionIds ?? [])),
+    activeConstraints: z.array(z.string().min(1)).max(100).parse(input.activeConstraints ?? []),
+  };
+  const classifications = new Map<string, RecipeClassificationFact[]>();
+  for (const fact of input.catalog.classifications) {
+    const facts = classifications.get(fact.recipeId) ?? [];
+    facts.push({ ...fact });
+    classifications.set(fact.recipeId, facts);
+  }
+  const context = { index, requestedServings, rules: substitutions.rules, policy, classifications };
+  const candidates: RecipeCandidate[] = [];
+  const exclusions: CandidateExclusion[] = [];
+  const familySearches: FamilySearchMetadata[] = [];
+  const eligible = (candidate: RecipeCandidate) => mode === 'shopping_allowed' || candidate.canCookWithoutBuying;
+  const recipeCounts = new Map<string, number>();
+  input.catalog.recipes.forEach((recipe) => recipeCounts.set(recipe.id, (recipeCounts.get(recipe.id) ?? 0) + 1));
+  for (const raw of input.catalog.recipes) {
+    const parsed = RecipeDefinitionSchema.safeParse(raw);
+    const exclude = (reason: CandidateExclusion['reason']) => exclusions.push({ sourceId: raw.id, sourceKind: 'recipe', reason });
+    if (!parsed.success || recipeCounts.get(raw.id) !== 1) { exclude('invalid_recipe'); continue; }
+    const recipe = parsed.data;
+    if (recipe.provenance.verificationState === 'rejected') { exclude('rejected_source'); continue; }
+    if (recipe.ingredients.some((line) => !index.ingredientIds.has(line.ingredientId))) { exclude('unknown_canonical'); continue; }
+    try {
+      const candidate = evaluateDemands(recipe, { catalog: input.catalog.source, kind: 'recipe', sourceId: recipe.id,
+        version: recipe.provenance.version, provenance: recipe.provenance }, context);
+      if (eligible(candidate)) candidates.push(candidate);
+      else exclude(candidate.coverage.unresolvedRequiredCount > 0 ? 'required_unresolved' : 'required_shortage');
+    } catch (error) {
+      if (error instanceof QuantityRangeError) exclude('numeric_range');
+      else if (error instanceof z.ZodError) exclude('invalid_recipe');
+      else throw error;
+    }
+  }
+  const familyCounts = new Map<string, number>();
+  input.catalog.families.forEach((family) => familyCounts.set(family.id, (familyCounts.get(family.id) ?? 0) + 1));
+  for (const raw of input.catalog.families) {
+    const parsed = RecipeFamilySchema.safeParse(raw);
+    const exclude = (reason: CandidateExclusion['reason']) => exclusions.push({ sourceId: raw.id, sourceKind: 'family', reason });
+    if (!parsed.success || familyCounts.get(raw.id) !== 1) { exclude('invalid_family'); continue; }
+    const family = parsed.data;
+    if (family.provenance.verificationState === 'rejected') { exclude('rejected_source'); continue; }
+    if (family.slots.some((slot) => slot.options.some((option) => !index.ingredientIds.has(option.ingredientId)))) {
+      exclude('unknown_canonical'); continue;
+    }
+    const evaluated = new Map<string, RecipeCandidate>();
+    let rejectedVariantCount = 0;
+    let invalidVariantCount = 0;
+    let result: ReturnType<typeof expandRecipeFamily>;
+    try {
+      result = expandRecipeFamily(family, { maxCandidates, maxSearchStates,
+      acceptVariant: (variant) => {
+        try {
+          const candidate = evaluateDemands({ title: family.name, servings: family.baseServings, ingredients: variant.ingredients },
+            { catalog: input.catalog.source, kind: 'family', sourceId: family.id, version: family.provenance.version,
+              provenance: family.provenance }, context, variant);
+          if (!eligible(candidate)) { rejectedVariantCount++; return false; }
+          evaluated.set(variant.id, candidate);
+          return true;
+        } catch (error) {
+          if (!(error instanceof QuantityRangeError) && !(error instanceof z.ZodError)) throw error;
+          invalidVariantCount++;
+          return false;
+        }
+      },
+      });
+    } catch (error) {
+      if (error instanceof QuantityRangeError) { exclude('numeric_range'); continue; }
+      if (error instanceof z.ZodError) { exclude('invalid_family'); continue; }
+      throw error;
+    }
+    for (const variant of result.variants) {
+      const candidate = evaluated.get(variant.id);
+      if (!candidate) throw new Error('Accepted family variant must have an evaluated candidate');
+      candidates.push(candidate);
+    }
+    familySearches.push({ familyId: family.id, searchStates: result.searchStates, candidateCount: result.variants.length,
+      rejectedVariantCount, invalidVariantCount, truncated: result.truncated, truncationReason: result.truncationReason,
+      exhaustive: !result.truncated && invalidVariantCount === 0 });
+    if (result.variants.length === 0) exclude(result.truncated ? 'search_truncated'
+      : invalidVariantCount > 0 ? 'numeric_range' : 'no_variants_for_mode');
+  }
+  candidates.sort((a, b) => compareIds(a.id, b.id));
+  exclusions.sort((a, b) => compareIds(a.sourceKind, b.sourceKind) || compareIds(a.sourceId, b.sourceId) || compareIds(a.reason, b.reason));
+  familySearches.sort((a, b) => compareIds(a.familyId, b.familyId));
+  return { candidates, exclusions, inventoryDiagnostics: index.diagnostics, catalogDiagnostics: input.catalog.diagnostics,
+    substitutionDiagnostics: substitutions.diagnostics, familySearches, truncated: familySearches.some((search) => search.truncated) };
+}

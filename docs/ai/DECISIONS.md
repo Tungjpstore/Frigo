@@ -1,6 +1,6 @@
 # Architecture Decisions
 
-All entries accepted in T01. Supersede an ADR explicitly; do not silently rewrite
+Entries identify the task in which they were accepted. Supersede an ADR explicitly; do not silently rewrite
 the agreed architecture. Later tasks must record migration and compatibility impact.
 
 ## ADR-001 — Extend existing identities and runtime boundaries
@@ -238,3 +238,61 @@ generation, ownership or review endpoint is implemented in T01.
 
 **Alternatives considered:** Require public URLs or a full provenance subsystem;
 infer traceability from source type. Rejected as unnecessary or unauditable.
+
+## ADR-011 — Indexed quantity feasibility, not runtime ranking or consumption planning
+
+**Status:** Accepted 2026-09-08 (T02)
+
+**Decision:** Add a reusable leaf availability index and per-candidate reservation
+session. Re-export unchanged strict unit semantics from a leaf module to avoid
+barrel cycles. Aggregate compatible physical lots and canonical piece quantities;
+contextual package labels alone never prove equivalent contents. Preserve explicit
+missing/partial/unresolved/satisfied outcomes and diagnostics. Duplicate identical
+lot IDs count once; conflicting/invalid related stock is quarantined as uncertainty.
+Use exact decimal rational intermediate arithmetic and explicit finite Number
+boundaries; arithmetic range failures are reported, never coerced to zero coverage.
+
+Aggregate repeated compatible requirements before serving scaling, retain source
+line indices and units (mixed physical units use their base). Preserve mathematical
+fractional pieces with an explicit flag: existing T01 quantity contracts allow
+fractions. No hidden whole-item/purchase rounding or Week portion optimizer.
+Reserve direct required demand first, then approved substitutions, then optional
+demand. Lot-ID order is only a reproducible feasibility witness, not FEFO, actual
+stock consumption or a multi-meal simulation. Each candidate starts independently.
+
+Caller supplies an explicit as-of date and authorized household-scoped inventory.
+Past use-by is unavailable; past best-before is not automatically unsafe; elapsed
+unknown/estimated dates require review and remain uncertain. Freshness rescue flags
+are carried as raw witness facts, not recalculated/weighted expiry priorities.
+
+**Consequences:** Legacy recipe scoring, static readers, cooking commands and Week
+behavior stay unchanged pending their explicit integration tasks. New functions
+claim quantity feasibility only, not nutrition/allergy certification. No migration,
+API, UI, payment/auth or production configuration change is required.
+
+## ADR-012 — Explicit one-hop substitutions and bounded family traversal
+
+**Status:** Accepted 2026-09-08 (T02)
+
+**Decision:** Substitution rules are explicit reviewed, source-referenced quantities,
+scoped to a recipe/family ID and version. Every use needs per-call approval and
+positive compatibility evidence for every active constraint; missing evidence
+denies use. Rules express the replacement amount per original unit, including
+partial replacements, never inferred food density. No contextual conversions,
+transitive substitutions, preferences or learned rules. Deterministic rule-ID order
+does not claim globally optimal allocation among competing substitutes.
+
+Family traversal is lazy with the ADR-005 limits enforced during attempted partial
+states, including rejected branches; callers may lower but not exceed 64 candidates
+or 1024 states per family. Canonicalize slot/options and semantic aggregate demands;
+contextual demands retain separate lines and slot identities because equal labels
+do not prove equivalent contents. Retain selected-slot evidence and do not persist
+variants. A selected optional-slot
+option is required within that variant; omission is its separate zero-selection
+choice. Never emit a zero-demand variant. Truncated searches do not prove no
+feasible variant exists. Family instructions/cuisine/times absent in T01 stay absent.
+
+**Consequences:** T03 can consume structured requirement facts without repeating
+inventory math. D1/static catalog snapshots remain explicit internal read-only
+sources; drift/alias promotion proposals require review, not automatic writes or
+runtime cutover. No new persisted substitution or variant schema is needed.

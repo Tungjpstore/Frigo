@@ -44,6 +44,22 @@ Today, `@frigo/recipes` evaluates/ranks static `ALL_RECIPES`; its inventory map 
 - Tests demonstrating that inventory is summed/allocated across lots rather than last-lot overwrite or first-lot-only behavior.
 - Documentation updates describing any compatibility bridge or migration strategy.
 
+## Implemented Contract
+
+- `domain/src/{availability,quantity,units}.ts`: indexed canonical lots, explicit
+  uncertainty/diagnostics, strict physical factors, exact intermediate arithmetic,
+  per-candidate allocation witnesses and immutable input behavior.
+- `recipes/src/{catalog,requirements,substitutions,families,candidates}.ts`:
+  explicit source snapshots, repeated-demand/serving scaling, approved one-hop
+  substitutions, bounded semantic family variants and quantity-only candidates.
+- `db/src/recipe-catalog.ts`: transactional read-only D1 snapshot and alias audit;
+  no schema/write path or live source switch. Static-only `gl-01`–`gl-12` are retained.
+- See `../RECIPE_ENGINE.md` and ADR-011/012 for status semantics, numeric boundaries,
+  fractional count policy, expiry handling, deterministic greedy substitutions and
+  callback/search limits. Full-dish safety eligibility remains T03 responsibility.
+- Current completion/check evidence is in `../CURRENT_STATE.md` and `../HANDOFF.md`;
+  implementation presence alone is not a completion claim.
+
 ## Acceptance Criteria
 
 - Two compatible lots of one canonical ingredient can cover one requirement; incompatible lots cannot be counted as coverage.
@@ -65,7 +81,10 @@ pnpm check:migrations
 pnpm build
 ```
 
-Add focused tests alongside `tests/unit/recipe-engine.test.ts` or an appropriately named new test, and use `tests/helpers/sqlite-d1.ts` for persistence behavior. Record test counts/results and any skipped command.
+Focused tests: `tests/unit/{ingredient-availability,quantity,recipe-candidates,recipe-families}.test.ts`
+and `tests/integration/{recipe-catalog,recipe-candidates}.test.ts`. Existing recipe,
+Week, cooking, inventory/security and T01 regressions remain intact. D1 tests use
+`tests/helpers/sqlite-d1.ts`. Record exact counts/results and any skipped command.
 
 ## Known Risks
 
