@@ -2,6 +2,7 @@ import React from 'react';
 import { useWeekStore } from '../../stores/useWeekStore';
 import { X, ArrowRightLeft, Clock, Check } from 'lucide-react';
 import { clsx } from 'clsx';
+import { InlineError } from '../../components/common/AsyncState';
 
 export const MealSwapSheet: React.FC = () => {
   const {
@@ -11,6 +12,9 @@ export const MealSwapSheet: React.FC = () => {
     closeSwap,
     executeSwap,
     currentPlan,
+    error,
+    openSwap,
+    isLoading,
   } = useWeekStore();
 
   if (!swapSlotId || !currentPlan) return null;
@@ -54,6 +58,7 @@ export const MealSwapSheet: React.FC = () => {
 
         {/* Content list */}
         <div className="p-4 overflow-y-auto space-y-2.5 flex-1 bg-slate-50/50">
+          {error && <InlineError message={error} onRetry={() => openSwap(swapSlotId)} />}
           {isLoadingAlternatives ? (
             <div className="py-12 text-center">
               <div className="animate-spin w-7 h-7 border-2 border-emerald-600 border-t-transparent rounded-full mx-auto mb-2" />
@@ -124,6 +129,7 @@ export const MealSwapSheet: React.FC = () => {
                   </div>
 
                   <button
+                    disabled={isLoading}
                     onClick={() => executeSwap(alt.recipe.id)}
                     className="px-3.5 py-2 rounded-lg bg-[#0F3D2E] hover:bg-emerald-800 text-white font-semibold text-xs transition-all active:scale-[0.98] shrink-0 tap-target flex items-center gap-1 shadow-xs"
                     aria-label={`Chọn món ${alt.recipe.title}`}

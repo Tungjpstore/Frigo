@@ -168,8 +168,10 @@ export function removeOp(id: string): void {
   if (next.length !== ops.length) save(next);
 }
 
-export function pendingCount(): number {
-  return load().length;
+export function pendingCount(scope?: PendingScope): number {
+  const ops = load();
+  if (!scope) return ops.length;
+  return ops.filter((op) => op.userId === scope.userId && op.householdId === scope.householdId).length;
 }
 
 export function subscribe(fn: Listener): () => void {

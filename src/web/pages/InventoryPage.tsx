@@ -1,10 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { TopBar } from '../components/common/TopBar';
 import { IngredientRow } from '../components/common/IngredientRow';
 import { EmptyState } from '../components/common/EmptyState';
+import { InlineLoading, InlineError } from '../components/common/AsyncState';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { Button } from '../components/common/Button';
 import { api } from '../services/api';
+import { queryKeys } from '../lib/queryKeys';
+import { invalidateInventoryDependents } from '../lib/query-invalidation';
 import { Plus, Search, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { StandardUnit } from '@frigo/domain';
@@ -12,11 +17,11 @@ import { StandardUnit } from '@frigo/domain';
 export const InventoryPage: React.FC = () => {
   const navigate = useNavigate();
 
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; version: number } | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
   // Form states
   const [name, setName] = useState('');
@@ -26,43 +31,49 @@ export const InventoryPage: React.FC = () => {
   const [storage, setStorage] = useState('fridge');
   const [expiryDays, setExpiryDays] = useState(5);
 
-  const loadInventory = async () => {
-    setLoading(true);
-    try {
-      const list = await api.getInventory();
-      setItems(list);
-    } finally {
-      setLoading(false);
-    }
+  const inventoryQuery = useQuery({
+    queryKey: queryKeys.inventory(),
+    queryFn: () => api.getInventory(),
+  });
+  const items = inventoryQuery.data ?? [];
+  const loading = inventoryQuery.isPending;
+
+  const updateQty = useMutation({
+    mutationFn: ({ id, newQty, version }: { id: string; newQty: number; version: number }) =>
+      api.updateInventoryItem(id, { quantity: newQty }, version),
+    onSuccess: invalidateInventoryDependents,
+    onError: () => setMutationError('Chưa cập nhật được số lượng. Vui lòng thử lại.'),
+  });
+
+  const deleteItem = useMutation({
+    mutationFn: ({ id, version }: { id: string; version: number }) =>
+      api.deleteInventoryItem(id, version),
+    onSuccess: invalidateInventoryDependents,
+    onError: () => setMutationError('Chưa xóa được nguyên liệu. Vui lòng thử lại.'),
+  });
+
+  const addItem = useMutation({
+    mutationFn: (payload: any) => api.addInventoryItem(payload),
+    onSuccess: () => {
+      void invalidateInventoryDependents();
+      setIsAddModalOpen(false);
+      setName('');
+      setQuantity(1);
+    },
+    onError: () => setMutationError('Chưa thêm được nguyên liệu. Vui lòng thử lại.'),
+  });
+
+  const handleUpdateQty = (id: string, currentQty: number, delta: number, version: number) => {
+    setMutationError(null);
+    updateQty.mutate({ id, newQty: Math.max(1, currentQty + delta), version });
   };
 
-  useEffect(() => {
-    loadInventory();
-  }, []);
-
-  const handleUpdateQty = async (
-    id: string,
-    currentQty: number,
-    delta: number,
-    currentVersion: number
-  ) => {
-    const newQty = Math.max(1, currentQty + delta);
-    const updated = await api.updateInventoryItem(id, { quantity: newQty }, currentVersion);
-    setItems((prev) => prev.map((i) => (i.id === id ? updated : i)));
-  };
-
-  const handleDelete = async (id: string, currentVersion: number) => {
-    if (!confirm('Bạn có chắc muốn xóa nguyên liệu này khỏi tủ lạnh?')) return;
-    await api.deleteInventoryItem(id, currentVersion);
-    setItems((prev) => prev.filter((i) => i.id !== id));
-  };
-
-  const handleAddItem = async (e: React.FormEvent) => {
+  const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-
+    setMutationError(null);
     const expiryDate = new Date(Date.now() + expiryDays * 86400000).toISOString().split('T')[0];
-    const created = await api.addInventoryItem({
+    addItem.mutate({
       name: name.trim(),
       quantity: Number(quantity),
       unit,
@@ -70,11 +81,6 @@ export const InventoryPage: React.FC = () => {
       storage,
       expiryDate,
     });
-
-    setItems((prev) => [created, ...prev]);
-    setIsAddModalOpen(false);
-    setName('');
-    setQuantity(1);
   };
 
   const filteredItems = items.filter((item) => {
@@ -152,11 +158,15 @@ export const InventoryPage: React.FC = () => {
 
         {/* Inventory Item List */}
         <div className="space-y-2 pt-1">
+          {mutationError && (
+            <p className="text-xs text-rose-600 font-medium px-1" role="alert">
+              {mutationError}
+            </p>
+          )}
           {loading ? (
-            <div className="text-center py-10">
-              <div className="animate-spin w-7 h-7 border-2 border-emerald-600 border-t-transparent rounded-full mx-auto mb-2" />
-              <p className="text-xs text-slate-500 font-medium">Đang tải tủ lạnh...</p>
-            </div>
+            <InlineLoading label="Đang tải tủ lạnh…" />
+          ) : inventoryQuery.isError ? (
+            <InlineError error={inventoryQuery.error} onRetry={() => inventoryQuery.refetch()} />
           ) : filteredItems.length === 0 ? (
             <EmptyState
               type="empty-fridge"
@@ -180,7 +190,7 @@ export const InventoryPage: React.FC = () => {
                 expiryDate={item.expiryDate}
                 onClick={() => navigate(`/ingredients/${item.id}`)}
                 onUpdateQuantity={(delta) => handleUpdateQty(item.id, item.quantity, delta, item.version)}
-                onDelete={() => handleDelete(item.id, item.version)}
+                onDelete={() => setPendingDelete({ id: item.id, version: item.version })}
               />
             ))
           )}
@@ -338,6 +348,22 @@ export const InventoryPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Xóa nguyên liệu?"
+        description="Nguyên liệu này sẽ bị xóa khỏi tủ lạnh của bạn."
+        confirmText="Xóa"
+        destructive
+        onConfirm={() => {
+          if (pendingDelete) {
+            setMutationError(null);
+            deleteItem.mutate(pendingDelete);
+          }
+          setPendingDelete(null);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 };

@@ -2,9 +2,18 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+const appVersion = process.env.npm_package_version || '0.1.0';
+const buildCommit = process.env.GIT_COMMIT || process.env.VITE_GIT_COMMIT || 'local';
+const buildTimestamp = process.env.BUILD_TIMESTAMP || new Date().toISOString();
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
+    'import.meta.env.VITE_GIT_COMMIT': JSON.stringify(buildCommit),
+    'import.meta.env.VITE_BUILD_TIMESTAMP': JSON.stringify(buildTimestamp),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src/web'),

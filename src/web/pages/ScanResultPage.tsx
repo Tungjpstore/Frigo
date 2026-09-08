@@ -8,6 +8,8 @@ import { Button } from '../components/common/Button';
 import { getIngredientImage } from '../lib/ingredient-images';
 import { Plus, Trash2, CheckCircle2, X } from 'lucide-react';
 import { StandardUnit } from '@frigo/domain';
+import { capturePrivateSession } from '../lib/private-session';
+import { invalidateInventoryDependents } from '../lib/query-invalidation';
 
 export const ScanResultPage: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +18,7 @@ export const ScanResultPage: React.FC = () => {
   const effectiveScanId = scanId || paramScanId || `scan_${Date.now()}`;
 
   const [isConfirming, setIsConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const [isManualAddOpen, setIsManualAddOpen] = useState(false);
   const [addName, setAddName] = useState('');
   const [addQty, setAddQty] = useState(1);
@@ -63,13 +66,18 @@ export const ScanResultPage: React.FC = () => {
 
   const handleConfirm = async () => {
     if (items.length === 0 || scanStatus !== 'ready') return;
+    const isCurrent = capturePrivateSession();
+    setConfirmError(null);
     setIsConfirming(true);
     try {
       await api.confirmScan(effectiveScanId, items);
+      if (!isCurrent()) return;
+      void invalidateInventoryDependents();
       reset();
       navigate('/fridge');
-    } catch (err) {
-      console.error('Confirm scan failed:', err);
+    } catch {
+      if (!isCurrent()) return;
+      setConfirmError('Chưa lưu được nguyên liệu. Vui lòng thử lại.');
       setIsConfirming(false);
     }
   };
@@ -93,6 +101,7 @@ export const ScanResultPage: React.FC = () => {
       <TopBar showBack title="Kết quả nhận diện AI" subtitle="Kiểm tra & chỉnh sửa trước khi xác nhận" />
 
       <div className="px-4 pt-3 space-y-4">
+        {confirmError && <p role="alert" className="text-sm text-red-700">{confirmError}</p>}
         {/* Banner Alert */}
         <div className="bg-emerald-50/80 border border-emerald-200/70 rounded-xl p-3.5 flex items-start gap-3">
           <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />

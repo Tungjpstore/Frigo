@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWeekStore } from '../stores/useWeekStore';
 import { TopBar } from '../components/common/TopBar';
+import { InlineError, InlineLoading } from '../components/common/AsyncState';
 import { MealSwapSheet } from '../features/week/MealSwapSheet';
 import { getIngredientImage } from '../lib/ingredient-images';
+import { queryKeys } from '../lib/queryKeys';
+import { api } from '../services/api';
 import { Clock, Users, ChefHat, ArrowRightLeft, Check, Sparkles } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -11,20 +15,32 @@ export const MealDetailPage: React.FC = () => {
   const { planId, mealId } = useParams<{ planId: string; mealId: string }>();
   const navigate = useNavigate();
 
-  const { currentPlan, loadPlanById, openSwap } = useWeekStore();
+  const { openSwap, error: workflowError } = useWeekStore();
   const [activeTab, setActiveTab] = useState<'ingredients' | 'steps' | 'nutrition'>('ingredients');
+  const planQuery = useQuery({
+    queryKey: queryKeys.weekPlan(planId || ''),
+    queryFn: () => api.getWeekPlan(planId!),
+    enabled: Boolean(planId),
+  });
+  const currentPlan = planQuery.data ?? null;
 
   useEffect(() => {
-    if (planId && !currentPlan) {
-      loadPlanById(planId);
-    }
-  }, [planId, currentPlan]);
+    if (currentPlan) useWeekStore.setState({ currentPlan });
+  }, [currentPlan]);
 
-  if (!currentPlan) {
+  if (planQuery.isError || !currentPlan) {
     return (
       <div className="min-h-screen bg-[#F8FAF9] pb-24">
         <TopBar showBack title="Chi tiết món ăn" />
-        <div className="py-20 text-center text-xs text-slate-500 font-medium">Đang tải...</div>
+        <div className="p-4">
+          {planQuery.isError ? (
+            <InlineError error={planQuery.error} onRetry={() => planQuery.refetch()} />
+          ) : planId && planQuery.isPending ? (
+            <InlineLoading label="Đang tải thực đơn…" />
+          ) : (
+            <p role="status" className="py-12 text-center text-sm text-slate-600">Không tìm thấy thực đơn này.</p>
+          )}
+        </div>
       </div>
     );
   }
@@ -61,14 +77,15 @@ export const MealDetailPage: React.FC = () => {
   const recipe = targetSlot.recipe;
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] pb-32 select-none max-w-md mx-auto">
+    <div className="min-h-screen bg-[#F8FAF9] pb-32 max-w-md mx-auto">
       <TopBar
         showBack
         title={targetSlot.recipe.title}
-        subtitle={`${targetDay.dayNameVi} • ${targetSlot.slotType === 'dinner' ? 'Bữa tối' : 'Bữa trưa'}`}
+        subtitle={`${targetDay.dayNameVi} • ${targetSlot.slotType === 'breakfast' ? 'Bữa sáng' : targetSlot.slotType === 'lunch' ? 'Bữa trưa' : 'Bữa tối'}`}
       />
 
       <div className="px-4 pt-3 max-w-md mx-auto space-y-4">
+        {workflowError && <InlineError message={workflowError} />}
         {/* Hero Recipe Photo & Quick Specs */}
         <div className="relative w-full h-56 rounded-2xl overflow-hidden bg-slate-100 shadow-xs border border-slate-200/60">
           <img
@@ -83,9 +100,11 @@ export const MealDetailPage: React.FC = () => {
               <span className="text-[10px] font-heading font-semibold uppercase px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md border border-white/20">
                 {recipe.cuisine === 'vietnamese' ? 'Việt Nam' : recipe.cuisine}
               </span>
-              <span className="text-[10px] font-heading font-semibold px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-xs">
-                {recipe.nutrition?.calories || 324} cal/phần
-              </span>
+              {recipe.nutrition?.calories != null && (
+                <span className="text-[10px] font-heading font-semibold px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-xs">
+                  {recipe.nutrition.calories} cal/phần
+                </span>
+              )}
               <span className="text-[10px] font-heading font-semibold px-2 py-0.5 rounded-full bg-amber-500 text-white shadow-xs">
                 {targetSlot.incrementalCostVnd === 0 ? '0đ có sẵn' : `~${Math.round(targetSlot.incrementalCostVnd / 1000)}k`}
               </span>
@@ -109,7 +128,7 @@ export const MealDetailPage: React.FC = () => {
         </div>
 
         {/* Smart Expiry Optimization Banner matching screen 5.2 */}
-        <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-3.5 flex items-center gap-3 text-xs text-amber-950 shadow-xs">
+        {targetSlot.rescuedExpiringIngredients.length > 0 && <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-3.5 flex items-center gap-3 text-xs text-amber-950 shadow-xs">
           <div className="w-8 h-8 rounded-xl bg-amber-200/70 flex items-center justify-center shrink-0 text-amber-800">
             <Sparkles className="w-4 h-4" />
           </div>
@@ -118,10 +137,10 @@ export const MealDetailPage: React.FC = () => {
               Tối ưu tủ lạnh
             </p>
             <p className="text-[11px] text-amber-800/90 mt-0.5">
-              Dùng hết thịt ba chỉ & nguyên liệu sắp hết hạn trong tủ lạnh
+              Ưu tiên nguyên liệu sắp hết hạn: {targetSlot.rescuedExpiringIngredients.join(', ')}
             </p>
           </div>
-        </div>
+        </div>}
 
         {/* Segmented 3 Tabs: Nguyên liệu | Cách nấu | Dinh dưỡng */}
         <div className="flex bg-slate-200/70 p-1 rounded-xl">
@@ -133,6 +152,7 @@ export const MealDetailPage: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
+              aria-pressed={activeTab === tab.id}
               className={clsx(
                 'flex-1 py-2 rounded-lg text-xs font-heading font-bold transition-all tap-target',
                 activeTab === tab.id
@@ -244,28 +264,28 @@ export const MealDetailPage: React.FC = () => {
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                 <p className="text-[10px] text-slate-500 uppercase font-semibold">Calories</p>
                 <p className="font-heading font-bold text-base text-slate-900 mt-1">
-                  {recipe.nutrition?.calories || 324}
+                  {recipe.nutrition?.calories ?? '—'}
                 </p>
                 <p className="text-[10px] text-slate-400">kcal</p>
               </div>
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                 <p className="text-[10px] text-slate-500 uppercase font-semibold">Đạm</p>
                 <p className="font-heading font-bold text-base text-slate-900 mt-1">
-                  {recipe.nutrition?.proteinG || 28}
+                  {recipe.nutrition?.proteinG ?? '—'}
                 </p>
                 <p className="text-[10px] text-slate-400">g</p>
               </div>
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                 <p className="text-[10px] text-slate-500 uppercase font-semibold">Béo</p>
                 <p className="font-heading font-bold text-base text-slate-900 mt-1">
-                  {recipe.nutrition?.fatG || 14}
+                  {recipe.nutrition?.fatG ?? '—'}
                 </p>
                 <p className="text-[10px] text-slate-400">g</p>
               </div>
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                 <p className="text-[10px] text-slate-500 uppercase font-semibold">Carb</p>
                 <p className="font-heading font-bold text-base text-slate-900 mt-1">
-                  {recipe.nutrition?.carbG || 18}
+                  {recipe.nutrition?.carbG ?? '—'}
                 </p>
                 <p className="text-[10px] text-slate-400">g</p>
               </div>

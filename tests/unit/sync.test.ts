@@ -109,12 +109,16 @@ describe('offline outbox and scan persistence contract', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')));
     storage.setItem('frigo_user_id', 'guest-1');
     storage.setItem('frigo_household_id', 'hh_guest_1');
-    sessionStorage.setItem('frigo_guest_token', 'guest-token');
 
     const scan = await api.scanFridge('image-data');
     expect(scan.id).toMatch(/^scan_offline_/);
+    expect(scan.offline).toBe(true);
+    expect(scan.items).toHaveLength(0);
 
-    const result = await api.confirmScan(scan.id, [scan.items[0]]);
+    const reviewedItem = {
+      id: 'manual-1', rawName: 'Trứng gà', estimatedQuantity: 6, unit: 'piece', storage: 'fridge',
+    };
+    const result = await api.confirmScan(scan.id, [reviewedItem]);
     expect(result.pendingSync).toBe(true);
 
     const ops = getPendingOps();
@@ -149,10 +153,19 @@ describe('offline outbox and scan persistence contract', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('counts only pending operations owned by the active user and household', () => {
+    pushOp({ path: '/inventory', method: 'POST', label: 'A', userId: 'user-a', householdId: 'house-a' });
+    pushOp({ path: '/inventory', method: 'POST', label: 'B', userId: 'user-a', householdId: 'house-a' });
+    pushOp({ path: '/inventory', method: 'POST', label: 'foreign', userId: 'user-b', householdId: 'house-b' });
+
+    expect(pendingCount({ userId: 'user-a', householdId: 'house-a' })).toBe(2);
+    expect(pendingCount({ userId: 'user-b', householdId: 'house-b' })).toBe(1);
+    expect(pendingCount()).toBe(3);
+  });
+
   it('rebinds guest outbox operations after successful registration migration', async () => {
     storage.setItem('frigo_user_id', 'guest-1');
     storage.setItem('frigo_household_id', 'hh_guest_1');
-    sessionStorage.setItem('frigo_guest_token', 'guest-token');
     pushOp({
       path: '/inventory',
       method: 'POST',
@@ -180,8 +193,8 @@ describe('offline outbox and scan persistence contract', () => {
 
     expect(fetch).toHaveBeenCalledWith('/api/v1/auth/verify-otp', expect.objectContaining({
       credentials: 'include',
-      headers: expect.objectContaining({ Authorization: 'Bearer guest-token' }),
     }));
+    expect(new Headers(vi.mocked(fetch).mock.calls[0][1]?.headers).has('Authorization')).toBe(false);
     expect(storage.getItem('frigo_token')).toBeNull();
 
     expect(getPendingOps()).toEqual([

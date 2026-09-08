@@ -1,80 +1,125 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { TopBar } from '../components/common/TopBar';
 import { Button } from '../components/common/Button';
-import { api } from '../services/api';
+import { InlineError, SkeletonCard } from '../components/common/AsyncState';
+import { api, ApiError } from '../services/api';
+import { queryKeys } from '../lib/queryKeys';
 import { useCookingStore } from '../stores/useCookingStore';
 import { getIngredientImage } from '../lib/ingredient-images';
-import { Clock, Users, ChefHat, Check, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Clock, Users, ChefHat, Check, ShoppingBag, ArrowRight, SearchX } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export const RecipeDetailPage: React.FC = () => {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, id } = useParams<{ slug?: string; id?: string }>();
+  const recipeKey = slug || id || '';
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const shoppingKey = queryKeys.shoppingList();
   const startCooking = useCookingStore((s) => s.startCooking);
 
-  const [recipe, setRecipe] = useState<any | null>(null);
-  const [matchInfo, setMatchInfo] = useState<any | null>(null);
-  const [inventory, setInventory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [addedToShop, setAddedToShop] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'steps' | 'ingredients' | 'nutrition'>('steps');
 
-  useEffect(() => {
-    async function load() {
-      if (!slug) return;
-      try {
-        const inv = await api.getInventory();
-        setInventory(inv);
+  const recipeQuery = useQuery({
+    queryKey: queryKeys.recipe(recipeKey),
+    queryFn: () => api.getRecipeById(recipeKey),
+    enabled: Boolean(recipeKey),
+  });
 
-        const data = await api.getRecipeById(slug);
-        setRecipe(data.recipe);
-        setMatchInfo(data.match);
-      } catch (err) {
-        console.error('Failed to load recipe:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [slug]);
+  const inventoryQuery = useQuery({
+    queryKey: queryKeys.inventory(),
+    queryFn: () => api.getInventory(),
+  });
 
-  const handleStartCook = () => {
-    if (!recipe) return;
-    startCooking(recipe, inventory);
-    navigate(`/cook/${recipe.slug}`);
-  };
+  const addToShopping = useMutation({
+    mutationFn: (ing: any) =>
+      api.addShoppingItem({
+        name: ing.name,
+        quantity: ing.requiredQuantity,
+        unit: ing.unit,
+        sourceRecipeTitle: recipeQuery.data?.recipe?.title,
+      }),
+    onSuccess: (_data, ing) => {
+      setAddedToShop((prev) => [...prev, ing.ingredientId]);
+      return queryClient.invalidateQueries({ queryKey: shoppingKey });
+    },
+  });
 
-  const handleAddToShoppingList = async (ing: any) => {
-    await api.addShoppingItem({
-      name: ing.name,
-      quantity: ing.requiredQuantity,
-      unit: ing.unit,
-      sourceRecipeTitle: recipe.title,
-    });
-    setAddedToShop([...addedToShop, ing.ingredientId]);
-  };
+  const recipe = recipeQuery.data?.recipe;
+  const matchInfo = recipeQuery.data?.match;
+  const inventory = inventoryQuery.data ?? [];
 
-  if (loading || !recipe) {
+  const notFound =
+    recipeQuery.isError &&
+    recipeQuery.error instanceof ApiError &&
+    recipeQuery.error.kind === 'http' &&
+    recipeQuery.error.status === 404;
+
+  if (recipeKey && recipeQuery.isPending) {
     return (
-      <div className="min-h-screen bg-[#F8FAF9]">
+      <div className="min-h-screen bg-[#F8FAF9] max-w-md mx-auto">
         <TopBar showBack title="Chi tiết món ăn" />
-        <div className="p-8 text-center">
-          <div className="animate-spin w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full mx-auto" />
+        <div className="p-4 space-y-4" role="status" aria-live="polite">
+          <SkeletonCard className="h-56 rounded-2xl" />
+          <SkeletonCard className="h-10" />
+          <SkeletonCard className="h-24" />
+          <SkeletonCard className="h-24" />
+          <span className="sr-only">Đang tải công thức…</span>
         </div>
       </div>
     );
   }
 
+  if (recipeQuery.isError && !notFound) {
+    return (
+      <div className="min-h-screen bg-[#F8FAF9] max-w-md mx-auto">
+        <TopBar showBack title="Chi tiết món ăn" />
+        <div className="p-4">
+          <InlineError error={recipeQuery.error} onRetry={() => recipeQuery.refetch()} />
+        </div>
+      </div>
+    );
+  }
+
+  if (notFound || !recipe) {
+    return (
+      <div className="min-h-screen bg-[#F8FAF9] max-w-md mx-auto">
+        <TopBar showBack title="Chi tiết món ăn" />
+        <div className="p-8 text-center space-y-3">
+          <SearchX className="w-10 h-10 text-slate-300 mx-auto" aria-hidden="true" />
+          <h2 className="font-heading font-bold text-base text-slate-900">
+            Không tìm thấy công thức này
+          </h2>
+          <p className="text-xs text-slate-500">
+            Món ăn có thể đã bị gỡ hoặc đường dẫn không đúng.
+          </p>
+          <Button onClick={() => navigate('/recipes')} className="mt-2">
+            Xem tất cả công thức
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const handleStartCook = () => {
+    startCooking(recipe, inventory);
+    navigate(`/cook/${recipe.slug}`);
+  };
+
   return (
-    <div className="min-h-screen bg-[#F8FAF9] pb-32 select-none max-w-md mx-auto">
+    <div className="min-h-screen bg-[#F8FAF9] pb-32 max-w-md mx-auto">
       <TopBar showBack title={recipe.title} />
+      {inventoryQuery.isError && <InlineError error={inventoryQuery.error} onRetry={() => inventoryQuery.refetch()} />}
 
       {/* Cover Image */}
       <div className="relative w-full h-56 overflow-hidden bg-slate-100">
         <img
           src={recipe.imageUrl}
           alt={recipe.title}
+          width={448}
+          height={224}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4 text-white">
@@ -82,9 +127,11 @@ export const RecipeDetailPage: React.FC = () => {
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold uppercase tracking-wider">
               {recipe.cuisine === 'vietnamese' ? 'Món Việt' : recipe.cuisine}
             </span>
-            <span className="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-semibold text-white">
-              Khớp {matchInfo?.matchPercentage || 100}% tủ lạnh
-            </span>
+            {typeof matchInfo?.matchPercentage === 'number' && (
+              <span className="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-semibold text-white">
+                Khớp {matchInfo.matchPercentage}% tủ lạnh
+              </span>
+            )}
           </div>
           <h2 className="font-heading font-bold text-xl leading-snug text-white drop-shadow-sm">
             {recipe.title}
@@ -103,8 +150,8 @@ export const RecipeDetailPage: React.FC = () => {
       </div>
 
       <div className="px-4 pt-4 space-y-4 animate-fade-in">
-        {/* 3 Tabs: Cách nấu | Nguyên liệu | Dinh dưỡng (Screen 8.2) */}
-        <div className="flex bg-slate-200/70 p-1 rounded-xl">
+        {/* Tabs: Cách nấu | Nguyên liệu | Dinh dưỡng */}
+        <div className="flex bg-slate-200/70 p-1 rounded-xl" role="tablist" aria-label="Thông tin món ăn">
           {[
             { id: 'steps' as const, label: 'Cách nấu' },
             { id: 'ingredients' as const, label: 'Nguyên liệu' },
@@ -112,6 +159,8 @@ export const RecipeDetailPage: React.FC = () => {
           ].map((tab) => (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={clsx(
                 'flex-1 py-2 rounded-lg text-xs font-heading font-bold transition-all tap-target',
@@ -125,7 +174,7 @@ export const RecipeDetailPage: React.FC = () => {
           ))}
         </div>
 
-        {/* Tab 1: Cách nấu (Screen 8.2) */}
+        {/* Tab 1: Cách nấu */}
         {activeTab === 'steps' && (
           <div className="space-y-3 pt-1">
             {recipe.steps.map((s: any, idx: number) => (
@@ -137,9 +186,11 @@ export const RecipeDetailPage: React.FC = () => {
                   {s.stepNumber || idx + 1}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-heading font-bold text-sm text-slate-900 mb-1">
-                    {s.title || (idx === 0 ? 'Sơ chế nguyên liệu' : idx === 1 ? 'Ướp gia vị' : 'Chế biến')}
-                  </h4>
+                  {s.title && (
+                    <h4 className="font-heading font-bold text-sm text-slate-900 mb-1">
+                      {s.title}
+                    </h4>
+                  )}
                   <p className="text-xs text-slate-700 leading-relaxed">
                     {s.instruction}
                   </p>
@@ -162,9 +213,11 @@ export const RecipeDetailPage: React.FC = () => {
               <h3 className="font-heading font-bold text-sm text-slate-900">
                 Nguyên liệu ({recipe.ingredients.length} món)
               </h3>
-              <span className="text-xs font-bold text-emerald-700">
-                Đã có {matchInfo?.availableIngredientCount || 0} món
-              </span>
+              {typeof matchInfo?.availableIngredientCount === 'number' && (
+                <span className="text-xs font-bold text-emerald-700">
+                  Đã có {matchInfo.availableIngredientCount} món
+                </span>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -188,6 +241,9 @@ export const RecipeDetailPage: React.FC = () => {
                         <img
                           src={getIngredientImage(ing.ingredientId, ing.name)}
                           alt={ing.name}
+                          width={40}
+                          height={40}
+                          loading="lazy"
                           className="w-full h-full object-contain"
                         />
                       </div>
@@ -212,8 +268,8 @@ export const RecipeDetailPage: React.FC = () => {
 
                     {!hasIngredient && (
                       <button
-                        onClick={() => handleAddToShoppingList(ing)}
-                        disabled={isAdded}
+                        onClick={() => addToShopping.mutate(ing)}
+                        disabled={isAdded || addToShopping.isPending}
                         className={clsx(
                           'px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all tap-target',
                           isAdded
@@ -229,45 +285,42 @@ export const RecipeDetailPage: React.FC = () => {
                 );
               })}
             </div>
+            {addToShopping.isError && (
+              <p className="text-[11px] text-rose-600 font-medium" role="alert">
+                Chưa thêm được vào danh sách mua. Vui lòng thử lại.
+              </p>
+            )}
           </div>
         )}
 
-        {/* Tab 3: Dinh dưỡng */}
+        {/* Tab 3: Dinh dưỡng — only real data, no invented numbers */}
         {activeTab === 'nutrition' && (
           <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-3">
             <h3 className="font-heading font-bold text-sm text-slate-900">
               Dinh dưỡng mỗi khẩu phần
             </h3>
-            <div className="grid grid-cols-4 gap-2 pt-1 text-center">
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                <p className="text-[10px] text-slate-500 uppercase font-semibold">Calories</p>
-                <p className="font-heading font-bold text-base text-slate-900 mt-1">
-                  {recipe.nutrition?.calories || 324}
-                </p>
-                <p className="text-[10px] text-slate-400">kcal</p>
+            {recipe.nutrition ? (
+              <div className="grid grid-cols-4 gap-2 pt-1 text-center">
+                {[
+                  { label: 'Calories', value: recipe.nutrition.calories, unit: 'kcal' },
+                  { label: 'Đạm', value: recipe.nutrition.proteinG, unit: 'g' },
+                  { label: 'Béo', value: recipe.nutrition.fatG, unit: 'g' },
+                  { label: 'Carb', value: recipe.nutrition.carbG, unit: 'g' },
+                ].map((cell) => (
+                  <div key={cell.label} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <p className="text-[10px] text-slate-500 uppercase font-semibold">{cell.label}</p>
+                    <p className="font-heading font-bold text-base text-slate-900 mt-1">
+                      {typeof cell.value === 'number' ? cell.value : '—'}
+                    </p>
+                    <p className="text-[10px] text-slate-400">{cell.unit}</p>
+                  </div>
+                ))}
               </div>
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                <p className="text-[10px] text-slate-500 uppercase font-semibold">Đạm</p>
-                <p className="font-heading font-bold text-base text-slate-900 mt-1">
-                  {recipe.nutrition?.proteinG || 28}
-                </p>
-                <p className="text-[10px] text-slate-400">g</p>
-              </div>
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                <p className="text-[10px] text-slate-500 uppercase font-semibold">Béo</p>
-                <p className="font-heading font-bold text-base text-slate-900 mt-1">
-                  {recipe.nutrition?.fatG || 14}
-                </p>
-                <p className="text-[10px] text-slate-400">g</p>
-              </div>
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                <p className="text-[10px] text-slate-500 uppercase font-semibold">Carb</p>
-                <p className="font-heading font-bold text-base text-slate-900 mt-1">
-                  {recipe.nutrition?.carbG || 18}
-                </p>
-                <p className="text-[10px] text-slate-400">g</p>
-              </div>
-            </div>
+            ) : (
+              <p className="text-xs text-slate-500">
+                Món này chưa có thông tin dinh dưỡng.
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -278,6 +331,7 @@ export const RecipeDetailPage: React.FC = () => {
           fullWidth
           size="lg"
           onClick={handleStartCook}
+          disabled={inventoryQuery.isPending || inventoryQuery.isError}
           className="bg-[#22C55E] hover:bg-[#1ea750] text-white font-heading font-bold text-base py-3.5 rounded-2xl shadow-md flex items-center justify-center gap-2"
         >
           <ChefHat className="w-5 h-5" />

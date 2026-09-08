@@ -54,7 +54,6 @@ export const TopBar: React.FC<TopBarProps> = ({ showBack = false, title, subtitl
             aria-label="Thông báo"
           >
             <Bell className="w-5 h-5 stroke-[2]" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white" />
           </button>
 
           {isProfilePage ? (

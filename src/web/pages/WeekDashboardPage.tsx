@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWeekStore } from '../stores/useWeekStore';
 import { TopBar } from '../components/common/TopBar';
@@ -7,6 +8,9 @@ import { MealCard } from '../features/week/MealCard';
 import { MealSwapSheet } from '../features/week/MealSwapSheet';
 import { WeekExportModal } from '../features/week/WeekExportModal';
 import { EmptyState } from '../components/common/EmptyState';
+import { InlineError } from '../components/common/AsyncState';
+import { api } from '../services/api';
+import { queryKeys } from '../lib/queryKeys';
 import { ShoppingBag, RefreshCw, CalendarDays, Plus, Sparkles, Share2 } from 'lucide-react';
 
 export const WeekDashboardPage: React.FC = () => {
@@ -14,23 +18,24 @@ export const WeekDashboardPage: React.FC = () => {
   const navigate = useNavigate();
 
   const {
-    currentPlan,
-    isLoading,
-    loadCurrentPlan,
-    loadPlanById,
     openSwap,
+    error: workflowError,
   } = useWeekStore();
+
+  const planQuery = useQuery({
+    queryKey: planId ? queryKeys.weekPlan(planId) : queryKeys.currentWeekPlan(),
+    queryFn: () => planId ? api.getWeekPlan(planId) : api.getCurrentWeekPlan(),
+  });
+  const currentPlan = planQuery.data ?? null;
+  const isLoading = planQuery.isPending;
 
   const [isRegeneratingOpen, setIsRegeneratingOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   useEffect(() => {
-    if (planId) {
-      loadPlanById(planId);
-    } else {
-      loadCurrentPlan();
-    }
-  }, [planId]);
+    // Week editing sheets use this projection; Query owns the fetched plan.
+    useWeekStore.setState({ currentPlan });
+  }, [currentPlan]);
 
   const handleQuickRegenerate = (_priorityFocus: any) => {
     setIsRegeneratingOpen(false);
@@ -56,6 +61,15 @@ export const WeekDashboardPage: React.FC = () => {
     );
   }
 
+  if (planQuery.isError) {
+    return (
+      <div className="min-h-screen bg-[#F8FAF9] pb-24">
+        <TopBar title="Thực đơn tuần" />
+        <div className="p-4"><InlineError error={planQuery.error} onRetry={() => planQuery.refetch()} /></div>
+      </div>
+    );
+  }
+
   if (!currentPlan) {
     return (
       <div className="min-h-screen bg-[#F8FAF9] pb-24">
@@ -74,10 +88,11 @@ export const WeekDashboardPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] pb-28 select-none">
+    <div className="min-h-screen bg-[#F8FAF9] pb-28">
       <TopBar title="Thực đơn tuần" subtitle={formatDateRange(currentPlan.startDate, currentPlan.endDate)} />
 
       <div className="px-4 pt-3 space-y-5 max-w-md mx-auto animate-fade-in">
+        {workflowError && <InlineError message={workflowError} />}
         {/* Header Bar & Quick Actions */}
         <div className="flex items-center justify-between">
           <div>
