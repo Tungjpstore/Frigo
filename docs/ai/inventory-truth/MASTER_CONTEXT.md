@@ -53,5 +53,66 @@ No new service, event bus, auth changes, observation engine or T09–T12 impleme
 
 ## Dependency audit
 
-T08A in progress. Exact source/schema findings and index rationale will be added
-before persistence implementation. Latest migration at base is `0022`.
+Latest migration at base is `0022_generated_meal_plans.sql`; T08 schema uses 0023.
+
+| Dependency | Actual authority / invariants |
+| --- | --- |
+| Inventory reads | `packages/db/src/queries.ts` GET_INVENTORY/GET_INVENTORY_ITEM; inventory routes map rows to old DTO. Recipes, Week, notifications and `meal-planning-snapshot.ts` read household stock. |
+| Inventory writes | `routes/inventory.ts`: manual/add/edit/discard; `routes/week.ts`: persisted-plan shopping import; `routes/scans.ts`: confirmed drafts; `routes/recipes.ts`: cook deduction; `routes/auth.ts`: seed and guest household transfer. No T08 caller changes. |
+| Events | Existing `inventory_events` stores REAL deltas, unit, event type, reason, JSON metadata; item ID intentionally has no FK (history survives deletion). It is a command audit ledger, not enough to reconstruct full stock/expiry/price state. No event rewrite or second ledger. |
+| CAS/idempotency | Migration 0009 version; inventory PATCH/DELETE and cooking guard household+id+observed version; batch/event/command replay protection stays authoritative. Scans fence confirmation/queue state; retries must not consume/import twice. |
+| Scan/receipt | Actual tables are `scans` and `scan_items` (not scan_sessions). Draft predictions require user confirmation. 0013 stores merchant/invoice/purchase_date/total_amount_vnd and item unit_price_vnd/total_price_vnd as nullable legacy REAL. None is promoted into lot price/purchase facts. |
+| Quantity/units | Legacy quantity/delta/scan/shopping/recipe/nutrition values use REAL. T02 `Quantity` already supplies exact decimal-rational arithmetic from observable JS numbers; strict conversion only g↔kg/ml↔l. Count has no mass; contextual pack/bunch/slice cannot prove cross-lot equivalence. |
+| Money | T05 shopping uses VND/JPY scale 0, USD/EUR scale 2, safe integer inputs and BigInt intermediates. New lot foundation mirrors that supported currency set, never changes legacy REAL fields. |
+| Expiry/freshness | Legacy expiry_date is permissive text. `computeFreshness` can use default shelf life; it is a heuristic, not confirmed expiry. 0019 adds opened_at/expiry_kind/expiry_source with unknown defaults and evidence-requires-date triggers, but does not wire live writers. Unknown-source dates must not become confirmed. |
+| Tenancy | Session-derived household plus worker tenancy guards; D1 reads/writes bind household. Inventory/locations/lots reference household; known ingredient FK is global catalog. Unknown legacy ingredient is valid NULL, not a fabricated catalog ID. |
+| Existing indexes | Inventory: household; freshness; household/version; partial household/expiry for positive dated stock. Events: item. Scan items: scan. Ingredients: PK, alias/translation/catalog indexes. No lot-aware runtime query today. |
+| FK/cascade | Inventory household cascades; ingredient FK restricts invalid/deleted referenced ingredient. Events household cascades but not item deletion. Scan items cascade with scan; scans reference user/household. New provenance reference must not block old inventory DELETE commands. |
+
+Additional audited distinctions: inventory DELETE endpoint soft-deletes to zero;
+the raw physical-delete SQL helper has no discovered runtime caller. Cooking
+orders by updated_at/id (not FEFO). Scan/shopping increment version but use their
+command fences, not an observed inventory-version predicate. Guest transfer
+updates legacy household IDs without bumping versions; new lots deliberately do
+not participate. Legacy recommendation/Week paths use differing first/last-row
+policies already. None of these existing behaviors is rewritten in T08.
+
+T08 parity is quantity/state projection, not legacy freshness eligibility. A
+positive quantity with legacy out_of_stock freshness stays positive and is not
+silently discarded to satisfy a planner policy. Future ownership transfer and
+live lot adoption require T09 reconciliation of both household and legacyVersion.
+
+Regression anchors: inventory-idempotency, command-route-integrity,
+cooking-route-allocation, scans/scan-quota-idempotency, week-core-flow,
+meal-planning-snapshot and t07-persistence/security tests. Full suite remains required.
+
+## New index rationale
+
+Location `(id, household_id)` unique key supports composite lot ownership FK;
+partial unique `(household_id,type) WHERE is_default=1` enforces one default bucket.
+Lot `(household_id,storage_location_id)` serves household snapshot reads and the
+composite FK child lookup; ingredient index supports global FK parent checks.
+Partial unique legacy source ID is durable backfill identity and retry lookup.
+No speculative FEFO/event index is introduced. Query-plan evidence belongs in tests.
+
+## Foundation entry points and takeover verification
+
+`packages/domain/src/inventory-truth.ts`: StorageLocationSchema, InventoryLotSchema,
+defaultStorageLocations, toLotQuantity, legacyInventoryToLot, projectInventoryLots,
+checkLegacyLotParity. Leaf imports intentionally do not change old domain barrels.
+
+`packages/db/src/inventory-truth.ts`: explicitly invoke backfillLegacyInventory(db,
+authorizedHouseholdId), then readInventoryTruthSnapshot(db, authorizedHouseholdId).
+No route calls either helper. Backfill returns inserted/skipped counts plus a
+diagnostic parity report; a retry never refreshes an existing synthetic snapshot.
+The reader uses a coherent D1 batch for legacy rows, lots and locations.
+
+Run `pnpm exec vitest run tests/unit/inventory-truth.test.ts
+tests/integration/inventory-truth.test.ts` as one shell command for the 130 focused
+checks. See VERIFICATION.md for full regression and local-only migration commands.
+Do not run any remote/database/deploy command to validate this foundation.
+
+Last verified code: dd2ecc6f7066250dfdc5214a3d6c356e1479b61e. The final handoff commit
+is docs-only. The branch remains local/unpublished due to the recorded broker
+authority denial; Git handoff to another account is NOT available until authorized
+canonical publication succeeds. T08 remains IN_PROGRESS despite passing local gates.

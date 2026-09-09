@@ -1,4 +1,37 @@
-# Frigo AI Handoff - final PR state reconciled
+# Frigo AI Handoff — isolated T08 checkpoint
+
+## Current branch handoff (2026-09-09)
+
+Program: Inventory Truth Layer
+Task: T08
+Phase: T08F Verification/Handoff
+Status: IN_PROGRESS — local gates passed, canonical publication BLOCKED
+Canonical Branch: feature/t08-inventory-truth-foundation
+Base Main / last fetched origin/main: d1b06732f8a80db4e77986df31ff28d9f04641fa
+Last Code / Last Verified SHA: dd2ecc6f7066250dfdc5214a3d6c356e1479b61e
+Final HEAD: subsequent docs-only checkpoint; read `git rev-parse HEAD`
+
+Completed: audit; strict storage/lot contracts; additive 0023; exact milli-unit
+adapter; explicit guarded/idempotent backfill; compatibility projection/parity.
+Verification: 130 focused tests; 1,617 full tests / 89 files; lint, typecheck,
+build, 23-migration replay/local D1 apply/schema and diff checks PASS.
+Failures: early assertion order/missing legacyVersion/latest-migration expectation
+corrected and all gates rerun; publication denial remains unresolved.
+
+Remaining / exact next action: obtain authorization to publish ONLY canonical
+branch through the trusted source-control broker, inspect its remote head, publish
+the docs-inclusive tip with lease, confirm clean tree and create final T08 report.
+Do not push a substitute branch, force-push, merge/rebase main or begin T09.
+Quantity that cannot fit exact milli-units fails preflight unchanged. Legacy data
+is not live-synced; unknown/estimated evidence stays distinct and guest transfer
+drift is diagnostic, not an auth rewrite. T09 owns commands/event authority/dual-write.
+
+Cross-account takeover: first read the six `inventory-truth/` documents in order;
+diff Last Verified SHA..HEAD. Exact executed commands, corrected failures, source
+map and future integration risks are persisted there, not dependent on this chat.
+Branch pushed: NO. Main/production/staging/remote D1/PayOS untouched: YES.
+
+## Preserved release handoff (historical, separate production track)
 
 ## Authoritative release
 

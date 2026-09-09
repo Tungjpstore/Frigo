@@ -31,15 +31,29 @@
 | Main Integration | ✅ COMPLETE | Main merge SHA `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d` |
 | Main CI | ✅ PASS | Run `34396319671` |
 
-## Next authorized work
+## T08 independent branch work — explicitly authorized 2026-09-09
+
+- T08A Audit: complete; dependency map in `inventory-truth/MASTER_CONTEXT.md`.
+- T08B–E Domain/persistence/backfill/projection/parity: implemented and locally verified.
+- T08F Verification/handoff: IN_PROGRESS, canonical publication BLOCKED.
+- Verified code: `dd2ecc6f7066250dfdc5214a3d6c356e1479b61e`.
+- PASS: 130 focused tests, 1,617 full tests / 89 files, lint/typecheck/build,
+  23-migration smoke/local D1 apply/schema and diff checks.
+- Remaining: authorized push to ONLY `feature/t08-inventory-truth-foundation`,
+  final post-publication receipt/report. No T09–T12 implementation.
+- Full checklist/failures/next action: `inventory-truth/TASK_BOARD.md`,
+  `inventory-truth/VERIFICATION.md`, `inventory-truth/CURRENT_STATE.md`.
+
+## Independent production/release work (not authorized by T08)
 
 - Production Reconciliation ⏳
 - Production DB Migration ⏳
 - Controlled Production Deployment ⏳
 - Planner Rollout ⏳
 
-Do not invent T08. Production work remains pending and must be separately
-authorized.
+The original release packet did not authorize T08; the separate user-authorized
+T08 packet now governs only its isolated branch. Production work remains pending
+and must be separately authorized; this branch does not perform or update it.
 
 GitHub source of truth: main.
 Release Integration: COMPLETE.

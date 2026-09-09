@@ -1,11 +1,17 @@
 # T08 task board
 
-- [ ] T08A Audit — dependency map, legacy semantics, invariants, schema/index evidence.
-- [ ] T08B Domain Contracts — locations/lots/quantity/money/expiry/provenance.
-- [ ] T08C Persistence — additive next-number migration, FK/check/index rationale.
-- [ ] T08D Legacy Backfill — deterministic, lossless where representable, idempotent.
-- [ ] T08E Projection/Parity — compatibility aggregate and diagnostic checker.
-- [ ] T08F Verification/Handoff — focused/full tests, lint/typecheck/build, clean
-  migrations/local D1 gate/diff check, committed/pushed clean tree, durable handoff.
+- [x] T08A Audit — dependency map/legacy semantics in MASTER_CONTEXT; SQL query-plan tests.
+- [x] T08B Domain Contracts — e6ba715; 76 focused unit tests PASS.
+- [x] T08C Persistence — cdffb42; 0023 FK/check/indexes; 23-migration replay/local D1 PASS.
+- [x] T08D Legacy Backfill — dd2ecc6; retry, concurrency, stale-source rollback,
+  populated upgrade, ownership transfer and preservation tests PASS.
+- [x] T08E Projection/Parity — 10+6 eggs=16 and corruption diagnostics PASS.
+- [ ] T08F Verification/Handoff — publication gate remains blocked.
+  - [x] Focused: 130 tests / 2 files PASS.
+  - [x] Full: 1,617 tests / 89 files PASS.
+  - [x] Lint, typecheck, build, migration smoke, local D1 apply/schema, diff checks PASS.
+  - [x] Code committed; repository handoff/parent docs updated in final docs checkpoint.
+  - [ ] Canonical branch pushed via authorized path (broker denial recorded).
+  - [ ] Final post-publication clean-tree receipt and T08_VERIFICATION.md / COMPLETE.
 
 No completion tick without evidence in VERIFICATION.md. T09–T12 are not started.

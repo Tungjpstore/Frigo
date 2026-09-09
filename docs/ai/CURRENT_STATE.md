@@ -1,4 +1,32 @@
-# Frigo current state - final PR metadata reconciled
+# Frigo current state — isolated T08 foundation checkpoint
+
+## Active work on this branch (2026-09-09)
+
+T08 Inventory Truth Foundation: **IN_PROGRESS — local verification passed,
+canonical publication blocked**. User explicitly authorized T08 separately from
+the release/production track below. Canonical branch:
+`feature/t08-inventory-truth-foundation`; base/main:
+`d1b06732f8a80db4e77986df31ff28d9f04641fa` (no divergence at last fetch).
+Last verified code: `dd2ecc6f7066250dfdc5214a3d6c356e1479b61e`.
+
+Implemented additive 0023 storage/lot schema, strict quantity/money/expiry/source
+contracts, guarded insert-only legacy backfill, compatibility projection/parity.
+No legacy API/read/write path cutover. Focused **130 tests**, full **1,617 tests /
+89 files**, lint/typecheck/build, 23-migration replay, local D1 apply/schema gate
+and diff checks PASS. Early missing-field/smoke-order/latest-migration-test failures
+were corrected and rerun; no local test failures remain.
+
+The trusted broker rejected the required canonical branch (outside this thread's
+authorized head namespace). No alternate branch was published. Next action: obtain
+authorized canonical publication, push the docs-inclusive checkpoint, then record
+completion only after confirmed push/clean tree. T09 is not authorized to begin.
+
+Read `inventory-truth/MASTER_CONTEXT.md`, `CURRENT_STATE.md`, `TASK_BOARD.md`,
+`DECISIONS.md`, `VERIFICATION.md`, `SESSION_LOG.md` and
+`tasks/T08-inventory-truth-foundation.md` for exact evidence and limitations.
+Main, production/staging, remote D1, PayOS and release operations untouched.
+
+## Preserved T01–T07 release snapshot (not T08 deployment evidence)
 
 ## Release status
 
