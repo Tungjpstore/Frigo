@@ -1,15 +1,20 @@
-# Release candidate — existing PR #8
+# Frigo Release Candidate
 
 ## Status and scope
 
 **T01–T07 ENGINEERING COMPLETE.**
-**RELEASE INTEGRATION IN PROGRESS.**
+**ENGINEERING RELEASE VERIFICATION COMPLETE. RELEASE INTEGRATION VERIFIED.**
+**RELEASE DOCUMENTATION PUBLICATION COMPLETE ON THE WRITABLE CONTINUATION.**
+Final release PR integration/readiness is in progress.
 **PRODUCTION DEPLOYMENT NOT PERFORMED.**
 
-All frozen-source local and hosted-source gates are green. **Publication is
-blocked by the thread's configured-base protection.** The documentation head has
-not reached PR #8, so its new-head hosted CI cannot execute. Do not treat the prior
-source-head check as the unpushed documentation-head check.
+All frozen-source local and hosted-source gates are green. The previous local-only
+documentation head `7b22aaf4ba44c9a059fbf0000f242ed35ef4c616` was recovered and
+published through the trusted broker on the user-authorized provisioned branch
+`hoplite/koroneia-355b17d0`. No expensive verification was repeated during this
+publication continuation. The next step is a documentation PR into the original
+release branch; use a single superseding release PR to main only if that route is
+unavailable. Do not merge main automatically.
 
 This continues the existing release PR, not another integration or product change.
 Application, tests, migrations, dependencies, scripts and config remain frozen.
@@ -21,7 +26,9 @@ checks on 2026-09-09, not reused historical T07 test results.
 | Item | Verified identity |
 | --- | --- |
 | Existing draft PR | [#8 — Release: consolidate complete T01–T07 lineage onto main](https://github.com/vn-2c/Frigo/pull/8) |
-| Release branch | `hoplite/kirrha-5f4057f0` |
+| Original release branch | `hoplite/kirrha-5f4057f0` |
+| Writable documentation continuation | `hoplite/koroneia-355b17d0`, provisioned for this thread, fast-forwarded from `0b20061` |
+| Recovered and published documentation checkpoint | `7b22aaf4ba44c9a059fbf0000f242ed35ef4c616` |
 | Main base, unchanged from PR creation | `db09fa0c4353ddf4840e04c10b96a33240de3497` |
 | T07 source / release source candidate | `0b20061e7dc7405df68b18a18da4166e09494ecd` |
 | Last application/test commit | `f9d2ff871da155ba7f1aaedd3112a5ed6ea8d2c0` |
@@ -29,9 +36,10 @@ checks on 2026-09-09, not reused historical T07 test results.
 
 The supplied historical repository name was `fri-go/Frigo`; the configured remote
 and live provider identify this existing PR as `vn-2c/Frigo`. No remote was changed.
-The new workspace initially named the same source object
-`hoplite/koroneia-355b17d0`; it was switched to the **existing** release branch.
-No new release branch, reset, squash, rebase, cherry-pick or replacement PR.
+The initial verification used the **existing** release branch. After the user
+authorized a publication fallback, its three documentation commits were preserved
+by fast-forwarding this thread's original `hoplite/koroneia-355b17d0` branch. No
+reset, squash, rebase, cherry-pick or reconstruction of T01–T07 was used.
 
 The trusted broker fetched only `main` and `hoplite/kirrha-5f4057f0` (the authorized
 explicit-ref equivalent of the requested broad fetch). Both matched the supplied
@@ -57,8 +65,10 @@ Complete T01–T07 ancestry is retained, including T01/T02 already merged in mai
 0b20061e7dc7405df68b18a18da4166e09494ecd -- . ':!docs/ai/**'` passed.
 Documentation checkpoints cannot contain their own commit SHA; the immutable
 source identity above is the verification anchor and the PR supplies the live head.
+**The documentation publication commits do not alter the verified
+application/test/config tree. NO APPLICATION CHANGE.**
 
-## Fresh local verification
+## Preserved release verification — not rerun during publication recovery
 
 Runtime: Node **24.19.0**, pnpm **10.26.0**, Vitest **3.2.7**, SQLite CLI **3.45.1**,
 locked Wrangler **3.114.17**. Shared-sandbox timings are observations, not capacity
@@ -183,27 +193,31 @@ attempt 1, `pull_request`, exact source head `0b20061e7dc7405df68b18a18da4166e09
 **2026-09-09T18:14:28Z**; install, lint, typecheck, tests, migration smoke and build
 all succeeded. This is actual release-PR CI, not historical T07 local evidence.
 
-Publication of local documentation commit
+### Previous publication failure and authorized recovery
+
+The preceding verification run's publication of local documentation commit
 `e060164650969faefeb7ebb808ad5cbab32c4980` was rejected by
 `source_control_publish_git_commit` with the exact error:
 **`Cannot publish the configured base branch hoplite/kirrha-5f4057f0`**.
 The existing linked PR head is also this thread's protected configured base. No
-alternate branch/PR, shell bypass or history rewrite was attempted. The problem
-was reported to Hoplite. This subsequent blocker receipt is another local-only
-documentation checkpoint; the remote PR head remains `0b20061`.
+shell bypass or history rewrite was attempted. The problem was reported to Hoplite.
+The old blocker receipts, including `7b22aaf`, are now **published** on the
+authorized continuation; they are retained history, not a current local-only gap.
 
 A fresh provider read after the rejection confirmed PR #8 open/draft and existing
-`validate` SUCCESS on `0b20061`. **No documentation-head CI run exists because the
-push was rejected**, not because application verification failed. Restore authorized
-publication to the existing PR head, then trigger/recheck its ordinary PR validation.
+`validate` SUCCESS on `0b20061`. The old documentation-head CI could not start
+because that push was rejected, not because application verification failed.
+The continuation must now obtain the appropriate PR checks through the existing
+workflow; no documentation path exclusions are configured in `ci.yml`.
 
 Attempts to update the existing PR description and post a verification comment
 were also rejected: **`Pull request is not explicitly linked to this thread's
 configured repository`**. Yet `thread_link_pull_request(8)` succeeded with review
 updates enabled and `thread_list_pull_requests` confirms `vn-2c/Frigo` PR #8.
-This repository/link inconsistency was separately reported to Hoplite. **No PR
-description, comment or screenshot update succeeded.** Read access still confirmed
-the original draft PR and successful source CI. Do not bypass repository authority.
+This repository/link inconsistency was separately reported to Hoplite. Those old
+PR description/comment/screenshot attempts did not succeed. Read access confirmed
+the original draft PR and successful source CI. The user now authorizes a docs PR
+or one superseding release PR if needed; do not bypass repository authority.
 No CI/deployment workflow was rewritten or dispatched. PR CI against the merge
 test ref does **not** satisfy the later deployment gate: `release-check.mjs` requires
 a successful exact-SHA **push run on main**, main ancestry and approved hardening.
@@ -234,7 +248,8 @@ built-in per-user rollout targeting.
 
 ## PayOS / protected areas
 
-**PayOS/payment code untouched by release integration. No real payments executed.**
+**PayOS/payment code untouched.**
+**No real payment performed.**
 Explicit main-to-source comparisons passed for billing routes, payment UI, migration
 0018, auth/session/CSRF/tenancy/config middleware, HTTP/auth clients, Wrangler and
 `.github`. Shared Worker registration adds only planner routes; optional account
@@ -267,6 +282,14 @@ build and checks, not the warning alone, establish usability. No dependency upgr
 
 ## Operator rollout and rollback — not executed
 
+Release sequence: code merge → freeze `MAIN_RELEASE_SHA` → separately authorized
+production-local reconciliation and deployment planning with planner OFF → target
+schema/migration verification → internal cohort → small cohort → broader rollout.
+The requested deployment-before-migration outline is not permission to bypass the
+existing pre-deploy schema gate: any pending migrations required by this release
+must be operator-approved/applied and verified before deployment can pass that
+gate, even with the planner OFF. Production reconciliation has **NOT STARTED**.
+
 1. Review this receipt, exact latest PR checks and unchanged main; keep PR #8 and
    preserve full ancestry. Final approval/promotion and **normal merge** are explicit
    operator actions, never squash/rebase. Review existing automatic staging behavior
@@ -290,15 +313,15 @@ build and checks, not the warning alone, establish usability. No dependency upgr
 
 ## Next action
 
-An authorized operator/platform owner must reconcile this thread's protected base
-and repository/link authority with existing PR #8, without replacing branch or PR. Then
-publish the preserved local documentation commits to `hoplite/kirrha-5f4057f0`
-using the trusted broker and inspect exact new-head CI. Do not reset, recreate
-integration or rerun already-green source tests unless source/main changes.
+Publish this status checkpoint, then prefer a small docs-only PR from
+`hoplite/koroneia-355b17d0` into `hoplite/kirrha-5f4057f0` and merge only that
+documentation PR if permitted. If PR #8 cannot technically receive the docs,
+create one superseding complete release PR from the same preserved source to main.
+Inspect actual new-head CI and mark the final release PR ready only when its
+applicable checks are green. Main remains `db09fa0`; **MAIN NOT MODIFIED**.
 
-After successful publication and CI, record the hosted receipt and mark
-**RELEASE CANDIDATE READY FOR MAIN MERGE** in the release protocol documents.
-Current final verdict: **RELEASE INTEGRATION NOT READY** solely because publication
-is blocked and documentation-head CI consequently cannot run. Final normal merge
-is an explicit operator action. Do not deploy, remotely migrate D1, enable
-production flags or change PayOS.
+Do not reset, reconstruct integration or repeat expensive verification while the
+non-documentation tree is unchanged. Final normal merge into main is an operator
+action. Freeze its resulting `MAIN_RELEASE_SHA`; only afterward begin separately
+authorized production-local reconciliation. Do not deploy, remotely migrate D1,
+enable production flags or change PayOS.

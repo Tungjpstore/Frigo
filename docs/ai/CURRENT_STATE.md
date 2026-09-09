@@ -1,92 +1,64 @@
-# Frigo current state — existing release PR #8
+# Frigo current state — release publication recovery
 
 ## Current task
 
-**T01–T07 ENGINEERING COMPLETE.** T07's accepted non-blocking follow-ups remain.
-**RELEASE INTEGRATION IN PROGRESS — publication blocked.**
+**T01–T07 COMPLETE. ENGINEERING RELEASE VERIFICATION COMPLETE.**
+**RELEASE INTEGRATION VERIFIED.**
+**RELEASE PUBLICATION: documentation published; final PR integration IN PROGRESS.**
 **PRODUCTION DEPLOYMENT NOT PERFORMED.**
+Production-local reconciliation: **NOT STARTED**. This is not T08 or another
+hardening/integration pass. Detailed preserved evidence: `RELEASE_CANDIDATE.md`.
 
-Continue existing Draft PR [#8](https://github.com/vn-2c/Frigo/pull/8), branch
-`hoplite/kirrha-5f4057f0`; do not recreate integration or rewrite history.
-`RELEASE_CANDIDATE.md` is the current release receipt/runbook. Historical T07
-implementation and phase evidence remain in `T07_VERIFICATION.md`, H1–H6 receipts
-and `PRODUCTION_READINESS.md`; their old hosted-CI blocker is superseded below.
+## Immutable source and recovery
 
-## Frozen release identity
-
-- Main remains `db09fa0c4353ddf4840e04c10b96a33240de3497`, unchanged from PR creation.
-- Release/T07 source: `0b20061e7dc7405df68b18a18da4166e09494ecd`.
+- Repository: `vn-2c/Frigo`; no remote changed.
+- Main: `db09fa0c4353ddf4840e04c10b96a33240de3497`, unchanged.
+- Verified application/release: `0b20061e7dc7405df68b18a18da4166e09494ecd`.
 - Last application/test commit: `f9d2ff871da155ba7f1aaedd3112a5ed6ea8d2c0`.
-- Full T01–T07 ancestry, including `006742b`, exact recovery `f391804`, and T06B
-  `0fc78a4`/`6d4e873`, remains intact. No squash/rebase/cherry-pick/reset.
-- Existing release branch was checked out from the fresh workspace's alternate
-  local name at the same SHA. No new release branch or remote change.
-- Provider currently identifies the existing repository/PR as `vn-2c/Frigo`.
+- Original release branch/PR: `hoplite/kirrha-5f4057f0`, Draft #8.
+- Writable continuation: `hoplite/koroneia-355b17d0`, provisioned for this thread.
+- Recovered docs checkpoint `7b22aaf4ba44c9a059fbf0000f242ed35ef4c616` is available
+  and successfully published to the continuation through the trusted broker.
 
-Main and release refs were fetched through the explicit-ref trusted broker and
-matched expected SHAs. No topology reintegration was necessary. Source-equivalence
-comparison from `f9d2ff8` passed; this continuation changes **documentation only**.
+The original head is this thread's protected configured base. Its old push and
+PR-link errors are recorded in the release receipt. The user authorized a writable
+fallback; existing docs commits were preserved by fast-forward, not reconstructed.
+Complete T01–T07 lineage and `0b20061` remain ancestors. **NO APPLICATION CHANGE.**
+Every post-source change is in the four `docs/ai` release protocol documents.
 
-## Fresh release verification — 2026-09-09
+## Preserved verification, not repeated
 
-| Gate | Actual result |
+| Gate | Verified result on `0b20061` |
 | --- | --- |
-| Frozen dependency install | PASS; pnpm 14.1 s, lockfile unchanged |
-| `pnpm test` | **1,487 tests / 87 files PASS**, 0 failures; Vitest 140.36 s, wall 141.834 s |
-| Focused T02–T07 suites | **819 tests / 40 files PASS**, 0 failures; Vitest 56.48 s, wall 59.555 s |
-| Payment-adjacent entitlement/quota/config/limiter suites | **82 tests / 7 files PASS**, 0 failures; Vitest 9.83 s, wall 13.006 s |
-| `pnpm lint` / `pnpm typecheck` / `pnpm build` | PASS; wall 10.682 / 33.524 / 22.997 s |
-| Migration smoke / clean local D1 / schema | PASS; 22/22 migrations; wall 0.666 / 11.844 / 2.642 s |
-| Actual-main 0020 → 0022 upgrade | PASS; 776 rows / 58 old tables unchanged; apply 3.019 s, upgraded schema gate 2.587 s |
-| Foundation/preflight regressions | PASS 22/2; Vitest 3.16 s, wall 4.626 s |
-| Existing managed browser matrix | PASS; 264 assertions / 36 phases, all 121 commands; en/vi × 375/390/1280; 485.976 s; zero failures/page errors |
-| Hosted release-source CI | **SUCCESS**, run `34387688066`, job `102587994085`, exact `0b20061`, completed 18:14:28Z |
+| Full suite | 1,487 tests / 87 files PASS, zero failures; Vitest 140.36 s |
+| Focused T02–T07 | 819 tests / 40 files PASS, zero failures; 56.48 s |
+| Payment-adjacent | 82 tests / 7 files PASS, zero failures; 9.83 s |
+| Install / lint / typecheck / build | PASS |
+| Clean local D1 | 22/22 migrations PASS |
+| Actual-main upgrade | 0020→0022 PASS; 776 rows / 58 old tables preserved |
+| Schema / FK / integrity | PASS; supplemental direct-PRAGMA limitation documented |
+| Existing browser matrix | 264 assertions / 36 phases PASS; 121 commands; en/vi × 375/390/desktop; zero failures/page errors |
+| Hosted source CI | Run 34387688066 SUCCESS on `0b20061` |
 
-All local tests were freshly executed, not copied from the T07 audit. Counts overlap.
-Supplemental direct-PRAGMA Wrangler inspection returned `SQLITE_AUTH`; the supported
-FK query and read-only SQLite integrity check passed. Exact commands, scope and
-documentation-head CI limitation belong in
-`RELEASE_CANDIDATE.md`. No application/test/config fix or weakened assertion.
+This publication continuation runs only ancestry/source-equivalence, diff and
+relevant documentation checks. No expensive tests or browser matrix were repeated.
+Final PR/head CI must be observed, not inferred from historical source CI.
 
-## Feature flags / readiness / protected areas
+## Safety and operator boundary
 
-Backend, UI and AI flags remain literal-true opt-in. Checked-in production defaults
-are off; live deployed values were not inspected. Only the existing isolated
-preview enables backend/UI, with deterministic AI fallback. Legacy Week and real
-inventory commands remain intact. Planned != consumed; shopping != purchased.
+Planner/UI/AI production defaults remain OFF in checked-in state; live production
+values were NOT inspected. No deployment, remote D1 migration or flag enablement.
+**PayOS/payment code untouched. No real payment performed.** Legacy Week,
+inventory commands, auth and household isolation remain unchanged.
+Accepted T07 KV/duplicate-compute/option-clipping/timezone/provider-capacity limits
+are not new publication blockers. Reviewed prices/safety remain explicitly absent.
 
-D1 through 0022 and valid production bindings/auth/origin remain operator gates.
-No reviewed production purchase-catalog adapter or safety registry is provided;
-unknown prices/nutrition/safety remain explicit. KV counters are non-atomic;
-concurrent initial requests may duplicate CPU; fixed-offset time, clipped optimizer
-quality, uncancelled native AI and large-catalog/network limits remain documented.
+## Next exact action
 
-**PayOS/payment code untouched by release integration.** Main-to-source protected
-paths and shared middleware were reviewed. No dedicated PayOS regression suite was
-found; adjacent test success is not live payment certification. No real payments,
-remote migrations, production flag enablement, deployment or unrelated auth change.
-
-## Environment and next action
-
-The platform missed tracked `.hoplite/settings.json` and rejected managed setup's
-lifecycle claim. Exact existing setup/run commands were mirrored into overrides;
-unchanged setup ran successfully via shell and managed preview started. Reported
-platform limitation, not an application defect; no repository config change.
-
-All source gates are green. Local docs commit
-`e060164650969faefeb7ebb808ad5cbab32c4980` could not publish:
-**`Cannot publish the configured base branch hoplite/kirrha-5f4057f0`**.
-The linked PR head is also this thread's protected base. No bypass or replacement
-branch/PR was attempted; platform issue reported. Remote PR remains draft at
-`0b20061`, existing CI green; new documentation-head CI cannot run without a push.
-PR description/comment updates also failed with an explicit-repository-link error
-despite the successful link/list evidence. Nothing was posted to the PR; screenshot
-and verification are in this thread/local docs only. Link inconsistency reported.
-
-An authorized operator/platform owner must reconcile publication authority for the
-existing release head and repository linkage. Then publish preserved local docs commits, inspect new-head
-CI and record readiness. **RELEASE INTEGRATION NOT READY** until those two gates.
-Do not redo integration or already-green source verification unless source/main
-changes. Final **normal merge** remains an explicit operator action.
-Before merging, review existing main-push automatic staging behavior. Deployment
-requires separate exact-main push CI, schema/data readiness and operator approval.
+Publish the updated status docs and prefer a docs-only PR into the original release
+branch. If that branch cannot receive them, use one superseding release PR from
+this continuation to main. Inspect applicable CI and make the final release PR
+ready; do not merge main automatically. **MAIN NOT MODIFIED.**
+After an operator normal merge, freeze `MAIN_RELEASE_SHA`; only then begin
+separately authorized production-local reconciliation. Respect the existing
+pre-deploy schema gate even when deploying later with planner flags OFF.
