@@ -20,10 +20,10 @@ blocker is resolved; this is not an architectural repository issue.
 | --- | --- | --- |
 | H1 security/trust/tenancy | 51 new actual-auth HTTP cases; route/repository ownership matrix; related boundary 125/4 and CSRF/CORS 87/2 PASS | Planner boundary audited; broader rendering/log review continues H5/H6 |
 | H2 abuse | Reproduced fan-out fixed with planner account bucket; 95/6 targeted PASS; KV concurrency remains approximate (ADR-019) | Published `55020bc` |
-| H3 persistence | Own-CAS-response race fixed with RETURNING; 68/6 parent focused, local migration/schema/query-plan checks PASS | Ready for checkpoint |
-| H4 domain | Exact arithmetic, bounds, unknown/proof semantics | In progress |
-| H5 frontend/AI | Mounted race and grounded AI review | In progress |
-| H6 operations | Observations, failure/privacy checks and rollout report | Pending |
+| H3 persistence | Own-CAS-response race fixed with RETURNING; 68/6 parent focused, local migration/schema/query-plan checks PASS | Published `a19063b` |
+| H4 domain | Currency-scale contract fixed; six exact-domain regressions, 449/17 broad focused PASS | Published `865ee91` |
+| H5 frontend/AI | Private-session render and failed-409 fixes; 93/4 focused PASS, 30 pre-freeze mobile assertions PASS | Published `d579798`; final matrix pending |
+| H6 operations | Five measured Worker actions, three failure/integrity tests PASS; readiness/deferred limits documented | Ready for source freeze |
 
 H1 adds `tests/integration/t07-security.test.ts` and `T07_H1_SECURITY.md` only.
 No H1 security bug was reproduced, so no speculative security change was made.
@@ -56,6 +56,8 @@ purchase. No remote D1, deployment, production flag or payment work is authorize
 
 ## Next action
 
-H1 is published at `65c1367`. Publish the verified H2 aggregate-budget fix and its
-explicit approximate-KV guarantee. Continue H3–H6, freeze source, and run all final
-gates. Follow `T07_WIP_HANDOFF.md`; do not return to the original branch to publish.
+Publish H6's operational evidence, freeze that exact application/test revision,
+then run full tests/lint/types/build/migration smoke/clean local D1/schema and the
+six-combination browser matrix. Record actual final results in `T07_VERIFICATION.md`
+and update `PRODUCTION_READINESS.md`. Hosted CI is not triggered for the configured
+topic base and remains unverified. Never return to the original branch to publish.

@@ -9,7 +9,7 @@
 | T05 Shopping/budget/waste | COMPLETE | `4f3f539` / `899b6d7` |
 | T06A Backend/API/trust/persistence | COMPLETE | `9f420c0` / `ca60ced` / `c46330c` |
 | T06B Frontend/UX/AI presentation/E2E | COMPLETE | Final code `0fc78a4`; historical 1,390/79 and 88 browser assertions |
-| T07 Final hardening | **IN PROGRESS** | H1 published `65c1367`; H2 reproduced fan-out fix 95/6 PASS; H3–H6 and final gates ongoing |
+| T07 Final hardening | **IN PROGRESS** | H1 `65c1367`, H2 `55020bc`, H3 `a19063b`, H4 `865ee91`, H5 `d579798` published; H6 evidence ready; final freeze/gates pending |
 
 ## Intentional continuation topology
 
@@ -27,9 +27,7 @@ is final T07 verification. No final source freeze or production-readiness sign-o
 
 ## Next exact action
 
-H2 published `55020bc`. Publish verified H3 CAS response fix and local database
-evidence, then complete H4
-integrity, H5 browser/AI/frontend and H6
-operations before freezing the application and running final gates. Update each
+Publish H6 operations evidence, freeze exact application source and run final
+gates plus 375/390/1280 en/vi browser replay. Update each
 phase receipt and `T07_WIP_HANDOFF.md` with actual outcomes; push each meaningful
 checkpoint. No production deployment, remote migration, flag cutover or PayOS work.
