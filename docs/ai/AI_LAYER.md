@@ -60,6 +60,15 @@ quota or monetary guarantee; aggregate abuse/cost assessment remains T07.
 
 ## Verification ownership
 
+The final frontend implementation renders explanation IDs through localized React
+text templates, never `dangerouslySetInnerHTML`. Reasons are visible before any AI
+request and remain visible on network/API failure. Revision-keyed detail remounts
+discard obsolete explanations. The native browser suite exercises disabled-AI
+fallback against the real Worker; unit/HTTP suites cover enabled success, timeout,
+missing provider, outage, malformed/invented/dropped output and post-latency fences.
+Exact final commands/counts are in `T06B_VERIFICATION.md`; no live-provider success
+is claimed. **AI-generated recipes remain deferred beyond T06B.**
+
 Backend coverage lives in `tests/unit/meal-planning-explanation.test.ts` and
 `tests/integration/meal-planning-presentation-http.test.ts`: strict grounding,
 disabled/no-facts/missing-provider/outage/timeout fallback, bounded native calls,

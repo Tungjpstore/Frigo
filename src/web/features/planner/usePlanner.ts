@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MealPlanDto } from '../../../../packages/domain/src/meal-planning-api';
 import { mealPlanningApi } from '../../services/meal-planning';
 import { ApiError } from '../../services/http';
-import { capturePrivateSession } from '../../lib/private-session';
+import { capturePrivateSession, onPrivateSessionReset } from '../../lib/private-session';
 import { queryKeys } from '../../lib/queryKeys';
 
 export function usePlanner(planId?: string, enabled = true) {
@@ -15,15 +15,28 @@ export function usePlanner(planId?: string, enabled = true) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [refreshed, setRefreshed] = useState(false);
-  const gate = useRef(false);
+  const gate = useRef<symbol | null>(null);
   const mounted = useRef(true);
   const keys = useRef(new Map<string, string>());
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => {
+    const reset = () => {
+      gate.current = null;
+      keys.current.clear();
+      setBusy(null); setError(null); setRefreshed(false);
+    };
+    reset();
+    return onPrivateSessionReset(reset);
+  }, [queryKey[1], queryKey[2]]);
 
   function requestKey(intent: unknown) {
     const fingerprint = JSON.stringify(intent);
     if (!keys.current.has(fingerprint)) keys.current.set(fingerprint, crypto.randomUUID());
     return keys.current.get(fingerprint)!;
+  }
+
+  function retireRequestKey(intent: unknown) {
+    keys.current.delete(JSON.stringify(intent));
   }
 
   function replacePlan(plan: MealPlanDto) {
@@ -37,7 +50,8 @@ export function usePlanner(planId?: string, enabled = true) {
 
   async function perform<T>(label: string, operation: () => Promise<T>, accept?: (data: T) => void): Promise<T | undefined> {
     if (gate.current) return;
-    gate.current = true;
+    const operationId = Symbol();
+    gate.current = operationId;
     const current = capturePrivateSession();
     setBusy(label); setError(null); setRefreshed(false);
     try {
@@ -50,14 +64,19 @@ export function usePlanner(planId?: string, enabled = true) {
       setError(failure);
       if (failure instanceof ApiError && failure.status === 409 && planId) {
         client.removeQueries({ queryKey: queryKeys.mealPlanningShopping(planId) });
+        client.removeQueries({ queryKey: queryKeys.mealPlanningAlternativesForPlan(planId) });
         const latest = await query.refetch();
-        if (current() && mounted.current && latest.data) setRefreshed(true);
+        if (current() && mounted.current && latest.isSuccess && latest.data) {
+          replacePlan(latest.data);
+          setRefreshed(true);
+        }
       }
     } finally {
-      gate.current = false;
+      // An obsolete session must not unlock a newer session's active operation.
+      if (gate.current === operationId) gate.current = null;
       if (current() && mounted.current) setBusy(null);
     }
   }
 
-  return { query, plan: query.data, busy, error, refreshed, perform, replacePlan, requestKey };
+  return { query, plan: query.data, busy, error, refreshed, perform, replacePlan, requestKey, retireRequestKey };
 }

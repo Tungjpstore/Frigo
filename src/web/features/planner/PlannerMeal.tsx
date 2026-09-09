@@ -7,6 +7,7 @@ import type { z } from 'zod';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { mealPlanningApi } from '../../services/meal-planning';
+import { ApiError } from '../../services/http';
 import { queryKeys } from '../../lib/queryKeys';
 import { plannerCopy, type PlannerLocale } from './copy';
 import { formatQuantity, ingredientLabel, reasonLabel } from './presentation';
@@ -89,7 +90,11 @@ export function PlannerMeal({ plan, slotId, model, locale }: {
       <div className="p-5"><div className="flex items-start justify-between gap-2"><h2 id="swap-title" className="font-heading font-bold text-xl">{t.chooseAlternative}</h2><Button variant="ghost" aria-label={t.cancel} disabled={!!model.busy} onClick={() => setSwapOpen(false)}><X size={18} /></Button></div>
         <p className="text-xs text-slate-600 mt-2 mb-4 leading-relaxed">{t.alternativeNote}</p>
         {alternatives.data?.truncated && <p className="text-xs text-amber-900 mb-3">{t.alternativesLimited}</p>}
-        {alternatives.isPending ? <p role="status">{t.loading}</p> : alternatives.isError ? <PlannerError error={alternatives.error} locale={locale} onRetry={() => void alternatives.refetch()} /> : <ul className="space-y-2">
+        {alternatives.isPending ? <p role="status">{t.loading}</p> : alternatives.isError ? <PlannerError error={alternatives.error} locale={locale} onRetry={() => {
+          if (alternatives.error instanceof ApiError && alternatives.error.status === 409) {
+            void model.perform('refresh', () => mealPlanningApi.get(plan.id), model.replacePlan);
+          } else void alternatives.refetch();
+        }} /> : <ul className="space-y-2">
           {alternatives.data?.alternatives.filter((item) => item.id !== meal.source.id).map((item) => <li key={item.id} className="border border-slate-200 rounded-xl p-3 flex items-center gap-3 justify-between"><span className="text-sm font-semibold">{item.title}</span><Button disabled={!!model.busy} variant="secondary" aria-label={`${t.choose}: ${item.title}`} onClick={async () => {
             const next = await model.perform('swap', () => mealPlanningApi.swap(plan.id, { revision: plan.revision, slotId, replacement: { kind: 'recipe', id: item.id } }), model.replacePlan);
             if (next) { setSwapOpen(false); navigate(`/planner/${plan.id}/meal/${encodeURIComponent(slotId)}`, { replace: true, state: { swappedRevision: next.revision, swappedSlot: slotId } }); }

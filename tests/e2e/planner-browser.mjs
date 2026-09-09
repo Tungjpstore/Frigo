@@ -194,6 +194,30 @@ export async function revisionConflict() {
   return { suite: 'real-revision-conflict', tests: 2, passed: ['stale mutation rejected and latest revision recovered', 'localized recovery with mobile fit'] };
 }
 
+export async function alternativesConflict() {
+  await guardPreview();
+  const evidence = JSON.parse(sessionStorage.getItem(evidenceKey));
+  const t = plannerCopy[evidence.locale];
+  await link('a[href*="/meal/"]');
+  const response = await fetch(`${prefix}/${evidence.id}/regenerate`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revision: evidence.revision }),
+  });
+  assert(response.ok, 'Concurrent actor advanced plan before alternative lookup');
+  const next = await response.json();
+  activate(button(t.swap));
+  await until(() => document.querySelector('dialog [role="alert"]'), 'alternatives revision conflict');
+  activate(button(t.retry, document.querySelector('dialog')));
+  await until(() => !document.querySelector('dialog'), 'retry refreshes plan instead of repeating stale alternatives');
+  activate(button(t.swap));
+  await until(() => document.querySelector('dialog li button'), 'alternatives for latest revision');
+  assert(!document.querySelector('dialog [role="alert"]'), 'Latest alternatives recovered');
+  activate(document.querySelector('dialog button[aria-label]'));
+  await link(`a[href="/planner/${evidence.id}"]`);
+  assert(document.querySelector('[data-testid="plan-revision"]').textContent === String(next.revision), 'Refreshed full plan');
+  sessionStorage.setItem(evidenceKey, JSON.stringify({ ...evidence, revision: next.revision }));
+  return { suite: 'alternatives-revision-conflict', tests: 2, passed: ['alternatives retry refreshes authoritative revision', 'latest alternatives load without a swap'] };
+}
+
 export async function keyboardDialog() {
   await guardPreview();
   const { locale } = JSON.parse(sessionStorage.getItem(evidenceKey));

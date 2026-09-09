@@ -25,7 +25,10 @@ export function PlannerSetup({ model, locale }: { model: ReturnType<typeof usePl
     let intent;
     try { intent = buildPlanningIntent({ startDate, days, servings, meals, mode, maxTime, offset: -new Date().getTimezoneOffset() }); }
     catch { setInvalid(true); return; }
-    const plan = await model.perform('generate', () => mealPlanningApi.generate(intent, model.requestKey(intent)), model.replacePlan);
+    const plan = await model.perform('generate', () => mealPlanningApi.generate(intent, model.requestKey(intent)), (result) => {
+      model.replacePlan(result);
+      model.retireRequestKey(intent);
+    });
     if (plan) navigate(`/planner/${plan.id}`, { replace: true });
   }
   return <Card>
