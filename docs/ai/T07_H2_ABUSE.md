@@ -81,3 +81,7 @@ pnpm exec vitest run tests/integration/t07-rate-limit.test.ts tests/unit/t07-rat
 **95 tests / 6 files PASS**, 8.65 s. An intermediate run found the expected obsolete
 AI per-path budget assumption (94 pass / 1 fail), updated as explained above.
 Hard engine caps and hostile request bounds are recorded with H1/H4 evidence.
+
+Shared-worktree typecheck later exposed TypeScript circular inference in the new
+fixture's evolving empty plan array. An explicit `MealPlanDto[]` annotation fixes
+the test-only type error without changing assertions; `pnpm typecheck` then passed.

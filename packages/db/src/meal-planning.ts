@@ -400,12 +400,16 @@ export async function updateGeneratedMealPlan(
     WHERE id = ? AND household_id = ? AND creator_user_id = ? AND revision = ?
       AND EXISTS (
         SELECT 1 FROM household_members WHERE household_id = ? AND user_id = ?
-      )`).bind(
+      )
+    RETURNING *`).bind(
     payloads.intentJson, payloads.resultJson, payloads.sourceJson,
     input.id, scope.householdId, scope.userId, input.expectedRevision, scope.householdId, scope.userId,
-  ).run();
+  ).all<unknown>();
   assertSuccess(response);
-  if (changes(response) === 1) return getGeneratedMealPlan(db, scope, input.id);
+  if (changes(response) === 1) {
+    if (response.results.length !== 1) throw new Error('Generated meal plan conditional update returned no row');
+    return mapPlan(response.results[0]);
+  }
 
   const existing = await currentPlan(db, scope, input.id);
   if (!existing) return resolveMissingPlan(db, scope);

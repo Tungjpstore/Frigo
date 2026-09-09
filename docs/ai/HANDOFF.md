@@ -33,11 +33,17 @@ persisted hard restrictions beat soft preference. No H1 security defect reproduc
 no speculative source fix. Rendering/log breadth continues in H5/H6.
 
 ## In Progress
-H2 aggregate account budget is verified (95/6 focused PASS and targeted ESLint);
+H2 aggregate account budget is published `55020bc` (95/6 focused PASS and targeted ESLint);
 see `T07_H2_ABUSE.md` for pre-fix failures, real-Hono error proof and non-atomic KV
 characterization. Next checkpoint preserves the fix and ADR-019. H3 concurrency/persistence,
 H4 exact-domain contracts, H5 mounted frontend/AI/flags, H6 operational observations.
 Parallel source/test work is staged only into its own reviewed phase checkpoint.
+
+H3 confirmed a post-CAS reread could return a later writer's revision. The update
+now returns its own atomic `RETURNING` row, retaining all owner/revision predicates.
+Six new controlled-race cases and 68/6 parent related tests pass. Local migration/schema
+and versioned `scripts/t07-query-plans.mjs` checks pass; no index/migration added.
+Assembled typecheck passes after correcting H2's test-only array inference.
 
 ## Database / Migration Changes
 None in H1. No remote database operation. Existing local SQLite-backed tests replay

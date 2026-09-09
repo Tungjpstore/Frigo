@@ -21,8 +21,8 @@ historical blocked/interrupted instructions below.
 | Phase | Evidence | Current status |
 | --- | --- | --- |
 | H1 | `T07_H1_SECURITY.md`, 51 new actual-auth HTTP cases; related boundary 125/4 and CSRF/CORS 87/2 PASS | Published `65c1367`; no H1 production fix justified |
-| H2 | `T07_H2_ABUSE.md`: 11th cross-plan request reproduction fixed; 95/6 focused PASS and targeted ESLint PASS; KV race/real-Hono error characterization | Ready for phase checkpoint; ADR-019 records approximate guarantee |
-| H3 | Controlled persistence races and database query evidence | In progress |
+| H2 | `T07_H2_ABUSE.md`: 11th cross-plan request reproduction fixed; 95/6 focused PASS and targeted ESLint PASS; KV race/real-Hono error characterization | Published `55020bc`; ADR-019 records approximate guarantee |
+| H3 | `T07_H3_PERSISTENCE.md`: own-CAS-response race fixed with RETURNING; six new cases, 68/6 parent focused PASS; local migrations/schema/EXPLAIN and assembled typecheck PASS | Ready for checkpoint; no new migration/index |
 | H4 | Precision, unknown, proof and search-bound matrix | In progress |
 | H5 | Mounted frontend/AI and flags; existing browser replay | In progress |
 | H6 | Measurements, failures/logs, rollout/readiness | Pending |
@@ -35,7 +35,7 @@ reviewed changes, preserve all others, and push promptly.
 
 ### Next exact action
 
-Publish H2's reproduced aggregate-budget fix. Continue
+Publish H3's verified CAS response correction and query-plan evidence. Continue
 H3–H6 and the original user audit matrix, freeze the final application SHA, then
 run full tests/lint/types/build/migrations/clean local D1/schema, focused suites,
 375/390/desktop browser matrix and safe hosted CI where available. Never weaken

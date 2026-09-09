@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { authMiddleware } from '../../src/worker/middleware/auth';
 import { createMealPlanningRoutes } from '../../src/worker/routes/meal-planning';
-import { MealPlanDtoSchema } from '../../packages/domain/src/meal-planning-api';
+import { MealPlanDtoSchema, type MealPlanDto } from '../../packages/domain/src/meal-planning-api';
 import * as planner from '../../packages/recipes/src/weekly-planner';
 import { SESSION_COOKIE, sha256Hex } from '../../src/worker/utils/session';
 import type { AuthContext, Env } from '../../src/worker/types';
@@ -62,7 +62,7 @@ describe('T07 authenticated planner aggregate compute budget', () => {
   it.each([true, false])('shares a ten-request budget across plan IDs/actions (primary KV: %s)', async (primary) => {
     const { request, memberCookie } = await fixture(primary);
     const compute = vi.spyOn(planner, 'planWeeklyMeals');
-    const plans = [];
+    const plans: MealPlanDto[] = [];
     for (let i = 0; i < 2; i++) {
       const response = await request('', intent);
       expect(response.status, await response.clone().text()).toBe(200);

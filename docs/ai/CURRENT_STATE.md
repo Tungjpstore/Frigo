@@ -19,8 +19,8 @@ blocker is resolved; this is not an architectural repository issue.
 | Phase | Current evidence | Status |
 | --- | --- | --- |
 | H1 security/trust/tenancy | 51 new actual-auth HTTP cases; route/repository ownership matrix; related boundary 125/4 and CSRF/CORS 87/2 PASS | Planner boundary audited; broader rendering/log review continues H5/H6 |
-| H2 abuse | Reproduced fan-out fixed with planner account bucket; 95/6 targeted PASS; KV concurrency remains approximate (ADR-019) | Ready for checkpoint |
-| H3 persistence | Controlled concurrency and query-plan review | In progress |
+| H2 abuse | Reproduced fan-out fixed with planner account bucket; 95/6 targeted PASS; KV concurrency remains approximate (ADR-019) | Published `55020bc` |
+| H3 persistence | Own-CAS-response race fixed with RETURNING; 68/6 parent focused, local migration/schema/query-plan checks PASS | Ready for checkpoint |
 | H4 domain | Exact arithmetic, bounds, unknown/proof semantics | In progress |
 | H5 frontend/AI | Mounted race and grounded AI review | In progress |
 | H6 operations | Observations, failure/privacy checks and rollout report | Pending |

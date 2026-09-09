@@ -27,7 +27,8 @@ is final T07 verification. No final source freeze or production-readiness sign-o
 
 ## Next exact action
 
-Publish H2 aggregate limiter evidence and fix. Complete H3 persistence, H4
+H2 published `55020bc`. Publish verified H3 CAS response fix and local database
+evidence, then complete H4
 integrity, H5 browser/AI/frontend and H6
 operations before freezing the application and running final gates. Update each
 phase receipt and `T07_WIP_HANDOFF.md` with actual outcomes; push each meaningful
