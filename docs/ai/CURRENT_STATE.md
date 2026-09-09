@@ -1,5 +1,21 @@
 # Current State — Recipe / Meal Planning Program
 
+## T05 preflight — 2026-09-09
+
+T01–T04 are COMPLETE; T05 is authorized and now IN PROGRESS. Verified clean
+T04 baseline `ebd538b4a57c2af85ad28a34c54f762093bc2403`, including hardening
+`d7dff8f5b986c141ddddb464e86524a3a367392a`. The existing handoff includes the
+latest hardening; no T04 architecture repair is needed. Current dedicated thread
+branch is `hoplite/datala-8b986478`, based directly on that checkpoint. The supplied
+`https://github.com/tun-vn/Frigo` redirects to configured `ars-vn/Frigo`; older
+repository/branch names below are historical. T05 adds new commits only.
+
+The detailed T05 authorization supersedes the old packet's feedback-loop requirement:
+T05 evaluates the chosen plan and emits feedback, but never invokes replanning.
+Managed setup incorrectly reported the tracked settings file missing; the exact
+repository-owned setup command succeeded via shell. Platform fault reported.
+T05 verification is pending; historical T04 checks below are not new executions.
+
 Verified 2026-09-09. **T04 COMPLETE — T05 READY**. T05 has not started and requires
 separate authorization. Local verification is not deployment or hosted CI evidence.
 

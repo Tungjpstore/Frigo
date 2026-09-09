@@ -9,7 +9,7 @@ active packet; implementation presence or local tests alone do not imply publica
 | T02 — Recipe Engine | **COMPLETE** | T01 | Merged `db09fa0`; lot-aware quantity-only candidates, scaling, substitutions, bounded families and explicit catalog adapters. Default behavior retained by T04's opt-in allocation extension. |
 | T03 — Ranking & Personalization | **COMPLETE** | T02 | Immutable checkpoint `3592de9`; implementation `01f9d87`, 850 tests / 56 files and local gates verified. Ranking/personalization source unchanged by T04. |
 | T04 — Weekly Meal Planner | **COMPLETE** | T02, T03 | Published hardening `d7dff8f` after `c28838c` / `a687a63` / handoff `7d76cdf`; sequential bounded planning, truthful incomplete-result metadata and evidence-backed nutrition reasons. 924 tests / 61 files and all final local gates pass. |
-| T05 — Budget / Shopping / Waste Optimizer | **READY — NOT STARTED** | T04 | Consume T04 selected demands/shortages/final projection; plan-level package, budget and waste optimization only after separate authorization. |
+| T05 — Budget / Shopping / Waste Optimizer | **IN PROGRESS** | T04 | Authorized on hardened T04 `ebd538b`; deterministic purchase/package/budget/waste evaluation only, no replanning loop. |
 | T06 — AI Layer + API + Frontend Integration | BLOCKED BY T05 | T04, T05 | Authenticated integration with existing UI; read-only planner shadow/canary path, AI bounded augmentation only. |
 | T07 — Hardening / Tests / Final Architecture Review | BLOCKED BY T05, T06 | T01–T06 | Final safety, integrity, concurrency and end-to-end verification. |
 

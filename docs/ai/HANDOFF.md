@@ -1,5 +1,19 @@
 # Frigo AI Handoff
 
+## T05 preflight checkpoint — 2026-09-09
+
+T05 is authorized and IN PROGRESS on dedicated branch `hoplite/datala-8b986478`.
+Clean baseline: `ebd538b4a57c2af85ad28a34c54f762093bc2403`, whose parent is the
+latest T04 hardening `d7dff8f5b986c141ddddb464e86524a3a367392a`. All dependency
+statuses agree; the T04 handoff below is current historical evidence, not stale
+implementation. Current configured repository is `ars-vn/Frigo`; user-supplied
+`tun-vn/Frigo` redirects there. No remote or dependency history changed.
+
+Next: implement T05 after auditing legacy shopping/price/package infrastructure.
+Use per-slot T04 deficits exactly once; never replan, mutate inventory or cut over
+legacy runtime. The older packet's feedback loop is superseded by this task's
+explicit no-replanning authorization. New checks/results will replace this checkpoint.
+
 ## Current Task
 T04 — Weekly Meal Planner
 
