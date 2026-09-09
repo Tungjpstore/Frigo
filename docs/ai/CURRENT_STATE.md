@@ -1,13 +1,26 @@
-# Frigo current state — T07 interrupted
+# Frigo current state — T07 publication blocked
 
 ## Current task and roadmap
 
-**T01–T05 COMPLETE. T06A COMPLETE. T06B COMPLETE. T07 IN PROGRESS / INTERRUPTED.**
+**T01–T05 COMPLETE. T06A COMPLETE. T06B COMPLETE. T07 IN PROGRESS / BLOCKED.**
 
-The user stopped T07 on 2026-09-09 after the unchanged baseline and during initial
-read-only review. **No T07 source/test/migration/configuration change or fix was
-made.** Do not resume without renewed authorization; no production-readiness
-claim is made. Current recovery instructions: `T07_WIP_HANDOFF.md`.
+The user renewed continuation on 2026-09-09. Recovery found exact published HEAD
+`006742bc179d58aae53106c88aff8a2667dbd1ca`, clean, with `0f6c382` ancestry proven.
+The new thread was provisioned on `hoplite/prokonnesos-74e71894`; the requested
+local branch `hoplite/lipara-d81160ee` was safely selected without resetting.
+However, the trusted publisher rejects it as this thread's **configured base
+branch**. No substitute-branch publication is authorized. Current repository-bound
+tools report `fri-go/Frigo`; the exact checkpoint is present and no remote changed.
+
+**No T07 source/test/migration/configuration change or fix was made.** Only local
+recovery documentation is updated; it is not pushed. Fresh recovery install,
+`pnpm test` **1,390/79 PASS** (57.44 s), and the requested limiter/planner HTTP
+set **74/3 PASS** (5.33 s) ran on unchanged `006742b`. These are recovery results,
+not final verification. All H1–H6 audits remain incomplete.
+
+The user must authorize the provisioned continuation branch or arrange a writable
+binding for the requested branch before implementation/checkpoint publication.
+Exact error, commands and next steps: `T07_WIP_HANDOFF.md`.
 
 Thread branch: `hoplite/lipara-d81160ee`; verified T06B base
 `6d4e873b180e46edcaf8088f848b3afab853bc66`, fast-forwarded from the initially
@@ -16,7 +29,7 @@ provisioned T02 checkout. Application source remains identical to verified
 `0f6c3824efa359e5b2e6938840ac2c40b06e7004`. The following handoff commit is resolved
 with `git log -1 --format=%H -- docs/ai/T07_WIP_HANDOFF.md`.
 
-Fresh T07 baseline: `pnpm test` **1,390/79 PASS**; lint, typecheck, build,
+Historical T07 baseline: `pnpm test` **1,390/79 PASS**; lint, typecheck, build,
 migration smoke, local D1 0001–0022 apply and schema gate **PASS**; focused suites
 **722/32 PASS**; existing browser matrix **88 assertions/12 phases PASS**, with
 no unhandled browser errors. Exact commands/timings/limits: `T07_BASELINE.md`.
@@ -111,8 +124,9 @@ Native AI response timeout does not guarantee cancellation. Aggregate cross-plan
 rate limits, advanced package/temporal optimization and wider production review
 remain T07. No deployment, live-provider or remote/production evidence is claimed.
 
-T07 began and is now explicitly interrupted. On renewed authorization, fetch
-`hoplite/lipara-d81160ee`, verify the published `0f6c382` checkpoint ancestry and
-read `T07_WIP_HANDOFF.md` before following its exact next actions. Do not resume
-auditing, enable production flags, deploy or migrate remotely merely because the
-baseline is green. **PayOS/payment remains untouched.**
+T07 recovery is blocked on the requested branch's protected-base publication
+policy, not on missing implementation or failed tests. Follow the current section
+of `T07_WIP_HANDOFF.md`; preserve the local documentation checkpoint and obtain an
+authorized push path before H1 implementation. No production-readiness conclusion,
+deployment, remote migration or flag cutover is implied. **PayOS/payment remains
+untouched.**

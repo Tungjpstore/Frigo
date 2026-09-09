@@ -1,13 +1,33 @@
 # Frigo AI Handoff
 
 ## Current Task
-T07 — final hardening, interrupted after baseline and during initial read-only review.
+T07 — final hardening, recovery baseline passed; publication blocked before H1.
 
 ## Task Status
-**T01–T05 COMPLETE. T06A COMPLETE. T06B COMPLETE. T07 IN PROGRESS / INTERRUPTED.**
-The user explicitly stopped further audits/fixes on 2026-09-09. Do not resume
-without renewed authorization. No T07 implementation, new regression or production
+**T01–T05 COMPLETE. T06A COMPLETE. T06B COMPLETE. T07 IN PROGRESS / BLOCKED.**
+The user renewed authorization on 2026-09-09, but the requested T07 branch is this
+thread's protected base. No T07 implementation, new regression or production
 readiness conclusion exists. `T06B_WIP_HANDOFF.md` remains retired T06B history.
+
+## Current Recovery Result
+
+Started clean at **`006742bc179d58aae53106c88aff8a2667dbd1ca`** on provisioned
+`hoplite/prokonnesos-74e71894`; `0f6c382` ancestry exit 0. Trusted fetch confirms
+the requested `hoplite/lipara-d81160ee` at that exact SHA. Safely switched locally
+to it without reset or content changes. Current configured repository is
+`fri-go/Frigo`; the requested checkpoint is present. No remote was rewritten.
+
+The trusted publisher rejected a no-content-change publication to the requested
+branch: **`Cannot publish the configured base branch hoplite/lipara-d81160ee`**.
+No remote write occurred. Local branch selection cannot change that policy.
+
+Executed on unchanged `006742b`: `pnpm install --frozen-lockfile` PASS;
+`pnpm test` **1,390 tests / 79 files PASS**, 57.44 s; the exact three-file
+limiter/planner HTTP command in `T07_WIP_HANDOFF.md` **74 / 3 PASS**, 5.33 s.
+Only recovery documentation changes locally, not pushed. No final T07 gates,
+browser replay, hosted CI, implementation audit or fix was completed.
+The complete current blocker/receipt/next action is at the top of
+`T07_WIP_HANDOFF.md`; the remaining sections below preserve historical evidence.
 
 ## T07 Interruption Recovery
 
@@ -89,7 +109,7 @@ started. The interrupted state is saved in the WIP/handoff checkpoints above.
   Shift+Tab, Escape and dialog focus return are verified.
 
 ## In Progress
-None in T06B. T07 is ready only for a separately authorized task.
+None in T06B. T07 continuation is authorized but blocked on branch publication.
 
 ## Remaining
 Aggregate account/cross-plan rate-limit review, advanced optimizer package
@@ -169,9 +189,10 @@ Frontend does not calculate authoritative shortages/totals; AI is not authoritat
 plan generation does not mutate inventory; shopping does not execute a purchase.
 
 ## Next Exact Action
-Stay stopped until renewed authorization. Then fetch `hoplite/lipara-d81160ee`,
-run `git status --short`, `git rev-parse HEAD` and
-`git merge-base --is-ancestor 0f6c3824efa359e5b2e6938840ac2c40b06e7004 HEAD`.
-Read `T07_WIP_HANDOFF.md` and its exact next actions before resuming the inventory
-or limiter reproducer. Do not reset to an older checkpoint, start new features,
-enable production flags, deploy, migrate remotely or change PayOS.
+Ask for a writable thread/PR binding for `hoplite/lipara-d81160ee`, or explicit
+approval to continue/publish from this checkpoint on `hoplite/prokonnesos-74e71894`.
+Preserve the local documentation checkpoint; do not bypass the protected-base
+rule. After authorization, publish through the trusted path, verify remote
+ancestry and start H1 security/trust/tenancy before H2 limiter reproduction.
+Do not reset to an older checkpoint, start new features, enable production flags,
+deploy, migrate remotely or change PayOS. No final application SHA exists yet.

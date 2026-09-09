@@ -9,9 +9,20 @@
 | T05 Shopping/budget/waste | COMPLETE | `4f3f539` / `899b6d7` |
 | T06A Backend/API/trust/persistence | COMPLETE | `9f420c0` / `ca60ced` / `c46330c`; regressions retained |
 | T06B Frontend/UX/AI presentation/E2E | COMPLETE | Continued `c5f8623`; final code `0fc78a4`; 1,390 tests / 79 files and 88 browser assertions PASS |
-| T07 Final hardening | **IN PROGRESS / INTERRUPTED** | User stopped after fresh baseline and initial read-only review; no implementation fixes; see `T07_WIP_HANDOFF.md` |
+| T07 Final hardening | **IN PROGRESS / BLOCKED** | Recovery at `006742b` passes full 1,390/79 and focused 74/3; requested branch is the protected base and cannot be published; no implementation fixes |
 
 ## Current verified checkpoint
+
+Recovery 2026-09-09: exact starting/published handoff
+`006742bc179d58aae53106c88aff8a2667dbd1ca`; tree initially clean, baseline ancestor
+check exit 0. Local checkout now `hoplite/lipara-d81160ee`; provisioned thread
+branch was `hoplite/prokonnesos-74e71894`. Trusted publication rejected the former
+with `Cannot publish the configured base branch hoplite/lipara-d81160ee`.
+Only local, unpushed recovery docs follow. Fresh frozen install, full tests
+**1,390/79** and focused limiter/planner HTTP **74/3** pass; no final gates or new
+audit findings. See the leading recovery section of `T07_WIP_HANDOFF.md`.
+
+## Historical baseline checkpoint
 
 T07 thread branch: `hoplite/lipara-d81160ee`. Verified T06B base:
 `6d4e873b180e46edcaf8088f848b3afab853bc66`; application checkpoint `0fc78a4` is an
@@ -48,8 +59,9 @@ Legacy Week and trust/inventory boundaries remain unchanged.
 
 ## Next exact action
 
-Remain stopped until renewed authorization. Then fetch `hoplite/lipara-d81160ee`,
-run `git status --short`, `git rev-parse HEAD` and verify the `0f6c382` checkpoint
-ancestry; read `T07_WIP_HANDOFF.md` and follow its concrete recovery steps.
-Aggregate limiter reproduction is unfinished, not an implemented fix. No
-deployment, remote migration, production flag change or PayOS work is authorized.
+Obtain a writable binding for `hoplite/lipara-d81160ee` or explicit user approval
+to continue on `hoplite/prokonnesos-74e71894`. Preserve/publish the local recovery
+documentation through the authorized path, verify ancestry, then begin H1.
+Aggregate limiter reproduction remains pending H2, not an implemented fix.
+Do not bypass the protected-base policy, reset history, deploy, migrate remotely,
+change production flags or touch PayOS.
