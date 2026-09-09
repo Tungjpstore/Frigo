@@ -3,16 +3,116 @@ import { createPlanningContext } from '../../packages/recipes/src/planner-contex
 import { planWeeklyMeals } from '../../packages/recipes/src/weekly-planner';
 import { candidateEvidenceKey } from '../../packages/recipes/src/ranking-evidence';
 import { SubstitutionRuleSchema } from '../../packages/recipes/src/substitutions';
-import { catalog, context, dinner, lot, recipe, request, HOUSEHOLD_ID, USER_ID } from '../helpers/planner-fixtures';
+import { catalog, context, dinner, lot, nutritionEvidence, recipe, request, HOUSEHOLD_ID, USER_ID } from '../helpers/planner-fixtures';
 
 describe('T04 contract and review regressions', () => {
   it('returns the best complete plan already found when the state budget is reached', () => {
     const result = planWeeklyMeals({ context: context({ catalog: catalog([recipe('a'), recipe('b'), recipe('c')]) }),
       request: request([dinner('2026-09-08')]), policy: { maxSearchStates: 2 } });
     expect(result.status).toBe('feasible');
+    expect(result.conclusion).toBe('feasible');
     expect(result.slots).toHaveLength(1);
     expect(result.search).toMatchObject({ statesExplored: 2, truncated: true, plannerSearchExhaustive: false });
     expect(result.search.limitReasons).toContain('MAX_SEARCH_STATES');
+    expect(result.search.incompleteReasons).toEqual([{ source: 'planner_search', code: 'MAX_SEARCH_STATES' }]);
+  });
+
+  it('reports incomplete catalog data without claiming a search limit or proven infeasibility', () => {
+    const result = planWeeklyMeals({ context: context({ catalog: catalog([recipe('invalid', 'CHICKEN', 300, { servings: 0 })]) }),
+      request: request([dinner('2026-09-08')]) });
+    expect(result).toMatchObject({ status: 'incomplete', conclusion: 'no_plan_found_without_proof', slots: [] });
+    expect(result.search).toMatchObject({ searchExhaustive: false, plannerSearchExhaustive: true,
+      recipeSearchExhaustive: false, truncated: false, statesExplored: 1, limitReasons: [],
+      incompleteReasons: [{ source: 'catalog', code: 'CATALOG_DATA_INCOMPLETE' }] });
+    expect(result.catalogDiagnostics).toContainEqual(expect.objectContaining({ code: 'invalid_recipe' }));
+    expect(result.diagnostics).toContainEqual({ slotId: null, code: 'NO_PLAN_FOUND_WITHOUT_PROOF', count: 1 });
+    expect(result.diagnostics.some((issue) => issue.code.includes('SEARCH_LIMIT'))).toBe(false);
+  });
+
+  it('preserves T02 family traversal limits separately from planner search limits', () => {
+    const supplied = catalog([], [], [{ id: 'family', slug: 'family', name: 'family', baseServings: 2,
+      provenance: { sourceType: 'curated', verificationState: 'reviewed', version: 1 },
+      slots: [{ key: 'protein', minSelections: 1, maxSelections: 1,
+        options: [{ ingredientId: 'CHICKEN', quantity: 300, unit: 'g' }] }] }]);
+    const result = planWeeklyMeals({ context: context({ catalog: supplied }), request: request([dinner('2026-09-08')]),
+      policy: { variantSearchStatesPerFamily: 1 } });
+    expect(result).toMatchObject({ status: 'search_limited', conclusion: 'no_plan_found_without_proof', slots: [] });
+    expect(result.search).toMatchObject({ searchExhaustive: false, plannerSearchExhaustive: true,
+      recipeSearchExhaustive: false, truncated: true, limitReasons: ['T02_SEARCH_STATE_LIMIT'],
+      incompleteReasons: [{ source: 'recipe_search', code: 'T02_SEARCH_STATE_LIMIT' }] });
+    expect(result.search.familySearches).toContainEqual(expect.objectContaining({ familyId: 'family',
+      maxStatesPerCall: 1, candidateCount: 0, truncated: true, exhaustive: false }));
+  });
+
+  it('preserves simultaneous catalog incompleteness, catalog caps and planner caps deterministically', () => {
+    const input = { context: context({ catalog: catalog([recipe('a'), recipe('b'), recipe('invalid', 'CHICKEN', 300, { servings: 0 })]) }),
+      request: request([dinner('2026-09-08')]), policy: { recipeLimit: 1, maxSearchStates: 1 } };
+    const result = planWeeklyMeals(input);
+    expect(result).toMatchObject({ status: 'search_limited', conclusion: 'no_plan_found_without_proof' });
+    expect(result.search).toMatchObject({ statesExplored: 1, generationCalls: 0, truncated: true,
+      plannerSearchExhaustive: false, recipeSearchExhaustive: false,
+      limitReasons: ['CATALOG_RECIPE_LIMIT', 'MAX_SEARCH_STATES'], incompleteReasons: [
+        { source: 'catalog', code: 'CATALOG_DATA_INCOMPLETE' },
+        { source: 'planner_search', code: 'MAX_SEARCH_STATES' },
+        { source: 'recipe_search', code: 'CATALOG_RECIPE_LIMIT' },
+      ] });
+    expect(planWeeklyMeals(input)).toEqual(result);
+  });
+
+  it.each(['substitution', 'numeric'] as const)('preserves %s incompleteness without inventing a computational limit', (source) => {
+    const options = source === 'numeric'
+      ? { inventory: [], catalog: catalog([recipe('huge', 'CHICKEN', 9e307, { servings: 1 })]) }
+      : { inventory: [], substitutions: [SubstitutionRuleSchema.parse({ id: 'unknown-replacement', scopeType: 'recipe',
+        scopeId: 'chicken-300', scopeVersion: 1, fromIngredientId: 'CHICKEN', toIngredientId: 'TOFU',
+        fromUnit: 'g', toUnit: 'g', quantityRatio: 1, reason: 'Reviewed fixture', sourceReference: 'fixture', verificationState: 'reviewed' })] };
+    const result = planWeeklyMeals({ context: context(options), request: request([dinner('2026-09-08')]) });
+    const reason = source === 'numeric' ? { source: 'candidate', code: 'T02_NUMERIC_RANGE' }
+      : { source: 'substitution', code: 'SUBSTITUTION_UNKNOWN_INGREDIENT' };
+    expect(result).toMatchObject({ status: 'incomplete', conclusion: 'no_plan_found_without_proof', slots: [] });
+    expect(result.search).toMatchObject({ truncated: false, plannerSearchExhaustive: true, recipeSearchExhaustive: false,
+      limitReasons: [], incompleteReasons: [reason] });
+    expect(result.search.rejections).toContainEqual(expect.objectContaining({ code: reason.code }));
+  });
+
+  it('keeps zero-evidence nutrition neutral without support reasons, including an empty future target period', () => {
+    const result = planWeeklyMeals({ context: context(), request: request([dinner('2026-09-08')], {
+      nutritionTargets: [{ period: 'horizon', basis: 'household_total', nutrient: 'proteinG', min: 10, max: 100 }],
+    }) });
+    expect(result.nutrition.softFit).toEqual({ score: 0.5, coverage: 0, requestedTargets: 1, qualifiedTargets: 0 });
+    expect(result.utility.components.nutritionBalance).toBe(0.04);
+    expect(result.nutrition.nutrients.proteinG).toMatchObject({ knownTotal: null, knownMeals: 0, unknownMeals: 1 });
+    expect(result.slots[0].reasons).not.toContain('NUTRITION_BALANCE_SUPPORT');
+
+    const futureTarget = planWeeklyMeals({ context: context(), request: request([dinner('2026-09-08'), dinner('2026-09-09')], {
+      nutritionTargets: [{ period: 'day', date: '2026-09-09', basis: 'household_total', nutrient: 'proteinG', max: 100 }],
+    }) });
+    expect(futureTarget.slots[0].utility.nutritionBalance).toBe(0.08);
+    expect(futureTarget.slots.every((slot) => !slot.reasons.includes('NUTRITION_BALANCE_SUPPORT'))).toBe(true);
+    expect(futureTarget.nutrition.assessments[0].knownTotal).toBeNull();
+  });
+
+  it('does not explain partial nutrition evidence with below-neutral fit as positive support', () => {
+    const result = planWeeklyMeals({ context: context({ evidenceProvider: nutritionEvidence({ proteinG: 0 }) }),
+      request: request([dinner('2026-09-08')], { nutritionTargets: [
+        { period: 'horizon', basis: 'household_total', nutrient: 'proteinG', min: 20, max: 40 },
+        { period: 'horizon', basis: 'household_total', nutrient: 'energyKcal', min: 100, max: 200 },
+      ] }) });
+    expect(result.nutrition.softFit).toEqual({ score: 0.25, coverage: 0.5, requestedTargets: 2, qualifiedTargets: 1 });
+    expect(result.nutrition.nutrients.proteinG.knownTotal).toBe(0);
+    expect(result.nutrition.nutrients.energyKcal.knownTotal).toBeNull();
+    expect(result.slots[0].utility.nutritionBalance).toBeGreaterThan(0);
+    expect(result.slots[0].reasons).not.toContain('NUTRITION_BALANCE_SUPPORT');
+  });
+
+  it('explains above-neutral nutrition fit supported by a qualified target covering the selected meal', () => {
+    const result = planWeeklyMeals({ context: context({ evidenceProvider: nutritionEvidence({ proteinG: 20 }) }),
+      request: request([dinner('2026-09-08')], { nutritionTargets: [
+        { period: 'horizon', basis: 'household_total', nutrient: 'proteinG', min: 30, max: 50 },
+      ] }) });
+    expect(result.status).toBe('feasible');
+    expect(result.nutrition.softFit).toEqual({ score: 1, coverage: 1, requestedTargets: 1, qualifiedTargets: 1 });
+    expect(result.nutrition.nutrients.proteinG.knownTotal).toBe(40);
+    expect(result.slots[0].reasons).toContain('NUTRITION_BALANCE_SUPPORT');
   });
 
   it('uses soft slot cooking time for ranking without excluding a locked slower meal', () => {

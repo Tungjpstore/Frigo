@@ -32,6 +32,10 @@ export interface PlannedMeal extends NormalizedPlannerSlot {
   generation: { truncated: boolean; familySearches: FamilySearchMetadata[] };
 }
 export interface PlannerDiagnostic { slotId: string | null; code: string; count: number }
+export interface PlannerIncompleteReason {
+  source: 'planner_search' | 'recipe_search' | 'catalog' | 'substitution' | 'inventory' | 'candidate' | 'projection';
+  code: string;
+}
 export interface PlannerFamilySearchSummary {
   familyId: string;
   calls: number;
@@ -54,6 +58,7 @@ export interface PlannerSearchMetadata {
   maxFrontierSize: number;
   limits: PlannerPolicy;
   limitReasons: string[];
+  incompleteReasons: PlannerIncompleteReason[];
   familySearches: PlannerFamilySearchSummary[];
   rejections: PlannerDiagnostic[];
   proofScope: 'supplied_catalog_constraints_and_fixed_allocation_policy';
@@ -83,8 +88,8 @@ export interface WeeklyMealPlan {
     requiresRevalidationBeforeAcceptance: true;
   };
   request: NormalizedPlannerRequest;
-  status: 'feasible' | 'partial' | 'infeasible' | 'search_limited';
-  conclusion: 'feasible' | 'proven_infeasible' | 'no_plan_found_within_search_limit';
+  status: 'feasible' | 'partial' | 'infeasible' | 'search_limited' | 'incomplete';
+  conclusion: 'feasible' | 'proven_infeasible' | 'no_plan_found_without_proof';
   slots: PlannedMeal[];
   unplannedSlots: Array<NormalizedPlannerSlot & { reasons: string[] }>;
   initialInventorySnapshot: readonly ProjectedInventoryRow[];

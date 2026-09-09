@@ -11,7 +11,7 @@ import { summarizePlanNutrition, type PlanNutritionSummary } from './planner-nut
 import { DEFAULT_PLANNER_POLICY, PlannerPolicySchema, type PlannerPolicy } from './planner-policy';
 import { normalizePlannerRequest, type NormalizedPlannerSlot, type PlannerLock } from './planner-request';
 import { aggregatePlanShortages, emptyPlanUtility, futureMealUtility, totalPlanUtility } from './planner-utility';
-import type { PlannedMeal, PlannerDiagnostic, PlannerSearchMetadata, PlanUtilityComponents, WeeklyMealPlan, WeeklyPlanningInput } from './planner-types';
+import type { PlannedMeal, PlannerDiagnostic, PlannerIncompleteReason, PlannerSearchMetadata, PlanUtilityComponents, WeeklyMealPlan, WeeklyPlanningInput } from './planner-types';
 
 interface SearchState {
   inventory: ProjectedInventory;
@@ -75,22 +75,27 @@ export function planWeeklyMeals(input: WeeklyPlanningInput): WeeklyMealPlan {
     diagnostics.set(key, { slotId, code, count: (existing?.count ?? 0) + count });
   };
   const limits = new Set<string>();
+  const incompleteReasons = new Map<string, PlannerIncompleteReason>();
   const search: PlannerSearchMetadata = {
     searchExhaustive: true, plannerSearchExhaustive: true, recipeSearchExhaustive: true, truncated: false,
     statesExplored: 1, generationCalls: 0, candidatesEvaluated: 0, maxCandidatesGenerated: 0,
-    maxCandidatesConsidered: 0, maxFrontierSize: 1, limits: policy, limitReasons: [], familySearches: [], rejections: [],
+    maxCandidatesConsidered: 0, maxFrontierSize: 1, limits: policy, limitReasons: [], incompleteReasons: [], familySearches: [], rejections: [],
     proofScope: 'supplied_catalog_constraints_and_fixed_allocation_policy',
+  };
+  const markIncomplete = (source: PlannerIncompleteReason['source'], code: string) => {
+    incompleteReasons.set(JSON.stringify([source, code]), { source, code });
+    if (source === 'planner_search') search.plannerSearchExhaustive = false;
+    else search.recipeSearchExhaustive = false;
   };
   const markLimit = (reason: string, scope: 'planner' | 'recipe') => {
     limits.add(reason);
     search.truncated = true;
-    if (scope === 'planner') search.plannerSearchExhaustive = false;
-    else search.recipeSearchExhaustive = false;
+    markIncomplete(scope === 'planner' ? 'planner_search' : 'recipe_search', reason);
   };
   if (selectedCatalog.recipesCapped) markLimit('CATALOG_RECIPE_LIMIT', 'recipe');
   if (selectedCatalog.familiesCapped) markLimit('CATALOG_FAMILY_LIMIT', 'recipe');
   if (source.catalog.diagnostics.some((issue) => !issue.code.startsWith('legacy_alias_'))) {
-    search.recipeSearchExhaustive = false;
+    markIncomplete('catalog', 'CATALOG_DATA_INCOMPLETE');
     report(null, 'CATALOG_DATA_INCOMPLETE');
   }
   const pendingDates = (nextIndex: number) => [...new Set(request.slots.slice(nextIndex).map((slot) => slot.date))];
@@ -136,18 +141,21 @@ export function planWeeklyMeals(input: WeeklyPlanningInput): WeeklyMealPlan {
         summary.truncated ||= family.truncated;
         summary.exhaustive &&= family.exhaustive;
         if (family.truncated) markLimit(`T02_${family.truncationReason?.toUpperCase()}`, 'recipe');
-        if (!family.exhaustive) search.recipeSearchExhaustive = false;
+        else if (!family.exhaustive) markIncomplete('recipe_search', 'T02_FAMILY_SEARCH_INCOMPLETE');
       }
       for (const issue of generation.inventoryDiagnostics) {
         report(slot.id, `INVENTORY_${issue.code.toUpperCase()}`);
-        if (issue.code === 'numeric_range') search.recipeSearchExhaustive = false;
+        if (issue.code === 'numeric_range') markIncomplete('inventory', 'INVENTORY_NUMERIC_RANGE');
       }
-      for (const issue of generation.substitutionDiagnostics) report(slot.id, `SUBSTITUTION_${issue.reason.toUpperCase()}`);
-      if (generation.substitutionDiagnostics.length) search.recipeSearchExhaustive = false;
+      for (const issue of generation.substitutionDiagnostics) {
+        const code = `SUBSTITUTION_${issue.reason.toUpperCase()}`;
+        report(slot.id, code);
+        markIncomplete('substitution', code);
+      }
       for (const excluded of generation.exclusions) {
         report(slot.id, `T02_${excluded.reason.toUpperCase()}`);
         if (['numeric_range', 'invalid_recipe', 'invalid_family', 'unknown_canonical'].includes(excluded.reason)) {
-          search.recipeSearchExhaustive = false;
+          markIncomplete('candidate', `T02_${excluded.reason.toUpperCase()}`);
         }
       }
       const evidence = source.evidenceProvider === undefined ? undefined : createRankingEvidenceSnapshot(generation, source.evidenceProvider);
@@ -180,7 +188,7 @@ export function planWeeklyMeals(input: WeeklyPlanningInput): WeeklyMealPlan {
         try { projected = applyProjectedConsumption(state.inventory, ranked.candidate, slot.date); }
         catch (error) {
           if (!(error instanceof InventoryProjectionNumericError)) throw error;
-          search.recipeSearchExhaustive = false; report(slot.id, 'PROJECTION_NUMERIC_RANGE'); continue;
+          markIncomplete('projection', 'PROJECTION_NUMERIC_RANGE'); report(slot.id, 'PROJECTION_NUMERIC_RANGE'); continue;
         }
         const future = futureMealUtility(ranked.candidate, state.meals, policy);
         const meal: PlannedMeal = { ...slot, ranked, projectedConsumption: projected.deltas,
@@ -203,7 +211,10 @@ export function planWeeklyMeals(input: WeeklyPlanningInput): WeeklyMealPlan {
         for (const key of Object.keys(components) as Array<keyof PlanUtilityComponents>) components[key] += meal.utility[key];
         components.nutritionBalance = nutrition.softFit.requestedTargets ? policy.nutritionBalanceWeight * nutrition.softFit.score : 0;
         meal.utility.nutritionBalance = components.nutritionBalance - state.components.nutritionBalance;
-        if (meal.utility.nutritionBalance > 0) meal.reasons.push('NUTRITION_BALANCE_SUPPORT');
+        if (meal.utility.nutritionBalance > 0 && nutrition.softFit.score > 0.5 && nutrition.assessments.some(({ target, confidence, fit }) =>
+          !target.hard && (target.period === 'horizon' || target.date === meal.date) && confidence.complete && fit > 0.5)) {
+          meal.reasons.push('NUTRITION_BALANCE_SUPPORT');
+        }
         meal.reasons.sort(compareIds);
         const child: SearchState = { inventory: projected.state, meals, components, nutrition,
           score: totalPlanUtility(components), path: JSON.stringify(meals.map((item) => [item.id, item.ranked.candidate.id])) };
@@ -226,16 +237,18 @@ export function planWeeklyMeals(input: WeeklyPlanningInput): WeeklyMealPlan {
   currentBranchRejections = undefined;
   search.searchExhaustive = search.plannerSearchExhaustive && search.recipeSearchExhaustive;
   search.limitReasons = [...limits].sort(compareIds);
+  search.incompleteReasons = [...incompleteReasons.values()]
+    .sort((a, b) => compareIds(a.source, b.source) || compareIds(a.code, b.code));
   search.familySearches.sort((a, b) => compareIds(a.familyId, b.familyId));
   search.rejections = [...diagnostics.values()].filter((item) => item.slotId !== null)
     .sort((a, b) => compareIds(a.slotId ?? '', b.slotId ?? '') || compareIds(a.code, b.code));
   const chosen = bestComplete ?? bestPartial;
   const conclusion: WeeklyMealPlan['conclusion'] = bestComplete ? 'feasible' : search.searchExhaustive
-    ? 'proven_infeasible' : 'no_plan_found_within_search_limit';
-  if (!bestComplete) report(null, conclusion === 'proven_infeasible' ? 'PROVEN_INFEASIBLE' : 'NO_PLAN_FOUND_WITHIN_SEARCH_LIMIT');
+    ? 'proven_infeasible' : 'no_plan_found_without_proof';
+  if (!bestComplete) report(null, conclusion === 'proven_infeasible' ? 'PROVEN_INFEASIBLE' : 'NO_PLAN_FOUND_WITHOUT_PROOF');
   const unplannedSlots = request.slots.slice(chosen.meals.length).map((slot, index) => ({ ...slot,
     reasons: index === 0 ? [...new Set([...(branchRejections.get(chosen) ?? []),
-      conclusion === 'proven_infeasible' ? 'NO_FEASIBLE_TRANSITION' : 'SEARCH_INCOMPLETE'])].sort(compareIds) : ['BLOCKED_BY_EARLIER_SLOT'],
+      conclusion === 'proven_infeasible' ? 'NO_FEASIBLE_TRANSITION' : 'PLAN_INCOMPLETE'])].sort(compareIds) : ['BLOCKED_BY_EARLIER_SLOT'],
   }));
   const plan: WeeklyMealPlan = {
     schemaVersion: 1,
@@ -249,7 +262,8 @@ export function planWeeklyMeals(input: WeeklyPlanningInput): WeeklyMealPlan {
       recipes: source.catalog.recipes.map(({ id, provenance }) => ({ id, version: provenance.version })),
       families: source.catalog.families.map(({ id, provenance }) => ({ id, version: provenance.version })),
       requiresRevalidationBeforeAcceptance: true },
-    request, status: bestComplete ? 'feasible' : chosen.meals.length ? 'partial' : search.searchExhaustive ? 'infeasible' : 'search_limited',
+    request, status: bestComplete ? 'feasible' : chosen.meals.length ? 'partial' : search.searchExhaustive
+      ? 'infeasible' : search.truncated ? 'search_limited' : 'incomplete',
     conclusion, slots: chosen.meals, unplannedSlots,
     initialInventorySnapshot: projectInventoryRows(source.inventory), projectedFinalInventory: projectInventoryRows(chosen.inventory),
     shortages: aggregatePlanShortages(chosen.meals), nutrition: chosen.nutrition,

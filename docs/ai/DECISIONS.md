@@ -361,3 +361,14 @@ No migration is needed. A future accepting writer must reauthorize membership an
 recheck inventory/catalog/preference versions before invoking existing versioned,
 idempotent Week/command paths. T03 remains immutable at `3592de9`; temporary use of
 its branch is a tooling constraint only, and T04 is isolated in subsequent commits.
+
+**T04 hardening clarification:** Incomplete input/candidate evaluation is not a
+search-limit hit. `no_plan_found_without_proof` covers every unproven no-plan result;
+sorted, source-tagged `search.incompleteReasons` explain missing proof while
+`limitReasons`/`truncated` remain specific to actual computational caps. Existing
+hard eligibility and exhaustive-proof scope are unchanged. Nutrition's neutral
+utility baseline is not positive evidence: a support reason requires a positive
+utility delta, above-neutral aggregate fit, and an above-neutral fully qualified
+soft target covering the current meal. Empty future periods cannot justify it.
+This corrects the generated-only result contract before T05 integration; no persisted
+consumer, schema, allocation, scoring formula or search policy changes.

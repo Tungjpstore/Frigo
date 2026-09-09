@@ -216,6 +216,12 @@ only when the relevant requested period closes. Partial prefixes keep remaining
 periods pending and never assert their targets satisfied. Soft fit is bounded and
 shrunk to neutral for missing/unqualified data. Known zero is a real observation.
 
+`NUTRITION_BALANCE_SUPPORT` requires a positive period-utility delta, aggregate
+soft fit above the neutral 0.5 baseline, and an above-neutral fully qualified soft
+target covering the newly selected meal. A future day's empty period is not
+evidence for today's meal. Neutral, below-neutral or unqualified fit cannot emit
+this positive explanation; utility formulas and hard nutrition gates are unchanged.
+
 ## Output and failure semantics
 
 `WeeklyMealPlan` schema version 1 contains:
@@ -228,16 +234,37 @@ shrunk to neutral for missing/unqualified data. Known zero is a real observation
   and optionality; preserve known subtotal and unresolved count/null total.
 - Separate search completeness/work/limits and `persistence: 'generated_only'`.
 
-`status` is `feasible`, `partial`, `infeasible`, or `search_limited`. `conclusion`
-is independently `feasible`, `proven_infeasible`, or
-`no_plan_found_within_search_limit`. `infeasible` is used only with exhaustive search;
-a partial prefix may also have an exhaustive inability to complete. Partial output
-is the longest/best valid prefix, not a schedule with silently skipped gaps. Later
-unplanned slots are blocked by the first gap. `diagnostics` contains global limits
-and chosen-prefix failure observations only. `search.rejections` separately
-aggregates rejected alternatives across explored branches; their failures are not
-attributed to selected meals. An unexpanded prefix gets an incomplete-search reason,
-not a rejection borrowed from another branch.
+`conclusion` is independent of the number of selected slots:
+- `feasible`: a complete valid plan was found, even if alternatives remain unexplored.
+- `proven_infeasible`: no complete plan exists within the exhaustive supplied-catalog,
+  hard-constraint and fixed-allocation proof scope.
+- `no_plan_found_without_proof`: no complete plan was found, but computational caps
+  or incomplete catalog/candidate evaluation prevent proof. This does not imply a limit hit.
+
+`status` is `feasible` for a complete plan and `partial` for a nonempty valid prefix.
+With no selected slots, it is `infeasible` only for exhaustive failure, `search_limited`
+for an unproven result with actual computational truncation, or `incomplete` when
+missing proof comes only from data/evaluation incompleteness. A partial prefix may
+also have an exhaustive inability to complete. No slots are silently skipped;
+later unplanned slots are blocked by the first gap.
+
+`search.incompleteReasons` deduplicates observed `{source, code}` pairs, sorted by
+binary source then code. Sources distinguish `planner_search`, `recipe_search`,
+`catalog`, `substitution`, `inventory`, `candidate` and `projection`. Computational
+caps appear under the two search sources (catalog breadth is a recipe-search cap);
+catalog data diagnostics, substitution diagnostics and numeric evaluation failures
+retain their own source. Multiple causes survive together. `limitReasons` and
+`truncated` remain specific to actual caps; all preexisting work counts, completeness
+flags, family metadata and catalog diagnostics are preserved. Incompleteness can
+also accompany a feasible result: it concerns explored alternatives, not invalidity
+of the chosen plan. Hard exclusions still fail closed under the supplied policy;
+this correction does not relax eligibility or change the exhaustive-proof criteria.
+
+`diagnostics` contains global limits and chosen-prefix failure observations only.
+`search.rejections` separately aggregates rejected alternatives across explored
+branches; their failures are not attributed to selected meals. Unproven results
+use `NO_PLAN_FOUND_WITHOUT_PROOF` and the first unplanned slot uses `PLAN_INCOMPLETE`,
+not a fabricated search-limit reason or a rejection borrowed from another branch.
 
 Empty catalog/no candidates, shortage, unresolved quantity, T03 hard exclusions,
 meal type, repeat, locks, period nutrition and computational limits are explicit.

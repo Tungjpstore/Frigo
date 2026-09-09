@@ -320,9 +320,11 @@ describe('T04 weekly planner', () => {
     });
 
     expect(limited.search.statesExplored).toBeLessThanOrEqual(2);
-    expect(limited.conclusion).toBe('no_plan_found_within_search_limit');
+    expect(limited.conclusion).toBe('no_plan_found_without_proof');
+    expect(limited.search.incompleteReasons).toContainEqual({ source: 'planner_search', code: 'MAX_SEARCH_STATES' });
     expect(limited.slots).toHaveLength(1);
     expect(impossible.conclusion).toBe('proven_infeasible');
+    expect(impossible.search).toMatchObject({ searchExhaustive: true, truncated: false, limitReasons: [], incompleteReasons: [] });
   });
 
   it('enforces exact repeat count and minimum gap as hard plan constraints', () => {
