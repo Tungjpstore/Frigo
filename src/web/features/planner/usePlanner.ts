@@ -15,6 +15,7 @@ export function usePlanner(planId?: string, enabled = true) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [refreshed, setRefreshed] = useState(false);
+  const [, setSessionEpoch] = useState(0);
   const gate = useRef<symbol | null>(null);
   const mounted = useRef(true);
   const keys = useRef(new Map<string, string>());
@@ -24,6 +25,7 @@ export function usePlanner(planId?: string, enabled = true) {
       gate.current = null;
       keys.current.clear();
       setBusy(null); setError(null); setRefreshed(false);
+      setSessionEpoch((value) => value + 1);
     };
     reset();
     return onPrivateSessionReset(reset);
@@ -65,10 +67,15 @@ export function usePlanner(planId?: string, enabled = true) {
       if (failure instanceof ApiError && failure.status === 409 && planId) {
         client.removeQueries({ queryKey: queryKeys.mealPlanningShopping(planId) });
         client.removeQueries({ queryKey: queryKeys.mealPlanningAlternativesForPlan(planId) });
-        const latest = await query.refetch();
-        if (current() && mounted.current && latest.isSuccess && latest.data) {
-          replacePlan(latest.data);
-          setRefreshed(true);
+        try {
+          const latest = await mealPlanningApi.get(planId);
+          if (current() && mounted.current) {
+            replacePlan(latest);
+            setError(null);
+            setRefreshed(true);
+          }
+        } catch {
+          // Retain the conflict error and last accepted revision when recovery cannot load it.
         }
       }
     } finally {

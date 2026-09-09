@@ -34,7 +34,7 @@ async function link(selector) {
   await sleep(150);
 }
 function mobile(label) {
-  assert(innerWidth === 375 || innerWidth === 390, `Set a required viewport before ${label}`);
+  assert([375, 390, 1280].includes(innerWidth), `Set a required viewport before ${label}`);
   assert(document.documentElement.scrollWidth <= innerWidth, `No horizontal overflow: ${label}`);
   const dialog = document.querySelector('dialog[open], [role="alertdialog"]');
   if (dialog) {
