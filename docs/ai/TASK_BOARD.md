@@ -8,7 +8,7 @@
 | T04 Weekly planner | COMPLETE | Preserved hardened `ebd538b` |
 | T05 Shopping/budget/waste | COMPLETE | `4f3f539` / `899b6d7` |
 | T06A Backend/API/trust/persistence | COMPLETE | Published `9f420c0` / `ca60ced` / `c46330c`; 1136 tests verified |
-| T06B Frontend/UX/AI presentation/E2E | IN PROGRESS / INTERRUPTED | User stop 2026-09-09; backend `1f7802f`, published WIP `08d90fa`; see `T06B_WIP_HANDOFF.md`; not complete |
+| T06B Frontend/UX/AI presentation/E2E | IN PROGRESS / RESUMED | Continued exact `c5f8623` on `hoplite/mende-90a2dbb1`; 80 baseline frontend and 110 API/AI tests PASS; browser replay implemented; final gates pending |
 | T07 Final hardening | BLOCKED BY T06B | Do not start implicitly |
 
 ## Task split and recovery

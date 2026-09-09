@@ -4,6 +4,16 @@
 T06B — Frontend/Product UX/Grounded AI Presentation/E2E.
 
 ## Task Status
+Active continuation: **T06B IN PROGRESS / RESUMED**, not complete yet. Starting
+clean SHA `c5f86232f572b3194cdff5e0b8113dd254ab15fe`; authorized workspace remote
+`sex-vn/Frigo`, branch `hoplite/mende-90a2dbb1`. Baseline focused tests 80/2,
+typecheck/lint PASS; fresh API/AI/preview/persistence tests 110/5 PASS. Browser
+replay sources: `tests/e2e/planner-browser.mjs` and `.commands.json`. Native
+Shift+Tab regression exposed modal focus escape; planner-only wrap fixed and
+native keyboard rerun passed. Component/reason/cache tests and final full gates
+are being completed. Keep all existing T06B work and do not begin T07.
+
+Historical interruption record (superseded by active continuation above):
 **T06B IN PROGRESS / INTERRUPTED — NOT COMPLETE. T07 BLOCKED.**
 User stopped implementation on 2026-09-09 for preservation only. Start with
 `T06B_WIP_HANDOFF.md` for exact files, checks, missing work and first actions.

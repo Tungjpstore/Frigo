@@ -1,5 +1,19 @@
 # Frigo current state — T06B product integration
 
+## Active continuation (2026-09-09)
+
+T06B has resumed from exact clean `c5f86232f572b3194cdff5e0b8113dd254ab15fe`
+on authorized workspace `sex-vn/Frigo`, branch `hoplite/mende-90a2dbb1`.
+Both T06A and WIP ancestor checks pass. No reset or source replacement occurred.
+Baseline focused client/presentation: 80 tests / 2 files PASS; typecheck/lint PASS.
+Fresh API/AI/persistence/preview integration: 110 tests / 5 files PASS.
+Repository-owned native-browser replay now covers happy, uncertainty, all feedback,
+stale/revision recovery, reload, mixed-price/429 fixtures and mobile keyboard flows.
+The native dialog failed Shift+Tab containment; a small planner-only focus wrap
+now passes. Component/reason/race work and final exact-tree gates are ongoing.
+**T06B remains IN PROGRESS; T07 is not yet ready.** Historical interruption below
+is superseded for active status, not erased as earlier evidence.
+
 ## Current task
 
 **T06A COMPLETE; T06B IN PROGRESS / INTERRUPTED. T07 BLOCKED.**

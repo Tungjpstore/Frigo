@@ -76,7 +76,16 @@ export function PlannerMeal({ plan, slotId, model, locale }: {
     </Card>
     <Card><h3 className="font-heading font-bold text-lg">{t.feedback}</h3><div className="grid grid-cols-2 gap-2 mt-4">{(['liked', 'disliked', 'cooked', 'skipped', ...(swappedHere ? ['swapped' as const] : [])] as const).map((type) =>
       <Button key={type} variant={receipts.includes(type) ? 'secondary' : 'outline'} disabled={!!model.busy || receipts.includes(type)} onClick={() => void feedback(type)}>{receipts.includes(type) ? `${t.feedbackSaved}: ` : ''}{t[type]}</Button>)}</div><p className="text-xs text-slate-500 mt-3">{t.cookedNote}</p></Card>
-    {swapOpen && <dialog ref={dialog} onCancel={(event) => { if (model.busy) event.preventDefault(); else setSwapOpen(false); }} aria-labelledby="swap-title" className="w-[calc(100%-2rem)] max-w-lg max-h-[85dvh] rounded-2xl p-0 shadow-xl backdrop:bg-slate-950/50">
+    {swapOpen && <dialog ref={dialog} onCancel={(event) => { if (model.busy) event.preventDefault(); else setSwapOpen(false); }} onKeyDown={(event) => {
+      if (event.key !== 'Tab') return;
+      const buttons = event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)');
+      const first = buttons[0];
+      const last = buttons[buttons.length - 1];
+      if (first && ((event.shiftKey && document.activeElement === first) || (!event.shiftKey && document.activeElement === last))) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      }
+    }} aria-labelledby="swap-title" className="w-[calc(100%-2rem)] max-w-lg max-h-[85dvh] rounded-2xl p-0 shadow-xl backdrop:bg-slate-950/50">
       <div className="p-5"><div className="flex items-start justify-between gap-2"><h2 id="swap-title" className="font-heading font-bold text-xl">{t.chooseAlternative}</h2><Button variant="ghost" aria-label={t.cancel} disabled={!!model.busy} onClick={() => setSwapOpen(false)}><X size={18} /></Button></div>
         <p className="text-xs text-slate-600 mt-2 mb-4 leading-relaxed">{t.alternativeNote}</p>
         {alternatives.data?.truncated && <p className="text-xs text-amber-900 mb-3">{t.alternativesLimited}</p>}
