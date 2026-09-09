@@ -9,7 +9,6 @@ import { recipesApi } from './recipes';
 import { shoppingApi } from './shopping';
 import { weekApi } from './week';
 import { notificationsApi } from './notifications';
-import { mealPlanningApi } from './meal-planning';
 import { invalidateReplayedQueries } from '../lib/query-invalidation';
 
 export { ApiError, isOffline, clearTenantCaches } from './http';
@@ -23,7 +22,6 @@ export const api = {
   ...shoppingApi,
   ...weekApi,
   ...notificationsApi,
-  ...mealPlanningApi,
 
   confirmPlusPayment: async (
     cycle: 'monthly' | 'annual'

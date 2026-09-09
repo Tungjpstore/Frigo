@@ -7,7 +7,6 @@ import { DeepSeekProvider } from './providers/deepseek';
 import { CloudflareAIProvider } from './providers/cloudflare';
 import { GroqProvider, GROQ_DEFAULT_VISION_MODEL } from './providers/groq';
 import { findCanonicalIngredient } from '@frigo/domain';
-import { configuredPlanningPresentationProvider } from './planning-presentation';
 
 export class AIRouter {
   private config: AIConfig;
@@ -17,10 +16,6 @@ export class AIRouter {
   private mockProvider: MockAIProvider;
   private silentFallback: boolean;
   private onUsageLogged?: (log: AIUsageLog) => void;
-
-  planningPresentationProvider() {
-    return configuredPlanningPresentationProvider(this.config);
-  }
 
   constructor(config: AIConfig, onUsageLogged?: (log: AIUsageLog) => void) {
     this.config = config;

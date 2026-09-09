@@ -32,4 +32,3 @@ export * from './catalog';
 export * from './recipe-catalog';
 export * from './personalization';
 export * from './ranking-nutrition';
-export * from './meal-planning';

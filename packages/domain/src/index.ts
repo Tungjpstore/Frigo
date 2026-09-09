@@ -573,5 +573,3 @@ export function computeFreshness(expiryDate?: string, addedDate?: string, shelfL
 // Export Frigo Week domain modules
 export * from './week';
 export * from './foundation';
-export * from './meal-planning-api';
-export * from './planning-presentation';

@@ -209,3 +209,32 @@ current documents, `tasks/T06-ai-api-frontend.md`, `WEEKLY_PLANNER.md` and
 reviewed price/product source without recomputing package arithmetic or trusting
 client quotes. Preserve legacy compatibility and revalidate before any acceptance.
 Do not merge, deploy, start T06 or alter payment code implicitly.
+# T06A recovery assessment — 2026-09-09
+
+Current task is **T06A IN PROGRESS**, backend only; T06B is deferred. This section
+supersedes the interrupted T06 progress claims above, which describe unpublished
+files rather than the committed tree.
+
+- Workspace initially clean at `db09fa0` (T02). Authorized remote is
+  `https://github.com/arsvn-vn/Frigo.git`, not a newly configured remote.
+- Fetched published T05 `899b6d790b0902c93a17ba060437e3f9802e03e9` and partial T06
+  `84251cc0b4cf5ced9f62b430b74418a14d2c438c` through the trusted broker. Fast-forwarded
+  existing thread branch `hoplite/leukas-32474504`; both are now ancestors. No
+  descendant of 84251cc was found on the fetched published task branches.
+- **Case C**: `pnpm typecheck` at 84251cc failed (exit 2): absent DB, domain, Worker,
+  AI and frontend integration modules plus cascading frontend type errors.
+  No implementation, migration or test files were committed by that checkpoint.
+- Recovery removes dangling imports/exports and missing-page routes; dead `/planner`
+  navigation is removed because its target does not exist. Existing scoped query
+  keys and layout exclusion remain untouched as T06B recovery material. Useful
+  T04 projection export and opt-in environment declarations remain. No earlier
+  history is reset or amended; no unpublished workspace is reconstructed.
+- AI hooks are T06B; DTO exports are shared contracts; DB/Worker registration and
+  feature flag are T06A; page/client references are T06B. No unrelated change found.
+- Setup tool misreported tracked settings and rejected its lifecycle claim; exact
+  repository-owned sqlite3 install/frozen pnpm setup succeeded via shell. Platform
+  fault reported. Recovery `pnpm typecheck`, `pnpm build`, `pnpm test` PASS
+  (**1077 tests / 66 files**); no backend implementation yet.
+
+See `T06A_HANDOFF.md` for durable checkpoints and next action. Historical T05
+evidence above is not fresh T06A verification.

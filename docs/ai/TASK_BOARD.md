@@ -71,3 +71,18 @@ live retail data/FX/bundles and global waste optimality are explicitly not claim
 PayOS/payments, unrelated auth/infrastructure and legacy Week/inventory command
 boundaries remain protected. Do not silently change meals, stock or runtime readers.
 Update state/board/handoff with exact executed checks at each future checkpoint.
+# Active roadmap override — T06 split
+
+| Task | Current status |
+| --- | --- |
+| T01 | COMPLETE |
+| T02 | COMPLETE |
+| T03 | COMPLETE |
+| T04 | COMPLETE |
+| T05 | COMPLETE — `899b6d7` |
+| T06A Backend/API/Trust | IN PROGRESS — Case C recovery of `84251cc` |
+| T06B Frontend/UX/AI presentation | BLOCKED BY T06A |
+| T07 | BLOCKED BY T06B |
+
+The original combined T06 packet/history above is superseded by the explicit
+T06A-only authorization. Current recovery evidence: `T06A_HANDOFF.md`.

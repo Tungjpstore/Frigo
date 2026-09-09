@@ -1,5 +1,19 @@
 # Frigo AI Handoff
 
+## T06A recovery override — 2026-09-09
+
+**T06A IN PROGRESS; T06B deferred.** The old T06 progress paragraphs below are
+historical and not completion evidence. Base T05 `899b6d7`; recovered partial
+checkpoint `84251cc` preserves history on `hoplite/leukas-32474504`.
+Case C confirmed: published references point to absent implementation files and
+`pnpm typecheck` failed exit 2. Minimal recovery removes only missing-module hooks,
+missing-page routes and dead navigation; keeps nonblocking query/layout material.
+No unpublished source recovery, T02–T05 rewrite or frontend implementation.
+See CURRENT_STATE and `T06A_HANDOFF.md`. Recovery `pnpm typecheck`, `pnpm build`,
+`pnpm test` PASS (1077 tests / 66 files). Next: commit/publish recovery, then build
+the trusted backend composition.
+
+
 ## Current Task
 T06 — AI Layer + API + Frontend Integration
 
