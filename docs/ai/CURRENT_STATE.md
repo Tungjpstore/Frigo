@@ -4,7 +4,8 @@
 
 **T01–T07 COMPLETE. ENGINEERING RELEASE VERIFICATION COMPLETE.**
 **RELEASE INTEGRATION VERIFIED.**
-**RELEASE PUBLICATION: documentation published; final PR integration IN PROGRESS.**
+**RELEASE PUBLICATION COMPLETE. RELEASE CANDIDATE READY FOR MAIN MERGE.**
+Final normal merge requires user permission and green checks on the actual PR head.
 **PRODUCTION DEPLOYMENT NOT PERFORMED.**
 Production-local reconciliation: **NOT STARTED**. This is not T08 or another
 hardening/integration pass. Detailed preserved evidence: `RELEASE_CANDIDATE.md`.
@@ -15,7 +16,7 @@ hardening/integration pass. Detailed preserved evidence: `RELEASE_CANDIDATE.md`.
 - Main: `db09fa0c4353ddf4840e04c10b96a33240de3497`, unchanged.
 - Verified application/release: `0b20061e7dc7405df68b18a18da4166e09494ecd`.
 - Last application/test commit: `f9d2ff871da155ba7f1aaedd3112a5ed6ea8d2c0`.
-- Original release branch/PR: `hoplite/kirrha-5f4057f0`, Draft #8.
+- Original release branch/PR: `hoplite/kirrha-5f4057f0`, non-draft #8.
 - Writable continuation: `hoplite/koroneia-355b17d0`, provisioned for this thread.
 - Recovered docs checkpoint `7b22aaf4ba44c9a059fbf0000f242ed35ef4c616` is available
   and successfully published to the continuation through the trusted broker.
@@ -42,7 +43,11 @@ Every post-source change is in the four `docs/ai` release protocol documents.
 
 This publication continuation runs only ancestry/source-equivalence, diff and
 relevant documentation checks. No expensive tests or browser matrix were repeated.
-Final PR/head CI must be observed, not inferred from historical source CI.
+Docs PR #9 merged normally into #8 at `0420807968538f61b669569d064c404f67032174`.
+Exact-head CI **34394236696 SUCCESS**; live #8 is non-draft, mergeable, and has no
+unresolved review threads. Final release audit found no application merge blocker.
+This closing status checkpoint changes documentation only; retain actual-head CI
+as the merge gate. Exact lightweight checks are recorded in `RELEASE_CANDIDATE.md`.
 
 ## Safety and operator boundary
 
@@ -55,10 +60,10 @@ are not new publication blockers. Reviewed prices/safety remain explicitly absen
 
 ## Next exact action
 
-Publish the updated status docs and prefer a docs-only PR into the original release
-branch. If that branch cannot receive them, use one superseding release PR from
-this continuation to main. Inspect applicable CI and make the final release PR
-ready; do not merge main automatically. **MAIN NOT MODIFIED.**
+Publish this documentation-only readiness checkpoint without rewriting history.
+Keep original PR #8; publication fallback PR #9 is already merged. Await user
+permission for a normal protected merge, with green actual-head CI. No replacement
+release PR or expensive source retest is needed. **MAIN NOT MODIFIED.**
 After an operator normal merge, freeze `MAIN_RELEASE_SHA`; only then begin
 separately authorized production-local reconciliation. Respect the existing
 pre-deploy schema gate even when deploying later with planner flags OFF.

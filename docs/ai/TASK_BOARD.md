@@ -11,7 +11,7 @@
 | T06B Frontend/UX/AI presentation/E2E | COMPLETE | `0fc78a4` / `6d4e873` preserved |
 | T07 Final hardening | COMPLETE, accepted non-blocking limits | `f9d2ff8`, final source receipt `0b20061` |
 | Release Integration | VERIFIED | Complete lineage; no source integration fix |
-| Release Publication | IN PROGRESS — docs published, final PR integration pending | `7b22aaf` recovered/published on `hoplite/koroneia-355b17d0` |
+| Release Publication | COMPLETE; original #8 non-draft | Docs #9 merged at `0420807`; exact-head CI `34394236696` SUCCESS |
 | Production Reconciliation | NOT STARTED | Only after GitHub release/main finalization |
 | Production Deployment | NOT STARTED | No deployment authorization/action |
 
@@ -29,17 +29,21 @@ No expensive gate was rerun during documentation publication recovery.
 
 ## Publication route / next action
 
-Original Draft PR #8: `hoplite/kirrha-5f4057f0` → main. That branch is the thread's
+Original PR #8: `hoplite/kirrha-5f4057f0` → main, now non-draft. That branch is the thread's
 protected configured base; previous direct publication and PR-link mutations were
 rejected. The user authorized the provisioned writable branch
 `hoplite/koroneia-355b17d0`; its fast-forward preserves the three original docs
 commits and the entire verified application lineage. `7b22aaf` is now remotely
 published, not local-only. Subsequent changes remain in four release docs only.
 
-Prefer a small docs-only PR into kirrha, then finalize #8. If #8 cannot receive the
-docs, create one superseding complete release PR to main. Inspect applicable final
-head CI; mark the release PR ready only after its gates pass. No automatic main
-merge. Freeze operator-produced `MAIN_RELEASE_SHA` before production reconciliation.
+Docs PR #9 merged normally into kirrha; no replacement release PR was needed.
+Final audit of `0420807968538f61b669569d064c404f67032174` found no application merge
+blocker: hosted CI `34394236696` SUCCESS, mergeable, no unresolved review threads.
+Lightweight diff/source/protected-path checks passed; no expensive local gates
+repeated and no new failed checks. Exact checks: `RELEASE_CANDIDATE.md`.
+**RELEASE CANDIDATE READY FOR MAIN MERGE**, subject to user permission and green
+actual-head CI after this docs-only status checkpoint. Do not merge automatically.
+Freeze operator-produced `MAIN_RELEASE_SHA` before production reconciliation.
 
 **PayOS/payment code untouched. No real payment performed.**
 **MAIN NOT MODIFIED. PRODUCTION DEPLOYMENT NOT PERFORMED.**
