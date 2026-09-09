@@ -19,6 +19,8 @@ Import request/response schemas and inferred types from
 `packages/domain/src/meal-planning-api.ts` and `meal-shopping-api.ts` (also re-exported
 by `@frigo/domain`). These are frontend-safe Zod contracts, with **no T02–T05
 implementation imports**. T06B should never deserialize opaque engine contexts.
+T06B's additive current-plan, alternative and explanation contracts are in the
+frontend-safe leaf `packages/domain/src/meal-planning-presentation.ts`.
 
 ## Actions
 
@@ -29,7 +31,10 @@ Bodies are limited to 64 KiB. IDs are UUIDs; revisions are positive safe integer
 | Method / suffix | Request | Response |
 | --- | --- | --- |
 | POST `/` (no trailing slash required) | `MealPlanningIntentSchema`; `Idempotency-Key` required | `MealPlanDtoSchema` |
+| GET `/current` | no body | `CurrentMealPlanDtoSchema`: `{plan:MealPlanDto|null}` |
 | GET `/:id` | no body | `MealPlanDtoSchema` plus fresh source check |
+| GET `/:id/alternatives?revision=N` | one positive safe-integer revision; no extra query fields | `PlanAlternativesDtoSchema` |
+| POST `/:id/explanation` | `{revision,slotId,locale:'vi'|'en'}` | `PlanExplanationDtoSchema` |
 | POST `/:id/regenerate` | `{revision, intent?}` | replacement `MealPlanDtoSchema`, revision + 1 |
 | POST `/:id/swap` | `{revision, slotId, replacement:{kind,id,variantId?}}` | fully replanned `MealPlanDtoSchema`, revision + 1 |
 | POST `/:id/shopping` | `{revision,currency,budget?}` | `PlanShoppingDtoSchema` |
@@ -101,9 +106,61 @@ Family instructions absent from D1 remain an empty list, not invented instructio
 
 Normal recipe-detail UI can render the selected meal directly from GET, without
 calling an engine or mixing legacy static recipe data into its authoritative demands.
-No candidate-browser endpoint is supplied; swapping can submit a known source ID
-(e.g. another selected meal). A future catalog-browser API requires its own safe
-presentation scope; it must not be replaced by accepting candidate JSON.
+T06B supplies a narrow catalog-choice endpoint described below. It never accepts
+candidate JSON or claims a catalog entry is eligible for a selected slot.
+
+### T06B compatibility decision: discovery and replacement intent
+
+T06A lacked cross-session plan discovery and a safe way to pick a replacement not
+already selected. These two additive reads are needed for reload/new-device
+restoration and a usable swap dialog; they do not redesign planning or ownership.
+
+`GET /current` returns the authenticated creator's most recently saved plan in the
+current household, ordered by `updated_at DESC, id DESC` (stable timestamp ties).
+This deliberately includes a regenerated older plan rather than using creation
+time alone. It reuses the existing owner/update index, membership join and normal
+DTO freshness inspection. No plan is `{plan:null}`, not 404. Other members' private
+plans never participate; membership loss remains 403. `/current` is registered
+before `/:id`, and adds no client ID persistence, new table, history or migration.
+An empty lookup rechecks membership so a concurrent revocation is not reported as
+an ordinary empty plan.
+
+`GET /:id/alternatives?revision=N` returns
+`{planId,planRevision,alternatives:[{kind:'recipe',id,title}],truncated}`. At most 50
+validated D1-catalog recipes are returned in binary ID order. No family enumeration,
+ranking, eligibility, allergy, shortage or price claim is made; titles are display
+data, not HTML. The catalog is loaded through T06A's existing authorized snapshot;
+revision/membership are rechecked after loading. Old revisions return 409
+`PLAN_REVISION_CONFLICT`. Malformed, duplicate or additional query fields return 422.
+The UI must describe these as choices to **try**, not pre-approved safe swaps. The
+existing POST swap still runs the full authoritative sequential validation, and a
+forbidden/unavailable/infeasible replacement retains the prior plan unchanged.
+
+### T06B on-demand explanation
+
+`POST /:id/explanation` returns `{planId,planRevision,slotId,source,reasonCodes,
+fallbackReason}`. `source` is `deterministic | ai`; `fallbackReason` is null only on
+AI success, otherwise `disabled | no_facts | provider_unavailable | timeout |
+invalid_output | ungrounded_output`. It is an explanation of that persisted plan
+revision, **not a fresh inventory/safety assessment**. Existing GET freshness must
+remain visible. Unknown/unselected slots return 422 `SLOT_NOT_FOUND`; revision and
+membership are checked both before and after optional provider latency.
+
+The client supplies only intent; the server derives the fact IDs from the selected
+meal's persisted reasons. AI may reorder the complete deduplicated ID set, never
+add a reason or omit uncertainty. It returns no factual prose; UI-owned localized
+sentences remain the only explanation text. No names, household/user/plan IDs,
+ingredients, quantities or other user text go to the provider. Details and budgets
+continue to render independently from authoritative DTOs. The route performs no
+mutation, feedback, purchase, stock command or planning/search call.
+
+`MEAL_PLANNER_AI_ENABLED` remains off unless exactly `true`. An explicit request
+uses the existing AIRouter/native Workers AI provider only, with one request,
+256 output-token cap and 2500 ms response deadline. External chat paths are not
+used because their current transports lack equivalent token/time bounds. Missing
+native binding or mock mode falls back deterministically. The existing expensive
+10/minute/account/path limiter applies; no automatic card-render calls or retries.
+See `AI_LAYER.md` for grounding, timeout limitations, cost scope and verification.
 
 ### Exact values
 

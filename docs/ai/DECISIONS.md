@@ -1,5 +1,36 @@
 # Architecture Decisions
 
+## ADR-018 — T06B opt-in presentation and minimal plan discovery
+
+**Status:** Accepted 2026-09-09 for the authorized T06B task.
+
+**Decision:** Reuse React Router, TanStack Query, owner-fenced cookie transport,
+existing cards/buttons/dialogs and Frigo colors. `VITE_MEAL_PLANNER_ENABLED=true`
+enables `/planner`; the independent server flag remains authoritative. Legacy Week
+is retained. The browser sends scheduling/action intent, never engine contexts,
+shortages or prices. Queries are owner-scoped, mutations are explicitly triggered,
+revision-fenced and not retried automatically. Swap/regenerate replace the entire
+plan response and discard previous shopping results. Past plans remain historical;
+creating a new future plan is explicit rather than silently editing past meals.
+
+T06A lacks cross-device discovery and a named swap-choice source. Add only a
+creator/household-scoped current-plan lookup and a bounded read-only recipe-title/ID
+catalog projection. Choices are not eligibility claims: the unchanged swap service
+checks restrictions and replans. No new persistence or engine algorithm is needed.
+
+Optional on-demand AI may reorder/select only server-grounded reason IDs. It returns
+no factual prose, tools or commands. Schema/subset validation, a bounded timeout,
+feature disable and deterministic fallback keep structured facts separate and safe.
+Frontend vi/en text templates display the same reasons without any AI dependency.
+Exact money is formatted through BigInt/Intl parts; authoritative arithmetic stays
+on the server. Shopping checkboxes are ephemeral reminders, not purchases.
+
+**Consequences:** No frontend plan-content persistence or UUID entry needed for
+restoration. No full history/candidate-eligibility API, private recipe authoring,
+generated recipes, payment or production cutover. Preview fixtures use isolated
+in-memory D1 and real test sessions; they never install a production auth bypass.
+T07 owns deferred aggregate quotas and final security/performance review.
+
 ## ADR-017 — T06A trusted backend and minimal current-plan persistence
 
 **Status:** Accepted 2026-09-09. Supersedes ADR-016's combined delivery scope;

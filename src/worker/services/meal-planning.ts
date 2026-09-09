@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { D1DatabaseBinding } from '../../../packages/db/src/index';
 import {
-  createGeneratedMealPlan, getGeneratedMealPlan, findGeneratedMealPlanByRequest,
+  createGeneratedMealPlan, getGeneratedMealPlan, findGeneratedMealPlanByRequest, findCurrentGeneratedMealPlan,
   updateGeneratedMealPlan, recordCookedGeneratedMealPlanAnnotation, type GeneratedMealPlanRecord,
 } from '../../../packages/db/src/meal-planning';
 import { loadMealPlanningSnapshot } from '../../../packages/db/src/meal-planning-snapshot';
@@ -22,6 +22,11 @@ import { toShoppingResultDto } from './meal-shopping-dto';
 import { recordPlanningTaste } from './meal-planning-feedback';
 import { MealPlanningError } from './meal-planning-error';
 import { sha256Hex } from '../utils/session';
+import {
+  CurrentMealPlanDtoSchema, PlanAlternativesDtoSchema, PLAN_ALTERNATIVES_LIMIT,
+  type PlanExplanationRequest,
+} from '../../../packages/domain/src/meal-planning-presentation';
+import { explainMealReasons, type ExplanationTransport } from './meal-planning-explanation';
 
 type Scope = { householdId: string; userId: string };
 type Snapshot = Awaited<ReturnType<typeof loadMealPlanningSnapshot>>;
@@ -40,6 +45,7 @@ const serialize = (data: object) => JSON.stringify({ version: 1, data });
 
 export interface MealPlanningServiceOptions {
   now?: () => Date;
+  explanationTransport?: ExplanationTransport;
   purchaseCatalog?: (scope: Scope, asOf: string) => Promise<{
     snapshotId: string; options: readonly PurchaseOption[];
     status: 'available' | 'reviewed_catalog_unavailable';
@@ -143,6 +149,37 @@ export class MealPlanningApplicationService {
   }
 
   async get(scope: Scope, id: string) { return this.dto(await getGeneratedMealPlan(this.db, scope, id)); }
+
+  async current(scope: Scope) {
+    const row = await findCurrentGeneratedMealPlan(this.db, scope);
+    return CurrentMealPlanDtoSchema.parse({ plan: row ? await this.dto(row) : null });
+  }
+
+  async alternatives(scope: Scope, id: string, revision: number) {
+    const row = await getGeneratedMealPlan(this.db, scope, id);
+    this.assertRevision(row, revision);
+    const snapshot = await loadMealPlanningSnapshot(this.db, scope, this.now());
+    const recipes = [...snapshot.catalog.recipes].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+    this.assertRevision(await getGeneratedMealPlan(this.db, scope, id), revision);
+    return PlanAlternativesDtoSchema.parse({
+      planId: id, planRevision: row.revision,
+      alternatives: recipes.slice(0, PLAN_ALTERNATIVES_LIMIT).map((recipe) => ({ kind: 'recipe', id: recipe.id, title: recipe.title })),
+      truncated: recipes.length > PLAN_ALTERNATIVES_LIMIT,
+    });
+  }
+
+  async explanation(scope: Scope, id: string, input: PlanExplanationRequest, enabled: boolean) {
+    const row = await getGeneratedMealPlan(this.db, scope, id);
+    this.assertRevision(row, input.revision);
+    const meal = this.decode(row).result.meals.find((entry) => entry.slotId === input.slotId);
+    if (!meal) throw new MealPlanningError('SLOT_NOT_FOUND', 422, 'Explanation requires a selected meal slot');
+    const result = await explainMealReasons({
+      planId: id, planRevision: row.revision, slotId: meal.slotId, locale: input.locale,
+      reasonCodes: meal.reasons, enabled, transport: this.options.explanationTransport,
+    });
+    this.assertRevision(await getGeneratedMealPlan(this.db, scope, id), input.revision);
+    return result;
+  }
 
   async regenerate(scope: Scope, id: string, input: z.infer<typeof RegenerateMealPlanSchema>) {
     const row = await getGeneratedMealPlan(this.db, scope, id);

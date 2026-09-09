@@ -12,6 +12,8 @@ import { GeneratedMealPlanPersistenceError } from '../../../packages/db/src/meal
 import { MealPlanningSnapshotAuthorizationError } from '../../../packages/db/src/meal-planning-snapshot';
 import { MealPlanningApplicationService, type MealPlanningServiceOptions } from '../services/meal-planning';
 import { MealPlanningError } from '../services/meal-planning-error';
+import { PlanAlternativesQuerySchema, PlanExplanationRequestSchema } from '../../../packages/domain/src/meal-planning-presentation';
+import { createExplanationTransport } from '../services/meal-planning-explanation';
 
 type App = { Bindings: Env; Variables: { auth: AuthContext } };
 type Ctx = Context<App>;
@@ -62,7 +64,10 @@ export function createMealPlanningRoutes(options: MealPlanningServiceOptions = {
   const expensive = rateLimiter({ maxRequests: 10, windowSeconds: 60, prefix: 'meal-planning-expensive' });
   const feedbackLimit = rateLimiter({ maxRequests: 60, windowSeconds: 60, prefix: 'meal-planning-feedback' });
   const reads = rateLimiter({ maxRequests: 60, windowSeconds: 60, prefix: 'meal-planning-read' });
-  const service = (c: Ctx) => new MealPlanningApplicationService(c.env.DB, options);
+  const service = (c: Ctx) => new MealPlanningApplicationService(c.env.DB, {
+    ...options,
+    explanationTransport: options.explanationTransport ?? createExplanationTransport(c.env),
+  });
   const scope = (c: Ctx) => ({ householdId: c.get('auth').householdId, userId: c.get('auth').userId });
   const planId = (c: Ctx) => {
     const parsed = PlanIdSchema.safeParse(c.req.param('id'));
@@ -72,7 +77,17 @@ export function createMealPlanningRoutes(options: MealPlanningServiceOptions = {
 
   routes.post('/meal-planning/plans', expensive, (c) => respond(c, async () =>
     service(c).generate(scope(c), await body(c, MealPlanningIntentSchema), key(c))));
+  routes.get('/meal-planning/plans/current', reads, (c) => respond(c, () => service(c).current(scope(c))));
   routes.get('/meal-planning/plans/:id', reads, (c) => respond(c, () => service(c).get(scope(c), planId(c))));
+  routes.get('/meal-planning/plans/:id/alternatives', reads, (c) => respond(c, () => {
+    const parsed = PlanAlternativesQuerySchema.safeParse(c.req.query());
+    if (!parsed.success || Object.values(c.req.queries()).some((values) => values.length !== 1)) {
+      throw new MealPlanningError('INVALID_REQUEST', 422, 'A single positive plan revision is required');
+    }
+    return service(c).alternatives(scope(c), planId(c), parsed.data.revision);
+  }));
+  routes.post('/meal-planning/plans/:id/explanation', expensive, (c) => respond(c, async () =>
+    service(c).explanation(scope(c), planId(c), await body(c, PlanExplanationRequestSchema), c.env.MEAL_PLANNER_AI_ENABLED === 'true')));
   routes.post('/meal-planning/plans/:id/regenerate', expensive, (c) => respond(c, async () =>
     service(c).regenerate(scope(c), planId(c), await body(c, RegenerateMealPlanSchema))));
   routes.post('/meal-planning/plans/:id/swap', expensive, (c) => respond(c, async () =>

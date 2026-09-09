@@ -267,6 +267,25 @@ export async function getGeneratedMealPlan(
   return resolveMissingPlan(db, scope);
 }
 
+/** Most recently saved plan, including regenerations; ties use the existing owner index. */
+export async function findCurrentGeneratedMealPlan(
+  db: D1DatabaseBinding,
+  rawScope: unknown,
+): Promise<GeneratedMealPlanRecord | null> {
+  const scope = GeneratedMealPlanScopeSchema.parse(rawScope);
+  await assertMembership(db, scope);
+  const result = await rows(db, `SELECT plan.*
+    FROM generated_meal_plans plan
+    JOIN household_members member
+      ON member.household_id = plan.household_id AND member.user_id = plan.creator_user_id
+    WHERE plan.household_id = ? AND plan.creator_user_id = ?
+    ORDER BY plan.updated_at DESC, plan.id DESC LIMIT 1`,
+  [scope.householdId, scope.userId], 'current plan');
+  if (result.length === 1) return mapPlan(result[0]);
+  await assertMembership(db, scope);
+  return null;
+}
+
 /**
  * Finds a creation replay only inside the authenticated creator's household
  * scope. This is intentionally not a general household-plan listing API:
