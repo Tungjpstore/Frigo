@@ -1,11 +1,34 @@
 # Frigo AI Handoff
 
 ## Current Task
-T05 — Budget / Shopping / Waste Optimizer
+T06 — AI Layer + API + Frontend Integration
 
 ## Task Status
-**T05 COMPLETE — T06 READY**. T06 is not started. No PR, merge, remote migration or
-deployment was requested/performed.
+**T06 IN PROGRESS** after explicit authorization. Base:
+`899b6d790b0902c93a17ba060437e3f9802e03e9`. Required preflight reviewed;
+fresh `pnpm test`: **1077 tests / 66 files PASS**. ADR-016 specifies the trusted
+integration design. Backend, frontend and bounded AI presentation implementation
+are underway; completion gates have not run. No PR, merge, remote migration or
+deployment was requested/performed. Remaining sections preserve historical T05
+evidence and will be replaced at the verified T06 checkpoint.
+
+## T06 Frontend checkpoint
+
+- New lazy `/planner` pages are additive to the existing React application;
+  `/week` remains default. The client is cookie-authenticated, owner-fenced and
+  contains no local/offline planning or shopping fallback.
+- Planner UI exposes creation, plan, meal and shopping views with exact money,
+  package expiry, unknown-price/no-reviewed-catalog, partial/incomplete and stale
+  states. It cannot purchase/import stock; cooked is an annotation only.
+- Explicit budget feedback no longer offers the current unsupported
+  `within_budget` replan. Dislike is a separate taste event from skip annotation;
+  retry behavior keeps the original client idempotency key and supports the case
+  where the annotation succeeded but skip feedback did not.
+- Exact passed checks: focused planner UI/client/T05 DTO suite **35 tests / 6
+  files**, scoped planner lint, `pnpm build:web`, and `git diff --check`. Full
+  `pnpm typecheck` is currently blocked by in-progress Worker
+  `src/worker/services/meal-planning.ts` diagnostics. No browser, Preview or
+  server was manipulated; parent owns live verification after the route is ready.
 
 ## Dependency Baseline
 Exact immutable hardened T04 checkpoint:

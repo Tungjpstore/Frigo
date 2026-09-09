@@ -16,6 +16,7 @@ export const AppLayout: React.FC = () => {
     '/onboarding',
     '/week/setup',
     '/week/generating',
+    '/planner',
   ];
   const shouldHideBottomNav =
     hideBottomNavPaths.some((p) => location.pathname.startsWith(p)) ||

@@ -1,7 +1,33 @@
 # Current State — Recipe / Meal Planning Program
 
-Verified 2026-09-09. **T05 COMPLETE — T06 READY**. T06 has not started. Local
-verification is not hosted CI, production migration or deployment evidence.
+Verified 2026-09-09. **T06 IN PROGRESS** after explicit authorization. Immutable
+T05 base `899b6d790b0902c93a17ba060437e3f9802e03e9`; fresh `pnpm test` baseline
+passes **1077 tests / 66 files**. Required preflight and architecture review complete;
+ADR-016 records the integration boundary. Implementation and final verification are
+pending. The sections below retain the verified T05 checkpoint until the T06 handoff.
+Local verification is not hosted CI, production migration or deployment evidence.
+
+## T06 frontend checkpoint — 2026-09-09
+
+- Additive `/planner` React routes/screens use only authenticated server APIs and
+  owner-scoped Query keys. Legacy `/week` remains the default route and its
+  offline/local-plan behavior is not reused.
+- The mobile plan, meal, and shopping screens preserve visible partial,
+  incomplete, stale, unknown-price, exact-money, package-expiry, and no-reviewed-
+  catalog states. The shopping surface cannot purchase/import inventory. A cooked
+  annotation is explicitly non-inventory-mutating.
+- Budget feedback is display-only: the UI no longer offers a `within_budget`
+  replan which the current no-reviewed-catalog service correctly rejects. Taste
+  feedback is distinct from a skip annotation, and retry actions retain the
+  original idempotent client command.
+- Focused checks passed: `pnpm test --run tests/unit/meal-planning-client.test.ts
+  tests/unit/planner-actions.test.ts tests/unit/planner-cache.test.ts
+  tests/unit/exact-display.test.ts tests/integration/planner-ui.test.tsx
+  tests/unit/meal-planning-shopping-dto.test.ts` (**35 tests / 6 files**), scoped
+  planner lint, `pnpm build:web`, and `git diff --check`. Full `pnpm typecheck`
+  remains blocked by the in-progress Worker `meal-planning.ts` implementation,
+  not by a frontend diagnostic. Browser/managed-preview verification was not run
+  because parent ownership is explicit.
 
 ## Repository and checkpoint
 

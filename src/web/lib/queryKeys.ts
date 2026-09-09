@@ -23,6 +23,12 @@ export const queryKeys = {
   weekPlans: () => ['weekPlan', ...scope()] as const,
   currentWeekPlan: () => ['weekPlan', ...scope(), 'current'] as const,
   weekPlan: (planId: string) => ['weekPlan', ...scope(), planId] as const,
+  mealPlanningPlan: (planId: string) => ['mealPlanningPlan', ...scope(), planId] as const,
+  mealPlanningShopping: (planId: string) => ['mealPlanningShopping', ...scope(), planId] as const,
+  mealPlanningAlternatives: (planId: string, slotId: string) =>
+    ['mealPlanningAlternatives', ...scope(), planId, slotId] as const,
+  mealPlanningAlternativesForPlan: (planId: string) =>
+    ['mealPlanningAlternatives', ...scope(), planId] as const,
   notifications: () => ['notifications', ...scope()] as const,
   shoppingList: () => ['shoppingList', ...scope()] as const,
 };

@@ -82,6 +82,12 @@ export const WeekDashboardPage: React.FC = () => {
             actionText="Lên thực đơn tuần ngay"
             onAction={() => navigate('/week/setup')}
           />
+          <button
+            onClick={() => navigate('/planner')}
+            className="text-xs font-heading font-bold text-emerald-800 underline underline-offset-4"
+          >
+            Thử trình lập kế hoạch mới
+          </button>
         </div>
       </div>
     );
@@ -140,6 +146,14 @@ export const WeekDashboardPage: React.FC = () => {
             </button>
           </div>
         </div>
+
+        <button
+          onClick={() => navigate('/planner')}
+          className="w-full rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left text-xs font-medium text-emerald-950 transition-colors hover:bg-emerald-100"
+        >
+          <span className="font-heading font-bold">Trình lập kế hoạch mới</span>
+          <span className="block mt-0.5 text-emerald-800">Xem bản kế hoạch có trạng thái dữ liệu và thiếu hụt rõ ràng.</span>
+        </button>
 
         {/* Regenerate Dropdown Options */}
         {isRegeneratingOpen && (

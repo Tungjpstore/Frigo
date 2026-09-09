@@ -1,5 +1,40 @@
 # Architecture Decisions
 
+## ADR-016 — Authenticated generated-plan integration and bounded AI presentation
+
+**Status:** Accepted for T06 implementation, 2026-09-09
+
+**Decision:** Extend the existing Hono/session/CSRF/tenant boundary and React
+application through an explicit `/planner` route; legacy Week remains unchanged.
+The application service loads D1 catalog, household inventory and scoped T03
+preferences/history before invoking T04 and T05. Client requests express intent,
+never authoritative inventory, shortages, prices, reviews or domain contexts.
+Missing retail offers remain missing; legacy benchmarks/OCR are not trusted quotes.
+Absent whole-dish safety reviews cannot satisfy hard safety constraints.
+
+Persist final generated-plan revisions separately from incompatible legacy Week
+rows. Plans are private to their creating member within the authorized household
+because T03 personal preferences/history are private. Revision writes use optimistic
+concurrency and idempotency; reads reauthorize and expose source staleness. Swap and
+explicit regeneration replay sequential planning, never patch downstream stock
+arithmetic. Marked-cooked annotations do not consume stock or fabricate actual
+`cooked_meals` history. No inventory acceptance or legacy cutover is introduced.
+
+Versioned allowlisted DTOs expose exact decimal quantity strings and minor-unit
+money strings, preserving uncertainty and best-known versus proven conclusions.
+AI is independently disabled by default and requested on demand only. It may choose
+among grounded presentation templates, not generate authoritative factual prose.
+Its bounded schema, provider timeout and deterministic fallback are independent of
+planning. No long-tail recipe publication or private recipe authoring is introduced.
+
+**Consequences:** An additive revision/annotation migration is justified by durable
+API identities, not a second optimizer. No search frontier is persisted. Existing
+rate-limit infrastructure supplies abuse control, not a globally atomic paid quota.
+Full source revalidation is required before any future acceptance/cooking adapter.
+The T05 option cap remains ID-order-sensitive; T07 should audit selection quality
+without changing the best-known/proof distinction. No payments, deployment or
+unrelated authentication/infrastructure changes are authorized.
+
 ## ADR-015 — Trusted, generated-only economic evaluation of the fixed T04 plan
 
 **Status:** Accepted 2026-09-09 (T05)

@@ -76,6 +76,18 @@ const WeekShoppingPage = lazy(() =>
 const WeekSettingsPage = lazy(() =>
   import('./pages/WeekSettingsPage').then((m) => ({ default: m.WeekSettingsPage })),
 );
+const PlannerPage = lazy(() =>
+  import('./pages/PlannerPage').then((m) => ({ default: m.PlannerPage })),
+);
+const PlannerPlanPage = lazy(() =>
+  import('./pages/PlannerPlanPage').then((m) => ({ default: m.PlannerPlanPage })),
+);
+const PlannerMealDetailPage = lazy(() =>
+  import('./pages/PlannerMealDetailPage').then((m) => ({ default: m.PlannerMealDetailPage })),
+);
+const PlannerShoppingPage = lazy(() =>
+  import('./pages/PlannerShoppingPage').then((m) => ({ default: m.PlannerShoppingPage })),
+);
 
 class AppErrorBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -158,6 +170,12 @@ export const App: React.FC = () => {
                   <Route path="/week/:planId/meal/:mealId" element={<MealDetailPage />} />
                   <Route path="/week/:planId/shopping" element={<WeekShoppingPage />} />
                   <Route path="/week/:planId/settings" element={<WeekSettingsPage />} />
+
+                  {/* Additive deterministic planner; legacy Week remains the default. */}
+                  <Route path="/planner" element={<PlannerPage />} />
+                  <Route path="/planner/:planId" element={<PlannerPlanPage />} />
+                  <Route path="/planner/:planId/meals/:slotId" element={<PlannerMealDetailPage />} />
+                  <Route path="/planner/:planId/shopping" element={<PlannerShoppingPage />} />
 
                   {/* Shopping, Profile, Settings, Notifications, Plus, Family */}
                   <Route path="/shopping" element={<ShoppingPage />} />

@@ -1,7 +1,7 @@
 # Recipe / Meal Planning Task Board
 
-Verified 2026-09-09. **T05 COMPLETE — T06 READY**. Read `AGENT_RULES.md` and the
-required current documents before editing. No T06 implementation has started.
+Verified 2026-09-09. **T06 IN PROGRESS** after explicit authorization. Read
+`AGENT_RULES.md` and the required current documents before editing.
 
 | Task | Status | Dependencies | Verified checkpoint |
 | --- | --- | --- | --- |
@@ -10,8 +10,19 @@ required current documents before editing. No T06 implementation has started.
 | T03 — Ranking & Personalization | **COMPLETE** | T02 | Immutable `3592de9`; scoped deterministic eligibility/ranking, feedback and 0021 persistence. |
 | T04 — Weekly Meal Planner | **COMPLETE** | T02, T03 | Hardened `d7dff8f`, final handoff `ebd538b`; fresh preflight 924 tests / 61 files passed. |
 | T05 — Budget / Shopping / Waste Optimizer | **COMPLETE** | T04 | Published `4f3f539`; fixed-plan deficits, trusted packages/prices, bounded optimization, exact budget proof, surplus/risk, 153 new tests. |
-| T06 — AI Layer + API + Frontend Integration | **READY — NOT STARTED** | T04, T05 | Consume generated contracts through authorized preload/shadow integration; no client/LLM arithmetic authority. |
+| T06 — AI Layer + API + Frontend Integration | **IN PROGRESS** | T04, T05 | T05 base `899b6d7`; fresh baseline 1077 tests / 66 files PASS. ADR-016 defines authorized integration; implementation and verification pending. |
 | T07 — Hardening / Tests / Final Architecture Review | BLOCKED BY T06 | T01–T06 | Final integrated safety, integrity, concurrency and end-to-end review. |
+
+### T06 frontend checkpoint
+
+The additive `/planner` client/UI and focused tests are in place. It uses
+server-only authenticated planner APIs, scoped query keys and explicit stale,
+partial, unknown-price and no-reviewed-catalog states; legacy Week stays default.
+Budget does not trigger unsupported automatic replanning, taste feedback is
+separate from skip annotation, and retries reuse the client idempotency intent.
+Focused UI/client/T05-DTO tests: **35 / 6 PASS**; scoped lint and `pnpm build:web`
+PASS. Full typecheck is pending the concurrently in-progress Worker service; browser
+verification remains with the parent agent.
 
 ## Current checkpoint
 

@@ -13,7 +13,11 @@ export * from './ranking-evidence';
 export * from './ranking-eligibility';
 export * from './ranking';
 export { createPlanningContext, type PlanningContext, type PlanningSourceInput, type PlanningReference } from './planner-context';
-export { InventoryLotSnapshotSchema, type InventoryLotSnapshot } from './planner-inventory';
+export {
+  InventoryLotSnapshotSchema,
+  projectInventoryRows,
+  type InventoryLotSnapshot,
+} from './planner-inventory';
 export * from './planner-policy';
 export * from './planner-request';
 export * from './planner-nutrition';
