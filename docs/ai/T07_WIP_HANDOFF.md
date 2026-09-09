@@ -1,5 +1,49 @@
 # T07 WIP Handoff
 
+## Active continuation — 2026-09-09
+
+**T07 IN PROGRESS. Publication is working.** This section supersedes the
+historical blocked/interrupted instructions below.
+
+- Original T07 branch: `hoplite/lipara-d81160ee`.
+- Continuation checkpoint: `006742bc179d58aae53106c88aff8a2667dbd1ca`.
+- Writable continuation branch: `hoplite/prokonnesos-74e71894`.
+- The user explicitly authorized this branch. It was safely fast-forwarded to
+  preserve the exact `f39180421f12ff68751dba7898aa39535b2d3a95` documentation
+  commit and then successfully published by the trusted tool. Both checkpoint
+  ancestor checks passed; source/tests/migrations/config had no divergence.
+- This intentional publisher topology is not an architectural repository issue.
+  Do not return to `lipara` for publication or request branch confirmation again
+  unless ancestry actually fails. Do not reset/restart T07.
+
+### Phase ledger
+
+| Phase | Evidence | Current status |
+| --- | --- | --- |
+| H1 | `T07_H1_SECURITY.md`, 51 new actual-auth HTTP cases; related boundary 125/4 and CSRF/CORS 87/2 PASS | Ready for phase checkpoint; no H1 production fix justified |
+| H2 | Account/path fan-out reproduced; aggregate account fix and precise KV limitation receipt | Being verified for next checkpoint |
+| H3 | Controlled persistence races and database query evidence | In progress |
+| H4 | Precision, unknown, proof and search-bound matrix | In progress |
+| H5 | Mounted frontend/AI and flags; existing browser replay | In progress |
+| H6 | Measurements, failures/logs, rollout/readiness | Pending |
+
+The fresh recovery baseline **1,390/79** and focused **74/3** already passed; do
+not rerun it merely because of the branch change. Phase-specific targeted checks
+are new evidence, not final full verification. No final source freeze yet.
+Other phase files can exist in the shared worktree; commit only each phase's
+reviewed changes, preserve all others, and push promptly.
+
+### Next exact action
+
+Publish H1, then verify/checkpoint H2's reproduced aggregate-budget fix. Continue
+H3–H6 and the original user audit matrix, freeze the final application SHA, then
+run full tests/lint/types/build/migrations/clean local D1/schema, focused suites,
+375/390/desktop browser matrix and safe hosted CI where available. Never weaken
+assertions to hide a failure. No remote D1, production deployment or flag cutover.
+**PayOS/payment code untouched.**
+
+## Historical recovery attempt (blocker resolved above)
+
 ## Recovery attempt — 2026-09-09, publication blocked
 
 **T07 NOT COMPLETE.** The user renewed authorization to continue from
