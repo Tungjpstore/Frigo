@@ -1,8 +1,17 @@
-# Frigo current state — T06A backend integration
+# Frigo current state — T06B product integration
 
 ## Current task
 
-**T06A COMPLETE — T06B READY** for a separately authorized frontend task.
+**T06A COMPLETE; T06B IN PROGRESS** under the attached frontend/UX/AI/E2E task.
+Preflight: clean `9ec7b68`, verified `c46330c` ancestry, no missing/untracked T06A
+source. Existing planner query keys/layout exclusion reused; absent historical
+pages are not treated as working implementations. T06B adds opt-in React routes,
+typed cookie API client, exact localized presentation, current-plan restoration,
+revisioned actions, shopping and grounded optional explanations. ADR-018 records
+the minimal compatible discovery/choice endpoints. Initial integrated typecheck
+found two unused React imports; corrected before checkpoint verification. Browser
+and final gates remain pending; do not infer T06B completion from T06A checks below.
+
 T01–T05 remain COMPLETE; T07 is blocked by T06B. This replaces the interrupted combined
 T06 progress claims, which referred to source files that were never published.
 

@@ -1,0 +1,46 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { CalendarDays, ChevronRight, Clock, RefreshCw, Users } from 'lucide-react';
+import type { MealPlanDto } from '../../../../packages/domain/src/meal-planning-api';
+import { Card } from '../../components/common/Card';
+import { Button } from '../../components/common/Button';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { mealPlanningApi } from '../../services/meal-planning';
+import { plannerCopy, type PlannerLocale } from './copy';
+import { plannerStatusLabel, plannerConclusionLabel, reasonLabel } from './presentation';
+import type { usePlanner } from './usePlanner';
+
+export function PlannerWeek({ plan, model, locale }: { plan: MealPlanDto; model: ReturnType<typeof usePlanner>; locale: PlannerLocale }) {
+  const t = plannerCopy[locale];
+  const [confirm, setConfirm] = useState(false);
+  const days = [...new Set(plan.intent.slots.map((slot) => slot.date))].sort();
+  const past = plan.freshness.reasons.includes('planning_time_elapsed');
+  return <>
+    <div className="flex flex-wrap justify-between gap-3 items-center">
+      <div><p className="text-sm font-semibold text-emerald-900">{plannerStatusLabel(plan.result.status, locale)}</p><p className="text-xs text-slate-500 mt-1">{plan.result.meals.length} {t.meals} · {t.revision} <span data-testid="plan-revision">{plan.revision}</span></p></div>
+      <Link className="text-sm underline font-semibold min-h-11 flex items-center text-emerald-800" to="/planner/new">{t.newPlan}</Link>
+    </div>
+    {plan.result.conclusion !== 'feasible' && <Card><p role="status" className="text-sm leading-relaxed">{plannerConclusionLabel(plan.result.conclusion, locale)}</p><Link to="/planner/new" className="inline-flex min-h-11 items-center text-emerald-800 underline text-sm">{t.settings}</Link></Card>}
+    {plan.result.search.truncated && <p className="text-sm rounded-xl bg-sky-50 p-3 text-sky-950">{t.limited}</p>}
+    {days.map((date) => <section key={date} className="space-y-3">
+      <h2 className="flex gap-2 items-center text-sm font-bold text-slate-700"><CalendarDays size={16} />{new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))}</h2>
+      {plan.result.meals.filter((meal) => meal.date === date).map((meal) => <Card key={meal.slotId} className="!p-0 overflow-hidden" data-testid="planned-meal">
+        <Link to={`/planner/${plan.id}/meal/${encodeURIComponent(meal.slotId)}`} className="block p-4 sm:p-5 hover:bg-emerald-50/30 transition-colors">
+          <div className="flex justify-between items-center mb-2"><span className="text-[11px] font-bold uppercase tracking-wide text-emerald-800">{t[meal.mealType]} · {meal.time}</span><ChevronRight size={17} className="text-slate-400" /></div>
+          <h3 className="text-lg font-heading font-bold text-slate-900 leading-snug">{meal.title}</h3>
+          <div className="flex flex-wrap gap-4 text-xs text-slate-600 mt-3"><span className="flex items-center gap-1"><Users size={14} />{meal.servings} {t.people}</span><span className="flex items-center gap-1"><Clock size={14} />{meal.cookTimeMinutes === null ? t.unknownTime : `${meal.cookTimeMinutes} ${t.minutes}`}</span></div>
+          <p className="text-xs mt-3 text-emerald-900">{meal.requirements.some((item) => !item.optional && item.status === 'unresolved') ? t.quantityReview : meal.requirements.some((item) => !item.optional && item.status !== 'satisfied') ? t.needsShopping : t.available}</p>
+          {meal.reasons.length > 0 && <p className="text-xs text-slate-500 mt-2">{reasonLabel(meal.reasons[0], locale)}</p>}
+        </Link>
+      </Card>)}
+      {plan.result.unplannedSlots.filter((slot) => slot.date === date).map((slot) => <div className="rounded-2xl border border-dashed border-amber-300 p-4 bg-amber-50/50" key={slot.slotId}><h3 className="text-sm font-semibold">{t[slot.mealType]} · {t.unplanned}</h3><ul className="text-xs text-slate-600 mt-2 space-y-1">{slot.reasons.map((code) => <li key={code}>{reasonLabel(code, locale)}</li>)}</ul></div>)}
+    </section>)}
+    <details className="text-sm text-slate-600 rounded-xl border border-slate-200 bg-white p-4"><summary className="cursor-pointer font-semibold min-h-6">{t.diagnostics}</summary><p className="mt-3 text-xs">{t.rejectionNote}</p><ul className="mt-3 space-y-2">{[...new Set([...plan.result.search.incompleteReasons.map((item) => item.code), ...plan.result.search.rejections.map((item) => item.code)])].map((code) => <li key={code}>{reasonLabel(code, locale)}</li>)}</ul><p className="mt-3 text-xs">{t.safety}</p></details>
+    <Button variant="outline" fullWidth disabled={!!model.busy || past} onClick={() => setConfirm(true)}><RefreshCw size={16} className="mr-2" />{t.regenerate}</Button>
+    {model.busy === 'regenerate' && <p role="status" className="text-sm text-emerald-800">{t.generating}</p>}
+    <ConfirmDialog open={confirm} title={t.regenerateTitle} description={t.regenerateText} confirmText={t.confirm} cancelText={t.cancel} onCancel={() => setConfirm(false)} onConfirm={() => {
+      setConfirm(false);
+      void model.perform('regenerate', () => mealPlanningApi.regenerate(plan.id, { revision: plan.revision }), model.replacePlan);
+    }} />
+  </>;
+}

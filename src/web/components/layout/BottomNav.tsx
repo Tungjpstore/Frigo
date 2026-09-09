@@ -2,6 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, Refrigerator, Camera, CalendarDays, User } from 'lucide-react';
 import { clsx } from 'clsx';
+import { isMealPlannerEnabled } from '../../features/planner/feature';
 
 export const BottomNav: React.FC = () => {
   const location = useLocation();
@@ -12,7 +13,7 @@ export const BottomNav: React.FC = () => {
     { label: 'Trang chủ', path: '/', icon: Home },
     { label: 'Tủ lạnh', path: '/fridge', icon: Refrigerator },
     { label: 'Quét', path: '/scan', icon: Camera, isCenter: true },
-    { label: 'Tuần', path: '/week', icon: CalendarDays },
+    { label: 'Tuần', path: isMealPlannerEnabled() ? '/planner' : '/week', icon: CalendarDays },
     { label: 'Tôi', path: '/profile', icon: User },
   ];
 

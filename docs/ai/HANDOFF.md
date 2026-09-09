@@ -1,11 +1,12 @@
 # Frigo AI Handoff
 
 ## Current Task
-T06A — Backend/API/Trusted Application Integration (not T06B).
+T06B — Frontend/Product UX/Grounded AI Presentation/E2E.
 
 ## Task Status
-**T06A COMPLETE — T06B READY**, not started. Backend and independent follow-up review
-pass all final local gates. No UI/AI or production rollout is implied.
+**T06B IN PROGRESS**. Authorized after clean `9ec7b68` preflight with `c46330c` ancestor.
+T06A remains complete. Frontend, compatible current/choice endpoints and optional
+grounded presentation are being verified; no T06B completion/rollout is claimed.
 
 ## Dependency Baseline
 T05 `899b6d790b0902c93a17ba060437e3f9802e03e9`; partial T06
@@ -48,8 +49,9 @@ documentation-only checkpoint records the verified implementation SHA.
 - `API_INTEGRATION.md` provides the exact T06B contract; ADR-017 records decisions.
 
 ## In Progress
-None for T06A. No backend implementation or blocking review finding remains.
-No UI/AI expansion is authorized.
+T06B: opt-in planner routes, safe API client, current-plan restoration, full-revision
+swap/regenerate, truthful shopping/budget/feedback, vi/en reason labels and optional
+grounded AI. Isolated preview/browser regression setup and final verification remain.
 
 ## Remaining
 T06B, reviewed data provisioning, and production migration/deployment each require

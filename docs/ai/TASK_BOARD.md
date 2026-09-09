@@ -8,7 +8,7 @@
 | T04 Weekly planner | COMPLETE | Preserved hardened `ebd538b` |
 | T05 Shopping/budget/waste | COMPLETE | `4f3f539` / `899b6d7` |
 | T06A Backend/API/trust/persistence | COMPLETE | Published `9f420c0` / `ca60ced` / `c46330c`; 1136 tests verified |
-| T06B Frontend/UX/AI presentation/E2E | READY, NOT STARTED | Separate authorization; use `API_INTEGRATION.md` and shared schemas |
+| T06B Frontend/UX/AI presentation/E2E | IN PROGRESS | Authorized attached task; clean base `9ec7b68`, ADR-018; checkpoints/browser gates pending |
 | T07 Final hardening | BLOCKED BY T06B | Do not start implicitly |
 
 ## Task split and recovery
