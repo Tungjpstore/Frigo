@@ -20,10 +20,10 @@ found on fetched published task branches. No alternate remote or unpublished
 workspace recovery was used.
 
 ## Last Verified Commit
-`ca60ced703efc7e1720f885addf551c0ff8b6f51` — A2/A3 backend, **published**.
-Recovery `9f420c05cf3adf48825f2645bcdc5accf36ac4b4` is also published.
-The final hardening accompanies this handoff; its verified SHA is recorded by the
-following documentation checkpoint, not a self-referential SHA claim.
+`c46330c61bc1bf3685508716a8ab10d72ec30b1e` — final A4 hardening, **published**.
+A2/A3 backend `ca60ced703efc7e1720f885addf551c0ff8b6f51` and recovery
+`9f420c05cf3adf48825f2645bcdc5accf36ac4b4` are also published. This subsequent
+documentation-only checkpoint records the verified implementation SHA.
 
 ## Implemented
 - Case C recovery: 84251cc typecheck failed with absent DB/domain/AI/Worker/web files.
@@ -48,12 +48,12 @@ following documentation checkpoint, not a self-referential SHA claim.
 - `API_INTEGRATION.md` provides the exact T06B contract; ADR-017 records decisions.
 
 ## In Progress
-Final checkpoint publication/documentation only. No backend implementation or
-blocking review finding remains. No UI/AI expansion is authorized.
+None for T06A. No backend implementation or blocking review finding remains.
+No UI/AI expansion is authorized.
 
 ## Remaining
-Publish final tested hardening and documentation. T06B, reviewed data provisioning,
-and production migration/deployment each require separate authorization. Aggregate
+T06B, reviewed data provisioning, and production migration/deployment each require
+separate authorization. Aggregate
 cross-plan abuse limits remain T07; no candidate-browser/list/history API is supplied.
 
 ## Files Changed
@@ -122,6 +122,5 @@ legacy Week compatibility/reconciliation. No planning/shopping stock mutation.
 T06B — READY for a separately authorized frontend/UX/optional AI-presentation task.
 
 ## Next Exact Action
-Record final published hardening SHA in the documentation checkpoint. Then, only
-when authorized, build T06B from the stable API schemas and `API_INTEGRATION.md`,
+Only when authorized, build T06B from the stable API schemas and `API_INTEGRATION.md`,
 not T02–T05 implementation imports. Keep legacy Week default and render uncertainty.

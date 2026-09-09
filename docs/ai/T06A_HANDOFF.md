@@ -22,6 +22,8 @@ failure is retained in `recovery-typecheck.log`. History is append-only.
 
 - **A1 recovery published:** `9f420c05cf3adf48825f2645bcdc5accf36ac4b4`.
 - **A2/A3 backend published:** `ca60ced703efc7e1720f885addf551c0ff8b6f51`.
+- **A4 final hardening published:** `c46330c61bc1bf3685508716a8ab10d72ec30b1e`.
+  This following docs-only checkpoint records that verified implementation SHA.
 - **A2/A3 combined backend delivered:** coherent trusted preload,
   strict API schemas/DTOs, minimal current-plan persistence (0022), generate/get,
   regenerate/swap/shopping/feedback routes. `API_INTEGRATION.md` describes exact
@@ -67,8 +69,8 @@ failure is retained in `recovery-typecheck.log`. History is append-only.
 
 ## Next exact action
 
-**T06A COMPLETE — T06B READY.** Publish final hardening, then record its exact SHA
-in a documentation-only checkpoint. Separately authorize T06B; start with shared
+**T06A COMPLETE — T06B READY.** All implementation checkpoints are published.
+Separately authorize T06B; start with shared
 domain DTO schemas and `API_INTEGRATION.md`, cookie HTTP transport and explicit
 partial/unknown/stale states. No UI/AI/payment expansion is part of T06A.
 

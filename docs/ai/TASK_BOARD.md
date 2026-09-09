@@ -7,7 +7,7 @@
 | T03 Ranking/personalization | COMPLETE | Preserved `01f9d87` / `3592de9` |
 | T04 Weekly planner | COMPLETE | Preserved hardened `ebd538b` |
 | T05 Shopping/budget/waste | COMPLETE | `4f3f539` / `899b6d7` |
-| T06A Backend/API/trust/persistence | COMPLETE | Published `9f420c0` / `ca60ced`; final hardening and 1136 tests verified |
+| T06A Backend/API/trust/persistence | COMPLETE | Published `9f420c0` / `ca60ced` / `c46330c`; 1136 tests verified |
 | T06B Frontend/UX/AI presentation/E2E | READY, NOT STARTED | Separate authorization; use `API_INTEGRATION.md` and shared schemas |
 | T07 Final hardening | BLOCKED BY T06B | Do not start implicitly |
 
@@ -39,7 +39,7 @@ was fixed without weakening assertions; all gates reran successfully.
 
 ## Next exact action
 
-Publish the tested hardening/documentation checkpoints and preserve their exact SHAs
+Tested hardening `c46330c61bc1bf3685508716a8ab10d72ec30b1e` is published and recorded
 in `T06A_HANDOFF.md`. Separately authorize T06B to start from frontend-safe schemas
 and `API_INTEGRATION.md`, retaining legacy Week as default.
 No payment, real inventory mutation, implicit purchase, AI authority or production

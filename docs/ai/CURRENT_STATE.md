@@ -96,8 +96,8 @@ claim. Executed the existing repository-owned sqlite3 install and
 `pnpm install --frozen-lockfile` via shell successfully; platform issue reported.
 No unrelated setup or production configuration change. Node 24.19.0.
 
-A2/A3 backend `ca60ced703efc7e1720f885addf551c0ff8b6f51` is published. Final verified
-hardening accompanies this documentation; its SHA is recorded by the following
-documentation checkpoint in `T06A_HANDOFF.md` (no self-referential commit claim).
+A2/A3 backend `ca60ced703efc7e1720f885addf551c0ff8b6f51` and final verified hardening
+`c46330c61bc1bf3685508716a8ab10d72ec30b1e` are published. This documentation-only
+checkpoint records that verified implementation SHA, not its own future hash.
 Next: separately authorize T06B, consume the shared schemas and `API_INTEGRATION.md`,
 and keep legacy Week as default. Deployment/remote migration remains operator-owned.
