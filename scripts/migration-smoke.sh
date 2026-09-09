@@ -61,6 +61,7 @@ VALUES ('migration_smoke_req_only', 'migration_smoke_plan', 'GINGER', 'Gừng', 
 .read migrations/0019_recipe_domain_foundation.sql
 .read migrations/0020_t01_foundation_hardening.sql
 .read migrations/0021_recipe_personalization.sql
+.read migrations/0022_generated_meal_plans.sql
 
 CREATE TEMP TABLE assert_zero (value INTEGER NOT NULL CHECK (value = 0));
 INSERT INTO assert_zero SELECT COUNT(*) FROM pragma_foreign_key_check;
@@ -77,6 +78,8 @@ INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger'
 INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'household_ranking_preferences';
 INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'member_ranking_preferences';
 INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'recipe_feedback_events';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'generated_meal_plans';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'generated_meal_plan_annotations';
 INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_cooked_meals_ranking_recent';
 INSERT INTO assert_zero SELECT COUNT(*) FROM sqlite_master WHERE name = '_t01_hardening_guard';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('meal_plan_days') WHERE name = 'day_type';

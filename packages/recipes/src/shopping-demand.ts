@@ -7,6 +7,10 @@ import {
 } from '../../domain/src/foundation';
 import { convertQuantity, Quantity, QuantityRangeError } from '../../domain/src/quantity';
 import type { StandardUnit } from '../../domain/src/units';
+import {
+  normalizeShoppingMealPlan,
+  type ShoppingMealPlanSnapshot,
+} from './shopping-plan-snapshot';
 import type { WeeklyMealPlan } from './planner-types';
 
 export interface PurchaseRequirementSource {
@@ -41,7 +45,10 @@ export function exactShoppingQuantityNumber(quantity: Quantity): number {
 }
 
 /** T04 has already deducted inventory. Never accept initial stock as a second deficit operand. */
-export function aggregateShoppingDemand(plan: WeeklyMealPlan): PurchaseRequirement[] {
+export function aggregateShoppingDemand(
+  input: ShoppingMealPlanSnapshot | WeeklyMealPlan,
+): PurchaseRequirement[] {
+  const plan = normalizeShoppingMealPlan(input);
   const groups = new Map<string, { requirement: PurchaseRequirement; quantity: Quantity }>();
   for (const slot of plan.slots) {
     for (const [index, shortage] of slot.shortages.entries()) {

@@ -9,7 +9,7 @@ import {
   type RecipeFeedback,
 } from '../../recipes/src/personalization';
 import { CatalogIdSchema } from '../../domain/src/foundation';
-import type { D1DatabaseBinding, D1Result } from './index';
+import type { D1DatabaseBinding, D1PreparedStatement, D1Result } from './index';
 
 const TrustedRankingScopeSchema = z.object({
   householdId: CatalogIdSchema,
@@ -57,6 +57,15 @@ const SqliteUtcTimestampSchema = z.string().regex(
 
 type TrustedRankingScope = z.infer<typeof TrustedRankingScopeSchema>;
 type FeedbackWrite = z.infer<typeof FeedbackWriteSchema>;
+
+export class RankingContextAuthorizationError extends Error {
+  readonly code = 'RANKING_CONTEXT_UNAUTHORIZED';
+
+  constructor() {
+    super('Ranking context is not authorized');
+    this.name = 'RankingContextAuthorizationError';
+  }
+}
 
 interface FeedbackRow {
   id: unknown;
@@ -258,17 +267,15 @@ export async function recordRecipeFeedback(
   });
 }
 
-/**
- * Loads all authorized ranking inputs in one D1 batch. Cooked history remains
- * household-shared and is projected from cooked_meals; no duplicate cook event exists.
- * Pass a ranking profile (or its two window fields) to load the larger history/feedback window.
- */
-export async function loadRankingContext(
+export const RANKING_CONTEXT_READ_STATEMENT_COUNT = 6;
+
+/** Builds the authorized ranking-context statements for a caller-owned coherent D1 batch. */
+export function prepareRankingContextRead(
   db: D1DatabaseBinding,
   trustedScope: unknown,
   rawReferenceTime: unknown,
   rawWindows: unknown = {},
-): Promise<RankingContext> {
+): D1PreparedStatement[] {
   const scope = TrustedRankingScopeSchema.parse(trustedScope);
   const referenceTime = UtcDateTimeSchema.parse(rawReferenceTime);
   const windowDays = typeof rawWindows === 'number'
@@ -278,7 +285,7 @@ export async function loadRankingContext(
       return [windows.historyWindowDays, windows.feedbackWindowDays];
     })());
   const windowStart = new Date(new Date(referenceTime).getTime() - windowDays * 86_400_000).toISOString();
-  const results = await db.batch([
+  return [
     db.prepare('SELECT 1 AS present FROM household_members WHERE household_id = ? AND user_id = ?')
       .bind(scope.householdId, scope.userId),
     db.prepare('SELECT values_json FROM household_ranking_preferences WHERE household_id = ?')
@@ -337,12 +344,22 @@ export async function loadRankingContext(
            AND julianday(cooked.completed_at) <= julianday(?)))
        ORDER BY cooked.completed_at DESC, cooked.id DESC`,
     ).bind(scope.householdId, windowStart, referenceTime),
-  ]);
-  if (results.length !== 6) throw new Error('Ranking context batch returned an unexpected result count');
+  ];
+}
+
+/** Maps exactly the ranking-context statement slice returned by {@link prepareRankingContextRead}. */
+export function mapRankingContextRead(
+  results: readonly D1Result<unknown>[],
+  trustedScope: unknown,
+): RankingContext {
+  const scope = TrustedRankingScopeSchema.parse(trustedScope);
+  if (results.length !== RANKING_CONTEXT_READ_STATEMENT_COUNT) {
+    throw new Error('Ranking context batch returned an unexpected result count');
+  }
   const [membership, householdPreference, memberPreference, tastes, recentFeedback, cooked] = results.map((result, index) =>
     rowsFromResult(result, ['membership', 'household preference', 'member preference', 'tastes', 'recent feedback', 'cooked history'][index]),
   );
-  if (membership.length !== 1) throw new Error('Ranking context is not authorized');
+  if (membership.length !== 1) throw new RankingContextAuthorizationError();
   if (householdPreference.length > 1 || memberPreference.length > 1) throw new Error('Ranking preference scope is ambiguous');
 
   const preferences = [
@@ -355,4 +372,21 @@ export async function loadRankingContext(
     ...cooked.map((row) => feedbackFromRow(row, 'cooked history', 'cooked:')),
   ];
   return RankingContextSchema.parse({ householdId: scope.householdId, userId: scope.userId, preferences, feedback });
+}
+
+/**
+ * Loads all authorized ranking inputs in one D1 batch. Cooked history remains
+ * household-shared and is projected from cooked_meals; no duplicate cook event exists.
+ * Pass a ranking profile (or its two window fields) to load the larger history/feedback window.
+ */
+export async function loadRankingContext(
+  db: D1DatabaseBinding,
+  trustedScope: unknown,
+  rawReferenceTime: unknown,
+  rawWindows: unknown = {},
+): Promise<RankingContext> {
+  return mapRankingContextRead(
+    await db.batch(prepareRankingContextRead(db, trustedScope, rawReferenceTime, rawWindows)),
+    trustedScope,
+  );
 }

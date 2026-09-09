@@ -20,7 +20,8 @@ required_migrations(name) AS (
     ('0017_auth_otps_remove_plaintext.sql'),
     ('0019_recipe_domain_foundation.sql'),
     ('0020_t01_foundation_hardening.sql'),
-    ('0021_recipe_personalization.sql')
+    ('0021_recipe_personalization.sql'),
+    ('0022_generated_meal_plans.sql')
 ),
 required_tables(name) AS (
   VALUES
@@ -52,6 +53,8 @@ required_tables(name) AS (
     ,('household_ranking_preferences')
     ,('member_ranking_preferences')
     ,('recipe_feedback_events')
+    ,('generated_meal_plans')
+    ,('generated_meal_plan_annotations')
 ),
 required_columns(table_name, column_name) AS (
   VALUES

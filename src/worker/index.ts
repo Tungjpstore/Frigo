@@ -17,6 +17,7 @@ import { shoppingRoutes } from './routes/shopping';
 import { preferencesRoutes } from './routes/preferences';
 import { notificationRoutes } from './routes/notifications';
 import { weekRoutes } from './routes/week';
+import { mealPlanningRoutes } from './routes/meal-planning';
 import { processScanJob, ScanQueueError } from './services/scan-queue';
 import { billingRoutes } from './routes/billing';
 
@@ -134,6 +135,7 @@ api.route('/', shoppingRoutes);
 api.route('/', preferencesRoutes);
 api.route('/', notificationRoutes);
 api.route('/', weekRoutes);
+api.route('/', mealPlanningRoutes);
 
 // Mount API under /api/v1
 app.route('/api/v1', api);

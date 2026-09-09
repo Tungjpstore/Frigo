@@ -2,7 +2,7 @@ import { compareIds } from '../../domain/src/availability';
 import { Quantity } from '../../domain/src/quantity';
 import type { StandardUnit } from '../../domain/src/units';
 import { freezePlanningValue, planningFingerprint } from './planner-context';
-import type { WeeklyMealPlan } from './planner-types';
+import { normalizeShoppingMealPlan, type ShoppingMealPlanSnapshot } from './shopping-plan-snapshot';
 import {
   CURRENCY_MINOR_DIGITS,
   readShoppingContext,
@@ -95,7 +95,7 @@ export interface OptimizedShoppingPlan {
     requiresRevalidationBeforeAcceptance: true;
   };
   mealPlan: Pick<
-    WeeklyMealPlan,
+    ShoppingMealPlanSnapshot,
     | 'status'
     | 'conclusion'
     | 'sourceSnapshot'
@@ -156,7 +156,7 @@ export function optimizeShopping(input: {
 }): OptimizedShoppingPlan {
   const source = readShoppingContext(input.context);
   const policy = ShoppingPolicySchema.parse(input.policy ?? {});
-  const plan = source.mealPlan;
+  const plan = normalizeShoppingMealPlan(source.mealPlan);
   const demand = aggregateShoppingDemand(plan);
   const requirements = demand.filter((row) => !row.isOptional);
   const optionalRequirements = demand.filter((row) => row.isOptional);

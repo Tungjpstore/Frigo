@@ -9,7 +9,7 @@ import {
   type CatalogDiagnostic,
   type RecipeCatalogSnapshot,
 } from '../../recipes/src/catalog';
-import type { D1DatabaseBinding, D1Result } from './index';
+import type { D1DatabaseBinding, D1PreparedStatement, D1Result } from './index';
 
 interface IngredientRow {
   id: unknown;
@@ -276,12 +276,11 @@ function auditLegacyAliases(rows: readonly AliasRow[]): CatalogDiagnostic[] {
   return sortCatalogDiagnostics(diagnostics);
 }
 
-/**
- * Reads the persisted catalog into validated leaf contracts. It has no write
- * path and never promotes historical alias keys.
- */
-export async function readRecipeCatalog(db: D1DatabaseBinding): Promise<RecipeCatalogSnapshot> {
-  const results = await db.batch([
+export const RECIPE_CATALOG_READ_STATEMENT_COUNT = 8;
+
+/** Builds the read-only catalog statements for a caller-owned coherent D1 batch. */
+export function prepareRecipeCatalogRead(db: D1DatabaseBinding): D1PreparedStatement[] {
+  return [
     db.prepare('SELECT id FROM ingredients ORDER BY id'),
     db.prepare(
       `SELECT id, slug, title, description, cuisine, servings, prep_time_minutes,
@@ -311,8 +310,14 @@ export async function readRecipeCatalog(db: D1DatabaseBinding): Promise<RecipeCa
     db.prepare(
       `SELECT recipe_id, kind, tag FROM recipe_classifications ORDER BY recipe_id, kind, tag`,
     ),
-  ]);
-  if (results.length !== 8) throw new Error('Recipe catalog batch returned an unexpected result count');
+  ];
+}
+
+/** Maps exactly the catalog statement slice returned by {@link prepareRecipeCatalogRead}. */
+export function mapRecipeCatalogRead(results: readonly D1Result<unknown>[]): RecipeCatalogSnapshot {
+  if (results.length !== RECIPE_CATALOG_READ_STATEMENT_COUNT) {
+    throw new Error('Recipe catalog batch returned an unexpected result count');
+  }
   const [
     ingredientRows,
     recipeRows,
@@ -456,4 +461,12 @@ export async function readRecipeCatalog(db: D1DatabaseBinding): Promise<RecipeCa
       ...auditLegacyAliases(aliasRecords),
     ]),
   };
+}
+
+/**
+ * Reads the persisted catalog into validated leaf contracts. It has no write
+ * path and never promotes historical alias keys.
+ */
+export async function readRecipeCatalog(db: D1DatabaseBinding): Promise<RecipeCatalogSnapshot> {
+  return mapRecipeCatalogRead(await db.batch(prepareRecipeCatalogRead(db)));
 }

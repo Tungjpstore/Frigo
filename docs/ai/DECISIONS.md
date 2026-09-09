@@ -1,5 +1,42 @@
 # Architecture Decisions
 
+## ADR-017 — T06A trusted backend and minimal current-plan persistence
+
+**Status:** Accepted 2026-09-09. Supersedes ADR-016's combined delivery scope;
+its frontend/AI presentation portions are deferred to T06B.
+
+**Decision:** An opt-in Hono application boundary accepts scheduling/action intent
+only. Existing cookie/CSRF/tenancy/rate-limit infrastructure remains authoritative.
+One D1 batch preloads catalog, household inventory, typed T03 preferences/history,
+nutrition and instructions; only server composition creates opaque T02–T05 contexts.
+No request/AI plan, price, shortage, substitution review or safety assertion is accepted.
+Missing reviewed safety/retail sources stay missing; no legacy benchmark promotion.
+
+Keep final generated plans private to the authorized creating member because T03
+personalization is private. Legacy Week storage is incompatible and remains intact.
+Add minimal current-plan/annotation tables (0022), membership composite FKs, scoped
+creation retry keys and atomic optimistic revision updates. Persist versioned,
+validated final DTO plus a narrow T05 input projection, never search state, opaque
+handles, ranking context or reviewer evidence. This changes only T05's accepted
+input projection/codec, not arithmetic or optimizer policy. Exact money and quantity
+strings cross the API boundary, with known/unknown and proof metadata preserved.
+
+Swaps establish server-validated locks and replay the entire plan from current
+inventory, rather than patching one slot. If the bounded search cannot produce a
+complete valid replacement, leave the current revision unchanged. Regeneration may
+return valid partial/incomplete results. SHA-256 source comparisons expose practical
+staleness, not reservations. Shopping is generated on demand from plan ID/revision
+and refuses stale source/time; no stale shopping cache or purchase command exists.
+
+**Consequences:** No revision-history platform or distributed command ledger. Exact
+creation retries avoid repeated planning after a completed write, but simultaneous
+first requests may both compute before one durable result wins. Existing rate
+limits are per account/path and best-effort under KV degradation; aggregate quotas
+remain T07. Cooked annotations do not fabricate actual cooked history or consume
+stock. T06B consumes only `meal-planning-api.ts`, `meal-shopping-api.ts` and
+`API_INTEGRATION.md`; new endpoints do not replace legacy Week, settings or cooking.
+No PayOS, authentication redesign, production deployment or AI work is authorized.
+
 ## ADR-016 — Authenticated generated-plan integration and bounded AI presentation
 
 **Status:** Accepted for T06 implementation, 2026-09-09

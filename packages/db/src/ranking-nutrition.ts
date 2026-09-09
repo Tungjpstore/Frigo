@@ -8,7 +8,7 @@ import {
   type CandidateGenerationResult,
   type RecipeCandidate,
 } from '../../recipes/src/candidates';
-import type { D1DatabaseBinding, D1Result } from './index';
+import type { D1DatabaseBinding, D1PreparedStatement, D1Result } from './index';
 
 export type RankingNutritionDiagnosticCode =
   | 'UNSUPPORTED_CANDIDATE_SOURCE'
@@ -31,7 +31,7 @@ export interface RankingNutritionResult {
   diagnostics: RankingNutritionDiagnostic[];
 }
 
-interface NutritionRow {
+export interface RankingNutritionRow {
   recipe_id: unknown;
   recipe_version: unknown;
   profile_id: unknown;
@@ -50,7 +50,7 @@ interface NutritionRow {
 
 interface RecipeNutritionRows {
   version: number;
-  profiles: NutritionRow[];
+  profiles: RankingNutritionRow[];
 }
 
 function compareText(left: string, right: string): number {
@@ -68,11 +68,11 @@ function hasUsedSubstitutions(candidate: RecipeCandidate): boolean {
   return candidate.requirements.some((requirement) => requirement.substitutions.length > 0);
 }
 
-function profileId(row: NutritionRow): string | null {
+function profileId(row: RankingNutritionRow): string | null {
   return typeof row.profile_id === 'string' ? row.profile_id : null;
 }
 
-function mapProfile(row: NutritionRow): unknown {
+function mapProfile(row: RankingNutritionRow): unknown {
   return {
     id: row.profile_id,
     basisQuantity: row.basis_quantity,
@@ -89,7 +89,7 @@ function mapProfile(row: NutritionRow): unknown {
   };
 }
 
-function readRows(result: D1Result<NutritionRow>): NutritionRow[] {
+function readRows(result: D1Result<RankingNutritionRow>): RankingNutritionRow[] {
   if (!result.success) throw new Error('Ranking nutrition read failed');
   return result.results.map((row) => {
     if (!row || typeof row !== 'object' || Array.isArray(row)) {
@@ -99,12 +99,12 @@ function readRows(result: D1Result<NutritionRow>): NutritionRow[] {
   });
 }
 
-function indexCurrentRecipeNutrition(rows: readonly NutritionRow[]): Map<string, RecipeNutritionRows> {
+function indexCurrentRecipeNutrition(rows: readonly RankingNutritionRow[]): Map<string, RecipeNutritionRows> {
   const recipes = new Map<string, RecipeNutritionRows>();
   for (const row of rows) {
     const version = row.recipe_version;
     if (typeof row.recipe_id !== 'string' || typeof version !== 'number' || !Number.isSafeInteger(version)) continue;
-    const entry = recipes.get(row.recipe_id) ?? { version, profiles: [] as NutritionRow[] };
+    const entry = recipes.get(row.recipe_id) ?? { version, profiles: [] as RankingNutritionRow[] };
     // The query joins only current recipe-version profiles. Conflicting duplicate
     // recipe rows are retained as invalid evidence rather than picking one.
     if (entry.version !== version) entry.profiles.push({ ...row, profile_id: null });
@@ -127,17 +127,11 @@ function diagnostic(
   };
 }
 
-/**
- * Reads the full current D1 recipe-nutrition relation once; candidate selection
- * happens only after the trusted T02 snapshot is verified.
- */
-export async function readRankingNutrition(
-  db: D1DatabaseBinding,
-  generation: CandidateGenerationResult,
-): Promise<RankingNutritionResult> {
-  getCandidateSnapshotContext(generation);
+export const RANKING_NUTRITION_READ_STATEMENT_COUNT = 1;
 
-  const [result] = await db.batch<NutritionRow>([
+/** Builds the current recipe-nutrition statement for a caller-owned coherent D1 batch. */
+export function prepareRankingNutritionRead(db: D1DatabaseBinding): D1PreparedStatement[] {
+  return [
     db.prepare(`SELECT r.id AS recipe_id, r.version AS recipe_version,
         p.id AS profile_id, p.basis_quantity, p.basis_unit, p.source_type,
         p.source_reference, p.energy_kcal, p.protein_g, p.carbohydrate_g,
@@ -147,13 +141,17 @@ export async function readRankingNutrition(
         ON rn.recipe_id = r.id AND rn.recipe_version = r.version
       LEFT JOIN nutrition_profiles p ON p.id = rn.nutrition_profile_id
       ORDER BY r.id, p.id`),
-  ]);
-  if (!result) throw new Error('Ranking nutrition batch returned no result');
-  const byRecipe = indexCurrentRecipeNutrition(readRows(result));
+  ];
+}
+
+function rankNutritionCandidates(
+  byRecipe: ReadonlyMap<string, RecipeNutritionRows>,
+  candidates: readonly RecipeCandidate[],
+): RankingNutritionResult {
   const evidence: CandidateRankingEvidence[] = [];
   const diagnostics: RankingNutritionDiagnostic[] = [];
 
-  for (const candidate of generation.candidates) {
+  for (const candidate of candidates) {
     if (!isConcreteD1Candidate(candidate)) {
       diagnostics.push(diagnostic(candidate, 'UNSUPPORTED_CANDIDATE_SOURCE'));
       continue;
@@ -220,4 +218,51 @@ export async function readRankingNutrition(
     compareText(JSON.stringify(left.profileIds ?? []), JSON.stringify(right.profileIds ?? [])),
   );
   return { evidence, diagnostics };
+}
+
+/** Maps exactly the nutrition statement slice returned by {@link prepareRankingNutritionRead}. */
+export function mapRankingNutritionRead(
+  results: readonly D1Result<RankingNutritionRow>[],
+  generation: CandidateGenerationResult,
+): RankingNutritionResult {
+  getCandidateSnapshotContext(generation);
+  return rankNutritionCandidates(
+    indexCurrentRecipeNutrition(mapRankingNutritionRows(results)),
+    generation.candidates,
+  );
+}
+
+/** Maps the validated raw nutrition rows for a coherent snapshot provider. */
+export function mapRankingNutritionRows(
+  results: readonly D1Result<RankingNutritionRow>[],
+): RankingNutritionRow[] {
+  if (results.length !== RANKING_NUTRITION_READ_STATEMENT_COUNT || !results[0]) {
+    throw new Error('Ranking nutrition batch returned an unexpected result count');
+  }
+  return readRows(results[0]);
+}
+
+/**
+ * Freezes a current nutrition snapshot into a synchronous provider for T04.
+ * It deliberately supplies no safety verdicts: no reviewed safety registry exists.
+ */
+export function createRankingEvidenceProviderFromNutritionRows(
+  rows: readonly RankingNutritionRow[],
+): (candidates: readonly RecipeCandidate[]) => readonly CandidateRankingEvidence[] {
+  const indexed = indexCurrentRecipeNutrition(structuredClone(rows));
+  return (candidates) => rankNutritionCandidates(indexed, candidates).evidence;
+}
+
+/**
+ * Reads the full current D1 recipe-nutrition relation once; candidate selection
+ * happens only after the trusted T02 snapshot is verified.
+ */
+export async function readRankingNutrition(
+  db: D1DatabaseBinding,
+  generation: CandidateGenerationResult,
+): Promise<RankingNutritionResult> {
+  return mapRankingNutritionRead(
+    await db.batch<RankingNutritionRow>(prepareRankingNutritionRead(db)),
+    generation,
+  );
 }

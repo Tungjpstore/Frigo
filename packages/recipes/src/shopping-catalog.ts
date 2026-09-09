@@ -6,6 +6,10 @@ import {
 } from '../../domain/src/foundation';
 import { compareIds } from '../../domain/src/availability';
 import { canonicalJson, freezePlanningValue } from './planner-context';
+import {
+  normalizeShoppingMealPlan,
+  type ShoppingMealPlanSnapshot,
+} from './shopping-plan-snapshot';
 import type { WeeklyMealPlan } from './planner-types';
 import { SHOPPING_LIMITS } from './shopping-policy';
 
@@ -85,7 +89,7 @@ export interface ShoppingSourceInput {
   householdId: string;
   userId: string;
   currency: ShoppingCurrency;
-  mealPlan: WeeklyMealPlan;
+  mealPlan: ShoppingMealPlanSnapshot | WeeklyMealPlan;
   catalog: {
     snapshotId: string;
     asOf: string;
@@ -111,7 +115,7 @@ export function createShoppingContext(serverProvider: () => ShoppingSourceInput)
   const budget = source.budget === null ? null : ShoppingBudgetSchema.parse(source.budget);
   const snapshotId = Identity.parse(source.catalog.snapshotId);
   const asOf = Instant.parse(source.catalog.asOf);
-  const plan = source.mealPlan;
+  const plan = normalizeShoppingMealPlan(source.mealPlan);
   if (
     plan.schemaVersion !== 1 ||
     plan.persistence !== 'generated_only' ||
@@ -170,7 +174,7 @@ export function createShoppingContext(serverProvider: () => ShoppingSourceInput)
     userId,
     currency,
     budget,
-    mealPlan: structuredClone(plan),
+    mealPlan: structuredClone(source.mealPlan),
     catalog: { snapshotId, asOf, options: [...semanticOptions.values()] },
   };
   const context = Object.freeze({}) as ShoppingContext;
