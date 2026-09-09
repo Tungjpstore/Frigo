@@ -68,6 +68,10 @@ Local documentation commit `e060164650969faefeb7ebb808ad5cbab32c4980` failed to
 publish with **`Cannot publish the configured base branch hoplite/kirrha-5f4057f0`**.
 Remote PR remains at `0b20061`; no docs-head run could start. This later blocker
 receipt is local-only too. The application/test/config tree remains unchanged.
+PR description/comment attempts also failed: **`Pull request is not explicitly
+linked to this thread's configured repository`**, despite successful link/list
+evidence for #8. No PR metadata/comment/screenshot was published. Both publication
+and repository-link inconsistencies were reported; read-only PR/CI tools worked.
 
 ## Preview / Evidence
 Existing managed `node scripts/security-preview.mjs`, real Vite/Worker, private
@@ -107,8 +111,8 @@ Payment-adjacent tests do not replace absent direct PayOS regression coverage.
 
 ## Next Exact Action
 Authorized operator/platform owner: reconcile this thread's protected configured
-base with the existing PR #8 writable head. Do not bypass protection or create a
-new branch/PR. Once authorized, publish both preserved local documentation commits
+base and repository/link authority with existing PR #8. Do not bypass protection
+or create a new branch/PR. Once authorized, publish preserved local documentation commits
 through the trusted broker, inspect exact new-head CI, then record readiness.
 No need to repeat integration or source tests unless source/main changes. Keep
 PR #8 draft for operator review; do not merge automatically.

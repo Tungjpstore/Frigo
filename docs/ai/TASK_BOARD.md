@@ -59,9 +59,11 @@ could not publish: **`Cannot publish the configured base branch
 hoplite/kirrha-5f4057f0`**. Existing linked PR head is also this thread's protected
 base; platform issue reported. No bypass, replacement branch or PR. Remote remains
 draft at `0b20061`; documentation-head CI cannot run until publication is authorized.
+PR description/comment tools also rejected repository linkage despite successful
+thread link/list evidence; no PR metadata or evidence comment was posted. Reported.
 
 **RELEASE INTEGRATION NOT READY.** Authorized operator/platform owner must reconcile
-publication authority, then publish preserved local docs commits to the existing
+publication/repository-link authority, then publish preserved local docs commits to the existing
 head and inspect exact new-head CI. Record readiness afterward and hand off for
 explicit operator normal merge. Do not redo integration or green source gates.
 Review existing automatic staging on successful future main-push CI before merge.

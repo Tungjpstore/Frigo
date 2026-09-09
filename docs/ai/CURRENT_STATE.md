@@ -79,9 +79,12 @@ All source gates are green. Local docs commit
 The linked PR head is also this thread's protected base. No bypass or replacement
 branch/PR was attempted; platform issue reported. Remote PR remains draft at
 `0b20061`, existing CI green; new documentation-head CI cannot run without a push.
+PR description/comment updates also failed with an explicit-repository-link error
+despite the successful link/list evidence. Nothing was posted to the PR; screenshot
+and verification are in this thread/local docs only. Link inconsistency reported.
 
 An authorized operator/platform owner must reconcile publication authority for the
-existing release head. Then publish preserved local docs commits, inspect new-head
+existing release head and repository linkage. Then publish preserved local docs commits, inspect new-head
 CI and record readiness. **RELEASE INTEGRATION NOT READY** until those two gates.
 Do not redo integration or already-green source verification unless source/main
 changes. Final **normal merge** remains an explicit operator action.

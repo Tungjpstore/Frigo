@@ -165,7 +165,8 @@ Receipt: `.hoplite/artifacts/release/browser-evidence.json`, command chunks and 
 timing files. Command concatenation was checked against the tracked matrix. Parent
 then reopened `/planner`: seven meals, revision 6, Vietnamese uncertainty and
 non-consumption text, legacy Week link, no page errors. One synthetic-only full-page
-screenshot was shared in the thread/PR; no video or private data was published.
+screenshot was shared in this thread; PR evidence publication was later rejected
+as described below. No video or private data was published.
 
 The harness has isolated in-memory SQLite, a synthetic registered cookie session,
 and blocked outbound backend fetch. Explicit presentation fixtures are not live
@@ -195,6 +196,14 @@ A fresh provider read after the rejection confirmed PR #8 open/draft and existin
 `validate` SUCCESS on `0b20061`. **No documentation-head CI run exists because the
 push was rejected**, not because application verification failed. Restore authorized
 publication to the existing PR head, then trigger/recheck its ordinary PR validation.
+
+Attempts to update the existing PR description and post a verification comment
+were also rejected: **`Pull request is not explicitly linked to this thread's
+configured repository`**. Yet `thread_link_pull_request(8)` succeeded with review
+updates enabled and `thread_list_pull_requests` confirms `vn-2c/Frigo` PR #8.
+This repository/link inconsistency was separately reported to Hoplite. **No PR
+description, comment or screenshot update succeeded.** Read access still confirmed
+the original draft PR and successful source CI. Do not bypass repository authority.
 No CI/deployment workflow was rewritten or dispatched. PR CI against the merge
 test ref does **not** satisfy the later deployment gate: `release-check.mjs` requires
 a successful exact-SHA **push run on main**, main ancestry and approved hardening.
@@ -282,7 +291,7 @@ build and checks, not the warning alone, establish usability. No dependency upgr
 ## Next action
 
 An authorized operator/platform owner must reconcile this thread's protected base
-with the existing PR #8 writable head, without replacing the branch or PR. Then
+and repository/link authority with existing PR #8, without replacing branch or PR. Then
 publish the preserved local documentation commits to `hoplite/kirrha-5f4057f0`
 using the trusted broker and inspect exact new-head CI. Do not reset, recreate
 integration or rerun already-green source tests unless source/main changes.
