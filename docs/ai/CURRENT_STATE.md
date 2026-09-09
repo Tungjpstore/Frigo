@@ -1,15 +1,37 @@
-# Frigo current state — completed T06B integration
+# Frigo current state — T07 interrupted
 
 ## Current task and roadmap
 
-**T01–T05 COMPLETE. T06A COMPLETE. T06B COMPLETE. T07 READY, not started.**
+**T01–T05 COMPLETE. T06A COMPLETE. T06B COMPLETE. T07 IN PROGRESS / INTERRUPTED.**
+
+The user stopped T07 on 2026-09-09 after the unchanged baseline and during initial
+read-only review. **No T07 source/test/migration/configuration change or fix was
+made.** Do not resume without renewed authorization; no production-readiness
+claim is made. Current recovery instructions: `T07_WIP_HANDOFF.md`.
+
+Thread branch: `hoplite/lipara-d81160ee`; verified T06B base
+`6d4e873b180e46edcaf8088f848b3afab853bc66`, fast-forwarded from the initially
+provisioned T02 checkout. Application source remains identical to verified
+`0fc78a4fdc624973413259c048e65ed585fa2b8e`. Published WIP evidence checkpoint:
+`0f6c3824efa359e5b2e6938840ac2c40b06e7004`. The following handoff commit is resolved
+with `git log -1 --format=%H -- docs/ai/T07_WIP_HANDOFF.md`.
+
+Fresh T07 baseline: `pnpm test` **1,390/79 PASS**; lint, typecheck, build,
+migration smoke, local D1 0001–0022 apply and schema gate **PASS**; focused suites
+**722/32 PASS**; existing browser matrix **88 assertions/12 phases PASS**, with
+no unhandled browser errors. Exact commands/timings/limits: `T07_BASELINE.md`.
+These are baseline results, not completed T07 hardening. The account/raw-path KV
+limiter limitations are inspected but unfixed; full audits remain incomplete.
+
+## Preserved T06B baseline history
+
 T06B continued the exact clean interrupted checkpoint
 `c5f86232f572b3194cdff5e0b8113dd254ab15fe`; no T06A reset or T06B rebuild occurred.
 `T06B_WIP_HANDOFF.md` is preserved as retired historical evidence. Current truth:
 `FRONTEND_MEAL_PLANNER.md`, `API_INTEGRATION.md`, `AI_LAYER.md`,
 `T06B_E2E.md`, `T06B_VERIFICATION.md` and `HANDOFF.md`.
 
-## Repository and verified checkpoint
+## Historical T06B repository and verified checkpoint
 
 Authorized workspace: `https://github.com/sex-vn/Frigo.git`, branch
 `hoplite/mende-90a2dbb1`. This differs from historical repository/branch labels;
@@ -89,7 +111,8 @@ Native AI response timeout does not guarantee cancellation. Aggregate cross-plan
 rate limits, advanced package/temporal optimization and wider production review
 remain T07. No deployment, live-provider or remote/production evidence is claimed.
 
-When separately authorized for T07, read `AGENT_RULES.md`, `HANDOFF.md`,
-`T06B_VERIFICATION.md` and `tasks/T07-hardening-final-review.md`; verify clean Git
-and the `0fc78a4` ancestry, then rerun `pnpm test` before the T07 risk audit.
-Do not start T07 or enable production flags implicitly.
+T07 began and is now explicitly interrupted. On renewed authorization, fetch
+`hoplite/lipara-d81160ee`, verify the published `0f6c382` checkpoint ancestry and
+read `T07_WIP_HANDOFF.md` before following its exact next actions. Do not resume
+auditing, enable production flags, deploy or migrate remotely merely because the
+baseline is green. **PayOS/payment remains untouched.**

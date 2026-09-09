@@ -1,11 +1,31 @@
 # Frigo AI Handoff
 
 ## Current Task
-T06B — complete preserved frontend/product integration and verification.
+T07 — final hardening, interrupted after baseline and during initial read-only review.
 
 ## Task Status
-**T06B COMPLETE — T07 READY.** T07 has not started. The historical interrupted
-record is retained in `T06B_WIP_HANDOFF.md` and explicitly retired there.
+**T01–T05 COMPLETE. T06A COMPLETE. T06B COMPLETE. T07 IN PROGRESS / INTERRUPTED.**
+The user explicitly stopped further audits/fixes on 2026-09-09. Do not resume
+without renewed authorization. No T07 implementation, new regression or production
+readiness conclusion exists. `T06B_WIP_HANDOFF.md` remains retired T06B history.
+
+## T07 Interruption Recovery
+
+Read **`T07_WIP_HANDOFF.md`** for complete zero-chat recovery and remaining work;
+read `T07_BASELINE.md` for exact new baseline commands/results/timings. Published
+WIP evidence: **`0f6c3824efa359e5b2e6938840ac2c40b06e7004`**. It adds only the
+baseline receipt; this following checkpoint adds interruption handoff/state docs.
+Resolve its hash with `git log -1 --format=%H -- docs/ai/T07_WIP_HANDOFF.md`.
+
+At `6d4e873`, fresh full **1,390/79**, focused **722/32**, browser **88 named
+assertions/12 phases**, lint/typecheck/build/migration smoke/local D1 apply/schema
+gate all passed. No current failing executed check; no new T07 source was written.
+Raw-path fan-out and non-atomic KV rate limiting are inspected limitations, not
+fixed or newly reproduced exploits. Other audits are incomplete. Baseline green
+does not mean T07 complete. **PayOS/payment touched: NO.**
+
+The implementation/history details below preserve the completed T06B baseline;
+they must not be read as T07 audit results.
 
 ## Dependency Baseline
 T01–T05 complete; T05 `899b6d790b0902c93a17ba060437e3f9802e03e9`.
@@ -16,20 +36,22 @@ Preserved T06B backend `1f7802f48b64c5998ccac28d532070a3721c07f9`, frontend
 
 ## Repository / Branch Topology
 Authorized workspace `https://github.com/sex-vn/Frigo.git`, branch
-`hoplite/mende-90a2dbb1`. The continuation began clean at exactly `c5f8623`.
-Historical branch `hoplite/leukas-32474504` remains history, not the new workspace
-publication target. No reset/rebase/source discard occurred.
+**`hoplite/lipara-d81160ee`**. It was provisioned clean at T02 `db09fa0`, then
+fast-forwarded to verified T06B base
+**`6d4e873b180e46edcaf8088f848b3afab853bc66`** from `hoplite/mende-90a2dbb1`.
+T06B's continuation had begun at `c5f8623`; `hoplite/leukas-32474504` remains older
+history. Neither old branch is the T07 publication target. No reset/rebase/source
+discard occurred.
 
 ## Last Verified Commit
 **`0fc78a4fdc624973413259c048e65ed585fa2b8e`**, final implementation, published.
 Earlier continuation checkpoints `e178d04a04d3acb54d2e3fc8a3878577c5081467` and
 `63aae9d9c2094951dd34e032cd0983ba7fcc48f8` are also published.
 
-This following documentation-only checkpoint cannot record its own future hash;
-resolve it with `git log -1 --format=%H -- docs/ai/HANDOFF.md`. Final closure reruns
-all listed gates and the browser matrix on that exact HEAD, and records its hash
-in the final response. A browser-only readiness-wait follow-up is documented below;
-application source remains identical to the verified implementation.
+T07 reran the baseline on `6d4e873`, including the browser-only readiness-wait
+follow-up documented below; application source remains identical to `0fc78a4`.
+No final T07 application verification exists yet because implementation was not
+started. The interrupted state is saved in the WIP/handoff checkpoints above.
 
 ## Implemented
 - Reused all existing T06B APIs/client/components/preview/AI architecture rather
@@ -147,9 +169,9 @@ Frontend does not calculate authoritative shortages/totals; AI is not authoritat
 plan generation does not mutate inventory; shopping does not execute a purchase.
 
 ## Next Exact Action
-When the user authorizes T07: read `AGENT_RULES.md`, this handoff,
-`T06B_VERIFICATION.md` and `tasks/T07-hardening-final-review.md`; run
-`git status --short`, `git rev-parse HEAD`,
-`git merge-base --is-ancestor 0fc78a4fdc624973413259c048e65ed585fa2b8e HEAD`, then
-`pnpm test` before the T07 risk audit. Do not start T07, enable production flags,
-deploy, migrate remotely or change PayOS merely because T06B is complete.
+Stay stopped until renewed authorization. Then fetch `hoplite/lipara-d81160ee`,
+run `git status --short`, `git rev-parse HEAD` and
+`git merge-base --is-ancestor 0f6c3824efa359e5b2e6938840ac2c40b06e7004 HEAD`.
+Read `T07_WIP_HANDOFF.md` and its exact next actions before resuming the inventory
+or limiter reproducer. Do not reset to an older checkpoint, start new features,
+enable production flags, deploy, migrate remotely or change PayOS.
