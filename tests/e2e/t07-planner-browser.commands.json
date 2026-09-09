@@ -1,0 +1,510 @@
+[
+  [
+    "errors",
+    "--clear"
+  ],
+  [
+    "open",
+    "http://127.0.0.1:3000/__preview"
+  ],
+  [
+    "click",
+    "form[action='/__preview/reset'] button"
+  ],
+  [
+    "wait",
+    "--fn",
+    "!!document.querySelector('a[href=\"/planner/new\"]')"
+  ],
+  [
+    "set",
+    "viewport",
+    "375",
+    "812"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.happy('en'))"
+  ],
+  [
+    "open",
+    "http://127.0.0.1:3000/planner"
+  ],
+  [
+    "set",
+    "viewport",
+    "375",
+    "812"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.restored())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.presentationFailures())"
+  ],
+  [
+    "wait",
+    "61000"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.revisionConflict())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.alternativesConflict())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardDialog())"
+  ],
+  [
+    "press",
+    "Shift+Tab"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardContained())"
+  ],
+  [
+    "press",
+    "Tab"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardContained())"
+  ],
+  [
+    "press",
+    "Escape"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardClosed())"
+  ],
+  [
+    "errors"
+  ],
+  [
+    "open",
+    "http://127.0.0.1:3000/__preview"
+  ],
+  [
+    "click",
+    "form[action='/__preview/reset'] button"
+  ],
+  [
+    "wait",
+    "--fn",
+    "!!document.querySelector('a[href=\"/planner/new\"]')"
+  ],
+  [
+    "set",
+    "viewport",
+    "375",
+    "812"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.happy('vi'))"
+  ],
+  [
+    "open",
+    "http://127.0.0.1:3000/planner"
+  ],
+  [
+    "set",
+    "viewport",
+    "375",
+    "812"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.restored())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.presentationFailures())"
+  ],
+  [
+    "wait",
+    "61000"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.revisionConflict())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.alternativesConflict())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardDialog())"
+  ],
+  [
+    "press",
+    "Shift+Tab"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardContained())"
+  ],
+  [
+    "press",
+    "Tab"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardContained())"
+  ],
+  [
+    "press",
+    "Escape"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardClosed())"
+  ],
+  [
+    "errors"
+  ],
+  [
+    "open",
+    "http://127.0.0.1:3000/__preview"
+  ],
+  [
+    "click",
+    "form[action='/__preview/reset'] button"
+  ],
+  [
+    "wait",
+    "--fn",
+    "!!document.querySelector('a[href=\"/planner/new\"]')"
+  ],
+  [
+    "set",
+    "viewport",
+    "390",
+    "844"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.happy('en'))"
+  ],
+  [
+    "open",
+    "http://127.0.0.1:3000/planner"
+  ],
+  [
+    "set",
+    "viewport",
+    "390",
+    "844"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.restored())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.presentationFailures())"
+  ],
+  [
+    "wait",
+    "61000"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.revisionConflict())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.alternativesConflict())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardDialog())"
+  ],
+  [
+    "press",
+    "Shift+Tab"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardContained())"
+  ],
+  [
+    "press",
+    "Tab"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardContained())"
+  ],
+  [
+    "press",
+    "Escape"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardClosed())"
+  ],
+  [
+    "errors"
+  ],
+  [
+    "open",
+    "http://127.0.0.1:3000/__preview"
+  ],
+  [
+    "click",
+    "form[action='/__preview/reset'] button"
+  ],
+  [
+    "wait",
+    "--fn",
+    "!!document.querySelector('a[href=\"/planner/new\"]')"
+  ],
+  [
+    "set",
+    "viewport",
+    "390",
+    "844"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.happy('vi'))"
+  ],
+  [
+    "open",
+    "http://127.0.0.1:3000/planner"
+  ],
+  [
+    "set",
+    "viewport",
+    "390",
+    "844"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.restored())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.presentationFailures())"
+  ],
+  [
+    "wait",
+    "61000"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.revisionConflict())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.alternativesConflict())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardDialog())"
+  ],
+  [
+    "press",
+    "Shift+Tab"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardContained())"
+  ],
+  [
+    "press",
+    "Tab"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardContained())"
+  ],
+  [
+    "press",
+    "Escape"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardClosed())"
+  ],
+  [
+    "errors"
+  ],
+  [
+    "open",
+    "http://127.0.0.1:3000/__preview"
+  ],
+  [
+    "click",
+    "form[action='/__preview/reset'] button"
+  ],
+  [
+    "wait",
+    "--fn",
+    "!!document.querySelector('a[href=\"/planner/new\"]')"
+  ],
+  [
+    "set",
+    "viewport",
+    "1280",
+    "900"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.happy('en'))"
+  ],
+  [
+    "open",
+    "http://127.0.0.1:3000/planner"
+  ],
+  [
+    "set",
+    "viewport",
+    "1280",
+    "900"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.restored())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.presentationFailures())"
+  ],
+  [
+    "wait",
+    "61000"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.revisionConflict())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.alternativesConflict())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardDialog())"
+  ],
+  [
+    "press",
+    "Shift+Tab"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardContained())"
+  ],
+  [
+    "press",
+    "Tab"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardContained())"
+  ],
+  [
+    "press",
+    "Escape"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardClosed())"
+  ],
+  [
+    "errors"
+  ],
+  [
+    "open",
+    "http://127.0.0.1:3000/__preview"
+  ],
+  [
+    "click",
+    "form[action='/__preview/reset'] button"
+  ],
+  [
+    "wait",
+    "--fn",
+    "!!document.querySelector('a[href=\"/planner/new\"]')"
+  ],
+  [
+    "set",
+    "viewport",
+    "1280",
+    "900"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.happy('vi'))"
+  ],
+  [
+    "open",
+    "http://127.0.0.1:3000/planner"
+  ],
+  [
+    "set",
+    "viewport",
+    "1280",
+    "900"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.restored())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.presentationFailures())"
+  ],
+  [
+    "wait",
+    "61000"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.revisionConflict())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.alternativesConflict())"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardDialog())"
+  ],
+  [
+    "press",
+    "Shift+Tab"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardContained())"
+  ],
+  [
+    "press",
+    "Tab"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardContained())"
+  ],
+  [
+    "press",
+    "Escape"
+  ],
+  [
+    "eval",
+    "import('/tests/e2e/planner-browser.mjs').then(m => m.keyboardClosed())"
+  ],
+  [
+    "errors"
+  ]
+]

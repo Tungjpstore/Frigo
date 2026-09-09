@@ -1,4 +1,39 @@
-# Architecture — T01 foundation and T02 engine
+# Architecture — T01 foundation through T05 shopping optimization
+
+T07 adds an aggregate authenticated-account budget to expensive new-planner
+routes, retaining their per-path limits. KV and isolate-local fallback remain
+best-effort abuse controls, not atomic quotas; see ADR-019 and `T07_H2_ABUSE.md`.
+No legacy/auth/payment policy or deployment architecture changes.
+
+T05 adds pure `recipes/src/shopping-*.ts`: opaque authorized plan/catalog/budget
+preload, authoritative shortage normalization, bounded package enumeration, exact
+minor-unit money, budget proof and evidence-only stock/surplus risk. No T04
+replanning, persistence, legacy shopping cutover or T06 route/UI integration.
+Legacy VND benchmark/package helpers are not authoritative price offers.
+See `SHOPPING_OPTIMIZER.md` and ADR-015 for the T06 contract and proof scope.
+
+T04 adds `recipes/src/planner-*.ts` and `weekly-planner.ts`: opaque preloaded
+context, fixed-offset ordered slots, exact branch-local inventory, T02 regeneration,
+T03 eligibility/utility, bounded beam search, period nutrition, locks and explicit
+partial/incomplete results. Opt-in T02 expiry-first lot ordering supplies the actual
+projection witness; the standalone default stays ID-ordered. No T03 scoring or
+safety logic is replaced. See `WEEKLY_PLANNER.md` for the complete T05 contract,
+limits, generated-only persistence and safe future shadow/canary integration.
+
+The T04 core accepts no database binding, performs no I/O and never writes real
+stock or Week rows. Source snapshots must be authorized/preloaded before context
+creation and revalidated before future acceptance/cooking. Existing legacy Week
+remains the production path, including all dual-write and reconciliation behavior.
+
+T03 adds pure `recipes/src/ranking*.ts` and scoped `personalization.ts` contracts.
+Hard eligibility precedes bounded component utility and deterministic ordering.
+The T02 result has private same-process scope/fingerprint provenance for ranking;
+it cannot be reconstructed from request JSON. Server-owned review evidence is a
+separate authority boundary. D1 personalization/feedback and bulk nutrition readers
+load snapshots before scoring; no query occurs in the candidate loop. Existing
+`cooked_meals` is reused rather than creating a second cooking command/history.
+No old ranker or live route is cut over. See `RANKING_ENGINE.md` for exact weights,
+unknown/safety behavior, ownership, persistence and the T04 utility contract.
 
 ## Stack and layout
 

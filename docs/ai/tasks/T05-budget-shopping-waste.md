@@ -27,7 +27,7 @@ Frigo has legacy shopping aggregation and price/package tables. Its existing dom
 - Model optional/package-specific purchase recommendations only where an explicit package size and compatible physical unit exist. Keep `pack`, piece, bunch, slice and retailer contexts non-convertible unless explicit metadata supports it.
 - Add/extend price observations with amount, currency, unit/basis, source, timestamp, quality, locality/retailer optionality, and provenance as needed. Do not treat missing or stale prices as factual.
 - Produce budget totals/ranges, currency-consistent comparisons, waste/leftover projections, reuse opportunities, and a typed infeasible result for impossible budgets or unpriceable mandatory requirements.
-- Use a bounded feedback loop through T04/T03 to propose eligible unlocked meal alternatives and ingredient reuse when they improve the documented cost/waste objective. Re-simulate the full affected plan; never optimize meals independently or relax hard constraints. Define objective priorities (cost, waste, unnecessary purchases, missing demand versus utilization, nutrition, preference and variety) and deterministic tie-breaking/search limits.
+- Optimize purchase packages against the unchanged T04 plan with bounded deterministic search. Emit structured budget/replanning feedback only; the detailed T05 authorization explicitly prohibits invoking T04/T03, replacing meals or reducing servings. Any future regeneration is caller-owned.
 - Account for opened-package remaining contents and leftover reuse only with explicit lot/package quantities and safety evidence. Distinguish purchased excess from edible leftovers and report unresolved context instead of inventing a weight.
 - Test shared ingredients, prior lot consumption, unit incompatibility, package rounding, absent/stale/mixed-currency pricing, pantry rules, zero inventory, expiry/waste priority, and impossible budgets.
 
@@ -44,12 +44,28 @@ Frigo has legacy shopping aggregation and price/package tables. Its existing dom
 
 ## Acceptance Criteria
 
+### Implemented contract
+
+- `../SHOPPING_OPTIMIZER.md` and ADR-015 define the pure generated-only T05 API.
+  `shopping-*.ts` consumes authoritative per-slot T04 deficits, never reruns T04 or
+  subtracts initial inventory. Legacy Week/shopping remains unchanged.
+- Opaque scoped server snapshot, sourced package contents/prices, exact minor-unit
+  money, bounded package enumeration, explicit budget proof and separate surplus/risk.
+- Partial-horizon package allocation is not implemented; affected proofs remain
+  incomplete without falsely claiming a search cap or impossible budget. Lossy
+  numeric quantity output boundaries reject rather than underbuying.
+- No schema/API/frontend/payment or real inventory changes. T06 consumes the
+  generated contract after future authorized preload and revalidation.
+- Final verification: 153 new tests / 5 files; full 1077 tests / 66 files, focused
+  T02–T05 403 / 18, all required gates and sandbox-local D1/schema checks PASS.
+  Exact evidence, corrected review failures and publication are in state/handoff.
+
 - Inventory allocated to one earlier plan requirement cannot offset the same quantity a second time.
 - A 500 g package can cover a compatible 300 g mass shortage only when explicit package metadata exists; a `pack` cannot be converted to grams by assumption.
 - Budget calculations compare amounts only in a known common currency and disclose estimate/freshness/provenance.
 - If mandatory items cannot fit the budget, outputs explicitly state infeasibility, cost gap, and affected requirements; no invalid zero-cost plan is returned.
 - Waste optimization cannot choose expired or unsafe items and cannot override T03/T04 hard eligibility/locks.
-- A small fixture with two eligible unlocked meal alternatives demonstrates a lower-cost or lower-waste feasible plan; locks, already allocated quantities and nutrition constraints remain satisfied after the bounded feedback loop. If no valid improvement fits the budget, return infeasibility rather than loop indefinitely.
+- Package alternatives demonstrate documented cost/surplus trade-offs while selected meals, locks and servings remain unchanged. An impossible budget produces structured diagnostics, never a hidden meal feedback loop.
 - Outputs retain enough source allocation data for user review and future audit.
 
 ## Verification

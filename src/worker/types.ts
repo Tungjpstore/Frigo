@@ -25,6 +25,8 @@ export interface Env {
   WEEK_SCHEMA_MODE?: WeekSchemaMode;
   APP_URL?: string;
   AI_MOCK_MODE?: string;
+  MEAL_PLANNER_ENABLED?: string;
+  MEAL_PLANNER_AI_ENABLED?: string;
   // Deploy traceability: injected by the deploy workflow as a Wrangler var.
   GIT_COMMIT?: string;
   // Best-effort (default) degrades to isolate-local counters when KV fails;

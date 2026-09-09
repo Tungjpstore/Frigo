@@ -1,5 +1,157 @@
 # Architecture Decisions
 
+## ADR-019 — T07 planner-wide best-effort account compute budget
+
+**Status:** Accepted 2026-09-09 after authenticated fan-out reproduction.
+
+**Decision:** Add one planner-only `planner-compute:<authenticated-user>` bucket
+at 10 requests per 60 seconds for generation, regeneration, swaps, shopping and
+on-demand explanations, alongside existing per-path controls. Keep read/feedback,
+auth and payment policies unchanged. Reuse the installed limiter rather than
+introducing a quota/reservation platform.
+
+**Evidence and consequences:** Alternating two plan IDs previously admitted an
+eleventh compute request; regressions now reject it before T04. KV read/put remains
+non-atomic and eventually consistent, with same-key write throttling and explicit
+isolate-local fallback. Neither fail-closed nor the account key promises an exact
+global quota. Keep hard per-request search bounds and staged rollout; require a
+separate recovery-safe atomic design only if measured abuse demands it. Exact
+tests, guarantees and Cloudflare references are in `T07_H2_ABUSE.md`.
+
+## ADR-018 — T06B opt-in presentation and minimal plan discovery
+
+**Status:** Accepted 2026-09-09 for the authorized T06B task.
+
+**Decision:** Reuse React Router, TanStack Query, owner-fenced cookie transport,
+existing cards/buttons/dialogs and Frigo colors. `VITE_MEAL_PLANNER_ENABLED=true`
+enables `/planner`; the independent server flag remains authoritative. Legacy Week
+is retained. The browser sends scheduling/action intent, never engine contexts,
+shortages or prices. Queries are owner-scoped, mutations are explicitly triggered,
+revision-fenced and not retried automatically. Swap/regenerate replace the entire
+plan response and discard previous shopping results. Past plans remain historical;
+creating a new future plan is explicit rather than silently editing past meals.
+
+T06A lacks cross-device discovery and a named swap-choice source. Add only a
+creator/household-scoped current-plan lookup and a bounded read-only recipe-title/ID
+catalog projection. Choices are not eligibility claims: the unchanged swap service
+checks restrictions and replans. No new persistence or engine algorithm is needed.
+
+Optional on-demand AI may reorder/select only server-grounded reason IDs. It returns
+no factual prose, tools or commands. Schema/subset validation, a bounded timeout,
+feature disable and deterministic fallback keep structured facts separate and safe.
+Frontend vi/en text templates display the same reasons without any AI dependency.
+Exact money is formatted through BigInt/Intl parts; authoritative arithmetic stays
+on the server. Shopping checkboxes are ephemeral reminders, not purchases.
+
+**Consequences:** No frontend plan-content persistence or UUID entry needed for
+restoration. No full history/candidate-eligibility API, private recipe authoring,
+generated recipes, payment or production cutover. Preview fixtures use isolated
+in-memory D1 and real test sessions; they never install a production auth bypass.
+T07 owns deferred aggregate quotas and final security/performance review.
+
+## ADR-017 — T06A trusted backend and minimal current-plan persistence
+
+**Status:** Accepted 2026-09-09. Supersedes ADR-016's combined delivery scope;
+its frontend/AI presentation portions are deferred to T06B.
+
+**Decision:** An opt-in Hono application boundary accepts scheduling/action intent
+only. Existing cookie/CSRF/tenancy/rate-limit infrastructure remains authoritative.
+One D1 batch preloads catalog, household inventory, typed T03 preferences/history,
+nutrition and instructions; only server composition creates opaque T02–T05 contexts.
+No request/AI plan, price, shortage, substitution review or safety assertion is accepted.
+Missing reviewed safety/retail sources stay missing; no legacy benchmark promotion.
+
+Keep final generated plans private to the authorized creating member because T03
+personalization is private. Legacy Week storage is incompatible and remains intact.
+Add minimal current-plan/annotation tables (0022), membership composite FKs, scoped
+creation retry keys and atomic optimistic revision updates. Persist versioned,
+validated final DTO plus a narrow T05 input projection, never search state, opaque
+handles, ranking context or reviewer evidence. This changes only T05's accepted
+input projection/codec, not arithmetic or optimizer policy. Exact money and quantity
+strings cross the API boundary, with known/unknown and proof metadata preserved.
+
+Swaps establish server-validated locks and replay the entire plan from current
+inventory, rather than patching one slot. If the bounded search cannot produce a
+complete valid replacement, leave the current revision unchanged. Regeneration may
+return valid partial/incomplete results. SHA-256 source comparisons expose practical
+staleness, not reservations. Shopping is generated on demand from plan ID/revision
+and refuses stale source/time; no stale shopping cache or purchase command exists.
+
+**Consequences:** No revision-history platform or distributed command ledger. Exact
+creation retries avoid repeated planning after a completed write, but simultaneous
+first requests may both compute before one durable result wins. Existing rate
+limits are per account/path and best-effort under KV degradation; aggregate quotas
+remain T07. Cooked annotations do not fabricate actual cooked history or consume
+stock. T06B consumes only `meal-planning-api.ts`, `meal-shopping-api.ts` and
+`API_INTEGRATION.md`; new endpoints do not replace legacy Week, settings or cooking.
+No PayOS, authentication redesign, production deployment or AI work is authorized.
+
+## ADR-016 — Authenticated generated-plan integration and bounded AI presentation
+
+**Status:** Accepted for T06 implementation, 2026-09-09
+
+**Decision:** Extend the existing Hono/session/CSRF/tenant boundary and React
+application through an explicit `/planner` route; legacy Week remains unchanged.
+The application service loads D1 catalog, household inventory and scoped T03
+preferences/history before invoking T04 and T05. Client requests express intent,
+never authoritative inventory, shortages, prices, reviews or domain contexts.
+Missing retail offers remain missing; legacy benchmarks/OCR are not trusted quotes.
+Absent whole-dish safety reviews cannot satisfy hard safety constraints.
+
+Persist final generated-plan revisions separately from incompatible legacy Week
+rows. Plans are private to their creating member within the authorized household
+because T03 personal preferences/history are private. Revision writes use optimistic
+concurrency and idempotency; reads reauthorize and expose source staleness. Swap and
+explicit regeneration replay sequential planning, never patch downstream stock
+arithmetic. Marked-cooked annotations do not consume stock or fabricate actual
+`cooked_meals` history. No inventory acceptance or legacy cutover is introduced.
+
+Versioned allowlisted DTOs expose exact decimal quantity strings and minor-unit
+money strings, preserving uncertainty and best-known versus proven conclusions.
+AI is independently disabled by default and requested on demand only. It may choose
+among grounded presentation templates, not generate authoritative factual prose.
+Its bounded schema, provider timeout and deterministic fallback are independent of
+planning. No long-tail recipe publication or private recipe authoring is introduced.
+
+**Consequences:** An additive revision/annotation migration is justified by durable
+API identities, not a second optimizer. No search frontier is persisted. Existing
+rate-limit infrastructure supplies abuse control, not a globally atomic paid quota.
+Full source revalidation is required before any future acceptance/cooking adapter.
+The T05 option cap remains ID-order-sensitive; T07 should audit selection quality
+without changing the best-known/proof distinction. No payments, deployment or
+unrelated authentication/infrastructure changes are authorized.
+
+## ADR-015 — Trusted, generated-only economic evaluation of the fixed T04 plan
+
+**Status:** Accepted 2026-09-09 (T05)
+
+**Decision:** T04 per-slot deficits are the sole purchase-demand authority; no second
+stock deduction or hidden replanning loop. Reuse exact T02 Quantity arithmetic.
+Legacy VND benchmark/package tables lack a trustworthy offer-price relationship,
+so accept a validated opaque server-owned, household-scoped price/package snapshot
+without a new retail persistence platform. Currency is explicit; safe-integer minor
+unit inputs, BigInt monetary arithmetic and decimal-string outputs prevent rounding
+and overflow. Stale/estimated/foreign/unpriced observations remain qualified unknowns.
+
+Use bounded iterative per-ingredient package enumeration plus additive aggregation.
+Cost-first is the default; an explicit dimensionless cost-premium policy may reduce
+surplus without absurd spending. Hard budgets constrain those upgrades; soft targets
+only diagnose. Expose best-known versus exhaustive minima, and derive infeasibility
+only from proven lower bounds that account for unknown-price alternatives. Keep
+T04, shopping and budget feasibility/search completeness separate.
+
+Surplus is not certain waste. Report existing remainder and new purchase surplus
+separately using only dated expiry evidence; unknown risk remains unknown. No
+global optimal-waste/allocation claim. See `SHOPPING_OPTIMIZER.md` for full proof,
+limits, exact money fields, trust/temporal semantics and T06 output.
+
+**Consequences:** No schema migration, live pricing, FX, route/UI cutover, real
+inventory mutation, actual purchase or payment. Existing Week/standalone shopping
+stays unchanged. This task's explicit no-replanning directive supersedes the older
+T05 packet's proposed feedback loop; future orchestration must explicitly invoke
+T04. Trusted catalog providers must authorize/review offers; a callback wrapper
+does not turn client price/product/safety claims into authority.
+
 Entries identify the task in which they were accepted. Supersede an ADR explicitly; do not silently rewrite
 the agreed architecture. Later tasks must record migration and compatibility impact.
 
@@ -296,3 +448,79 @@ feasible variant exists. Family instructions/cuisine/times absent in T01 stay ab
 inventory math. D1/static catalog snapshots remain explicit internal read-only
 sources; drift/alias promotion proposals require review, not automatic writes or
 runtime cutover. No new persisted substitution or variant schema is needed.
+
+## ADR-013 — Scoped deterministic ranking, not legacy runtime cutover
+
+**Status:** Accepted 2026-09-08 (T03)
+
+**Decision:** Consume unmodified server-generated T02 snapshots, bound to household
+and explicit calendar date, before hard gates and normalized weighted utility.
+Keep T02 arithmetic untouched; add only existing family/prep metadata and a private
+scope/fingerprint guard rejecting serialized or mutated candidate inputs. Candidate
+review keys additionally bind demands, substitutions and lot witnesses. Review
+schemas validate structure, not authority; server-owned approval/review data remains
+mandatory. Unknown active hard safety/time/nutrition requirements fail closed.
+No safety policy requested is not a safe-food claim. See `RANKING_ENGINE.md` for
+exact scores, bounds, policy configuration, dates and nutrition source limitations.
+
+Persist ranking-specific household and member preferences/feedback because legacy
+global preferences/favorites cannot enforce household scope and Week settings are
+not ranking policy. Do not auto-import global/free-form intent. Personal soft
+defaults replace household defaults; hard restrictions union. Household defaults
+are owner-managed, personal data membership-bound. Existing `cooked_meals` remains
+the only cooking history authority; no new cooking events/commands or automatic
+Week skip/swap capture. Explicit latest tastes outrank weak behavioral feedback;
+cooked meals affect recency only. No separate taste aggregate or learned model.
+
+**Consequences:** Additive persistence with canonical FKs and bulk readers, no
+legacy route/ranker cutover. Static-only feedback targets require explicit reviewed
+D1 registration. No safety catalog is fabricated. Nutrition adapters preserve
+partial serving-basis observations as unverified; hard ranges require independently
+reviewed evidence. Expiry normalizes existing allocation shares, never reallocates
+stock. T04 receives candidate utility/components, not future meal decisions.
+
+## ADR-014 — Bounded sequential planning over the T02/T03 dependency
+
+**Status:** Accepted 2026-09-08 (T04)
+
+**Decision:** Add an explicitly invoked, pure weekly planner. Each ordered slot
+regenerates T02 availability on branch-local projected inventory and invokes T03
+hard eligibility/utility with trusted server-owned context. Deterministic bounded
+beam search keeps alternative futures; hard constraints never become score penalties.
+Expose recipe-search and planner-search incompleteness separately. A failed bounded
+search is not proof of infeasibility. No production Week/API cutover or inventory
+write is performed; T06 owns an authenticated shadow/canary integration.
+
+Reuse exact Quantity arithmetic and T02 lot witnesses. An opt-in expiry-priority
+allocation order supports projected consumption while preserving T02's default
+ID-order behavior. Only explicit supported expiry evidence affects priority; T02
+availability remains authoritative. Servings use T02 scaling without count rounding.
+One offset-bearing planning instant derives its local date and each slot's instant
+using the same fixed offset, with no inferred timezone or DST rules. Actual history
+is frozen at the planning instant; future choices are plan-local, not cooked events.
+
+T03 scores cover past-relative preference/expiry/time; additional plan terms cover
+future repetition, ingredient continuity and period nutrition only. Period nutrition
+targets explicitly concern household totals over requested meals, not invented daily
+meal allocations. Unknown/unreviewed hard nutrition fails closed. Leftover scheduling
+is deferred because legacy leftovers lack a trusted prepared-food expiry policy;
+every selected meal cooks and consumes its requested servings, without hidden excess.
+
+**Consequences:** Output includes selected demand/witnesses, shortages, per-lot deltas,
+initial versioned stock, projected final stock and complete search metadata for T05.
+It is generated state, not a reservation, shopping purchase or persisted Week plan.
+No migration is needed. A future accepting writer must reauthorize membership and
+recheck inventory/catalog/preference versions before invoking existing versioned,
+idempotent Week/command paths. T03 remains immutable at `3592de9`; temporary use of
+its branch is a tooling constraint only, and T04 is isolated in subsequent commits.
+
+**T04 hardening clarification:** Incomplete input/candidate evaluation is not a
+search-limit hit. `no_plan_found_without_proof` covers every unproven no-plan result;
+sorted, source-tagged `search.incompleteReasons` explain missing proof while
+`limitReasons`/`truncated` remain specific to actual computational caps. Existing
+hard eligibility and exhaustive-proof scope are unchanged. Nutrition's neutral
+utility baseline is not positive evidence: a support reason requires a positive
+utility delta, above-neutral aggregate fit, and an above-neutral fully qualified
+soft target covering the current meal. Empty future periods cannot justify it.
+This corrects the generated-only result contract before T05 integration; no persisted
+consumer, schema, allocation, scoring formula or search policy changes.

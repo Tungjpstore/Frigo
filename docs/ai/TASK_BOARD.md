@@ -1,53 +1,49 @@
-# Frigo Recipe & Meal Planning Task Board
+# Frigo task board
 
-This board records the durable execution order. Read it with `CURRENT_STATE.md`,
-`HANDOFF.md` and the active packet; source code/migrations remain implementation authority.
+| Task | Status | Evidence |
+| --- | --- | --- |
+| T01 Domain/data foundation | COMPLETE | Preserved foundation/hardening merged in main |
+| T02 Recipe engine | COMPLETE | `0051276` / `ef13acd`, merged in `db09fa0` |
+| T03 Ranking/personalization | COMPLETE | `01f9d87` / `3592de9` |
+| T04 Weekly planner | COMPLETE | `ebd538b` |
+| T05 Shopping/budget/waste | COMPLETE | `4f3f539` / `899b6d7` |
+| T06A Backend/API/trust/persistence | COMPLETE | `9f420c0` / `ca60ced` / `c46330c` |
+| T06B Frontend/UX/AI presentation/E2E | COMPLETE | `0fc78a4` / `6d4e873` preserved |
+| T07 Final hardening | COMPLETE, accepted non-blocking limits | `f9d2ff8`, final source receipt `0b20061` |
+| Release Integration | VERIFIED | Complete lineage; no source integration fix |
+| Release Publication | IN PROGRESS — docs published, final PR integration pending | `7b22aaf` recovered/published on `hoplite/koroneia-355b17d0` |
+| Production Reconciliation | NOT STARTED | Only after GitHub release/main finalization |
+| Production Deployment | NOT STARTED | No deployment authorization/action |
 
-| Task | Status | Depends on | Exit condition |
-| --- | --- | --- | --- |
-| T01 — Domain & Data Foundation + AI Development Protocol | **COMPLETE** | — | Migrations 0019/0020, canonical ID/version/provenance contracts and protocol; 47 focused / 668 total tests and all local gates passed. |
-| T02 — Recipe Engine | **COMPLETE** | T01 complete | Lot-aware quantity-only candidates, missing/unresolved semantics, scaling, approved substitutions, bounded family search and explicit catalog adapters; 106 focused / 774 total tests and all local gates passed. |
-| T03 — Ranking & Personalization | **READY** | T02 complete | Separate eligibility and deterministic ranking consume T02 facts and authorized preferences/feedback, without LLM dependence. |
-| T04 — Weekly Meal Planner | BLOCKED BY T03 | T02, T03 | Sequential lot-aware seven-day simulation enforces constraints and represents infeasibility. |
-| T05 — Budget / Shopping / Waste Optimizer | BLOCKED BY T04 | T04 | Plan-level shopping, budget, package and waste optimization returns feasible or explicit infeasible results. |
-| T06 — AI Layer + API + Frontend Integration | BLOCKED BY T04, T05 | T04, T05 | Authenticated APIs and existing-design UI expose the deterministic core; AI is bounded augmentation. |
-| T07 — Hardening / Tests / Final Architecture Review | BLOCKED BY T03–T06 | T01–T06 | Integrity, safety, performance, concurrency, migration and end-to-end contracts are hardened after features. |
+## Frozen release and preserved verification
 
-## Current checkpoint — 2026-09-08
+**T01–T07 ENGINEERING COMPLETE. ENGINEERING RELEASE VERIFICATION COMPLETE.**
+Verified application/source: `0b20061e7dc7405df68b18a18da4166e09494ecd`.
+Main remains `db09fa0c4353ddf4840e04c10b96a33240de3497`.
+Full **1,487/87**, focused **819/40**, payment-adjacent **82/7**, install/lint/types/
+build, local D1 **22/22**, actual-main **0020→0022** upgrade, schema/FK/integrity and
+browser **264 assertions / 36 phases** all PASS. Upgrade preserved **776 rows / 58
+tables**. Hosted CI **34387688066 SUCCESS on `0b20061`**. Exact timings, commands
+and the supplemental D1 direct-PRAGMA limitation: `RELEASE_CANDIDATE.md`.
+No expensive gate was rerun during documentation publication recovery.
 
-T02 implementation: `0051276f61445437d323ca318378e16fc0ad6967` on
-`hoplite/olbia-borysthenes-fbc61adc-recipe-engine-t02`. This state/handoff checkpoint
-follows it. T01 PR #5 was explicitly authorized and merged as `ae0ed79`, resolving
-an earlier stacked-branch ref collision. T01 implementation history remains intact.
-T02 has not been merged; consult live branch/PR state for publication and hosted CI.
+## Publication route / next action
 
-Final executed checks: `pnpm lint`, `pnpm typecheck`, `pnpm test` (**774 / 53**),
-`pnpm build`, `pnpm check:migrations`,
-`pnpm exec wrangler d1 migrations apply frigo-db --local`, `pnpm schema:check:local`,
-`pnpm exec vitest run tests/unit/recipe-families.test.ts` (**14**),
-`git diff --check`, `git diff --cached --check`: **PASS**.
-No T02 migration, remote database operation, manual deployment or runtime cutover.
+Original Draft PR #8: `hoplite/kirrha-5f4057f0` → main. That branch is the thread's
+protected configured base; previous direct publication and PR-link mutations were
+rejected. The user authorized the provisioned writable branch
+`hoplite/koroneia-355b17d0`; its fast-forward preserves the three original docs
+commits and the entire verified application lineage. `7b22aaf` is now remotely
+published, not local-only. Subsequent changes remain in four release docs only.
 
-The initial two regression tests failed collection while their module was absent,
-not two executed assertions. A seeded event-table fixture was corrected to assert
-before/after equality. A final contextual-slot regression failed as intended before
-its fix (1 failed / 13 skipped); all final gates ran again afterward. Exact commands,
-counts, corrections and limitations are in `CURRENT_STATE.md` and `HANDOFF.md`.
+Prefer a small docs-only PR into kirrha, then finalize #8. If #8 cannot receive the
+docs, create one superseding complete release PR to main. Inspect applicable final
+head CI; mark the release PR ready only after its gates pass. No automatic main
+merge. Freeze operator-produced `MAIN_RELEASE_SHA` before production reconciliation.
 
-## Next action
-
-T03 is ready but has not started; it requires a separate task authorization.
-First read the protocol/T03 packet and `RECIPE_ENGINE.md`; add a failing full-dish
-eligibility regression over T02 candidates before defining scores. Full quantity
-coverage must not override an allergen conflict or unknown hard-safety evidence.
-Reuse T02 arithmetic and preserve empty/truncated outcomes without unsafe fallback.
-
-## Operating rules
-
-- Advance status only after packet acceptance and relevant checks pass; implementation presence is insufficient.
-- `BLOCKED BY` forbids implementation until dependencies are complete unless a non-overlapping preparatory task is explicitly approved.
-- Before every task inspect Git and read all files named in `AGENT_RULES.md` plus the active packet.
-- Existing scoring/Week remains legacy capability, not completed T03–T05 functionality. `ALL_RECIPES`/D1 remain separate explicit sources.
-- PayOS/payment code, unrelated authentication and production infrastructure are protected. Household isolation, inventory commands and Week compatibility stay intact.
-- Update this board, `CURRENT_STATE.md` and `HANDOFF.md` with actual results and next action at every task boundary.
-- Local verification is not hosted CI or deployment evidence. Merge/deployment require their own authorization.
+**PayOS/payment code untouched. No real payment performed.**
+**MAIN NOT MODIFIED. PRODUCTION DEPLOYMENT NOT PERFORMED.**
+Planner/UI/AI checked-in production defaults remain OFF; live values not inspected.
+No remote D1, production configuration, application/test/migration or workflow edit.
+No T08. Preserve accepted KV, duplicate-compute, clipped-quality, fixed-offset,
+uncancelled-AI and production-capacity limitations without inventing new blockers.

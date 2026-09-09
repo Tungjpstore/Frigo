@@ -6,6 +6,9 @@ import { SessionBoundary } from './components/common/SessionBoundary';
 import { RouteFallback } from './components/common/RouteFallback';
 import { useAuthStore } from './stores/useAuthStore';
 import { AppLayout } from './components/layout/AppLayout';
+import { isMealPlannerEnabled } from './features/planner/feature';
+
+const PlannerPage = lazy(() => import('./pages/PlannerPage').then((m) => ({ default: m.PlannerPage })));
 
 const LandingPage = lazy(() =>
   import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })),
@@ -158,6 +161,11 @@ export const App: React.FC = () => {
                   <Route path="/week/:planId/meal/:mealId" element={<MealDetailPage />} />
                   <Route path="/week/:planId/shopping" element={<WeekShoppingPage />} />
                   <Route path="/week/:planId/settings" element={<WeekSettingsPage />} />
+                  <Route path="/planner" element={isMealPlannerEnabled() ? <PlannerPage /> : <Navigate to="/week" replace />} />
+                  <Route path="/planner/new" element={isMealPlannerEnabled() ? <PlannerPage /> : <Navigate to="/week" replace />} />
+                  <Route path="/planner/:planId" element={isMealPlannerEnabled() ? <PlannerPage /> : <Navigate to="/week" replace />} />
+                  <Route path="/planner/:planId/meal/:slotId" element={isMealPlannerEnabled() ? <PlannerPage /> : <Navigate to="/week" replace />} />
+                  <Route path="/planner/:planId/shopping" element={isMealPlannerEnabled() ? <PlannerPage /> : <Navigate to="/week" replace />} />
 
                   {/* Shopping, Profile, Settings, Notifications, Plus, Family */}
                   <Route path="/shopping" element={<ShoppingPage />} />

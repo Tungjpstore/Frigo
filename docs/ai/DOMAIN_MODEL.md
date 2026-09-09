@@ -1,4 +1,37 @@
-# Domain Model — T01 foundation and T02 calculations
+# Domain Model — T01 foundation through T05 shopping optimization
+
+T05 introduces `ShoppingContext`, `PurchaseOption`, `PurchaseRequirement`, scoped
+`ShoppingBudget` and generated-only `OptimizedShoppingPlan`. Packages are explicit
+sourced net contents tied to a canonical ingredient and optional retail identity;
+they are not inventory lots. Prices retain currency/source/as-of. Authoritative
+money uses integer minor units (BigInt internally; decimal strings in output).
+Unknown costs, purchase surplus and dated waste risk remain distinct. See
+`SHOPPING_OPTIMIZER.md`; no new tables or legacy shopping/runtime replacement.
+
+T04 introduces `PlanningContext`, `PlanningReference`, `PlannerRequest`,
+`WeeklyMealPlan` and native `ProjectedInventoryDelta` contracts. A plan is generated
+household/current-user state over an immutable versioned stock snapshot; it is not
+a reservation or actual inventory command. Each chosen meal retains T02 demands,
+allocations/shortages/variant identity and T03 ranked facts. A branch's projected
+stock decreases before later candidate generation. No new persistent identity or
+schema replaces existing Week. T05 consumes this output without subtracting initial
+inventory again. See `WEEKLY_PLANNER.md` for validated fields and failure semantics.
+
+Period nutrition ranges explicitly concern household totals across requested meals,
+with unknown and reviewed/estimated coverage retained. Leftover scheduling is
+explicitly disabled until trusted prepared-food storage/expiry policy exists; no
+surplus servings or invented shelf life are implied. No grocery purchases are
+projected into stock, even when known shortages are permitted.
+
+T03 adds `RankingPreferences`, `RecipeFeedback`, candidate-bound review evidence
+and `RankedRecipeCandidate`; see `RANKING_ENGINE.md`. Preferences are explicitly
+household defaults or household/current-user snapshots. Personal soft defaults
+replace household soft defaults, but all hard policies accumulate. Cooked history
+is household-shared; individual tastes/skips/swaps are not implicitly shared.
+`RankedRecipeCandidate` wraps unchanged deterministic T02 facts, eligibility,
+normalized utility/components/contributions, nutrition and data completeness.
+It is not a scheduled meal or consumption instruction. Existing global preferences
+and favorites are not silently imported into scoped ranking.
 
 Implemented SQL is `migrations/0019_recipe_domain_foundation.sql` plus append-only
 `0020_t01_foundation_hardening.sql`; validated inputs
@@ -16,7 +49,7 @@ bounded family candidates share one deterministic quantity path.
 | Concept | Identity / ownership | Meaning |
 | --- | --- | --- |
 | Ingredient | Existing global `ingredients.id` (e.g. `CHICKEN_BREAST`) | Food concept, not brand or stock |
-| Retail Product | Deferred to T05 | Retailer/SKU/barcode, actual package amount/price/currency and optional canonical mapping |
+| Purchase Option / Retail identity | T05 server-owned snapshot; optional product/retailer IDs | Explicit canonical mapping, sourced package contents/price/currency; no new SKU/barcode platform |
 | Inventory Item | `inventory_items.id`, household FK | A lot owned now, raw label, nullable ingredient FK, quantity/unit, storage, expiry, revision |
 | Recipe | Existing global catalog recipe ID | Recognizable dish and base servings with structured lines/steps |
 | Recipe Ingredient | Existing line ID + recipe/ingredient FKs | Demand at recipe's base servings; `required_quantity`, `unit`, `is_optional` |
