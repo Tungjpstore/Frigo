@@ -1,89 +1,73 @@
-# Frigo AI Handoff
+# Frigo AI Handoff - GitHub release finalized
 
-## Current Task
-Complete documentation publication for the already verified T01–T07 release.
-Not a new integration, hardening pass or T08. User authorized publication fallback
-on the provisioned writable continuation if original PR #8 cannot be updated.
+## Authoritative release
 
-## Task Status
-**T01–T07 ENGINEERING COMPLETE. RELEASE INTEGRATION VERIFIED.**
-**RELEASE PUBLICATION: docs published; final PR integration IN PROGRESS.**
-**PRODUCTION DEPLOYMENT NOT PERFORMED.**
-Production-local reconciliation **NOT STARTED**. Main merge **NOT PERFORMED**.
+AUTHORITATIVE REPOSITORY: `vn-2c/Frigo`
 
-## Repository / Branch Topology
-Repository: `vn-2c/Frigo`.
-MAIN: `db09fa0c4353ddf4840e04c10b96a33240de3497`, unchanged on explicit-ref fetch.
-Original release: `hoplite/kirrha-5f4057f0`, Draft PR #8.
-Writable continuation: `hoplite/koroneia-355b17d0` (this thread's provisioned branch).
-The old local-only `7b22aaf4ba44c9a059fbf0000f242ed35ef4c616` was available and
-safe: only the four release protocol docs changed. Preserved all three docs commits
-by fast-forwarding the writable branch, then successfully published that exact SHA.
-No reset, squash, rebase, cherry-pick or T01–T07 reconstruction. Main did not advance.
+AUTHORITATIVE BRANCH: `main`
 
-## Last Verified Application Commit
-VERIFIED APPLICATION SHA: **`0b20061e7dc7405df68b18a18da4166e09494ecd`**.
-Last application/test implementation SHA: `f9d2ff871da155ba7f1aaedd3112a5ed6ea8d2c0`.
-Non-`docs/ai` tree is unchanged. **NO APPLICATION CHANGE.**
-FINAL DOC HEAD: use the final PR's live head; this file cannot contain its own
-commit hash. Last confirmed published checkpoint:
-**`7b22aaf4ba44c9a059fbf0000f242ed35ef4c616`**. The PR receipt/final response records
-the subsequent exact status-documentation head after publication.
+MAIN_RELEASE_SHA: `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d`
 
-## Implemented / Audited
-Recovered, published and updated `RELEASE_CANDIDATE.md`, `CURRENT_STATE.md`,
-`TASK_BOARD.md` and this `HANDOFF.md`. They preserve exact verification evidence,
-source ancestry, flag state, known limits, rollout/rollback and operator actions.
-Only lightweight ancestry/source-equivalence and documentation diff checks in this
-continuation. Application/test/config source remains frozen.
+VERIFIED APPLICATION SHA: `0b20061e7dc7405df68b18a18da4166e09494ecd`
 
-## Database / Migration Changes
-None. Preserved evidence: clean local D1 **22/22 PASS**, actual-main **0020→0022
-PASS**, **776 rows across 58 tables preserved**, schema/FK/integrity PASS.
-The old supplemental direct-PRAGMA `SQLITE_AUTH` query-form limitation remains
-recorded; supported FK and read-only SQLite integrity checks passed. No new DB work,
-remote migration, production data access or schema edit during publication recovery.
+VERIFIED RELEASE HEAD: `0420807968538f61b669569d064c404f67032174`
 
-## Tests / Verification
-Preserved on `0b20061`: full **1,487 tests / 87 files PASS**, focused **819/40 PASS**,
-payment-adjacent **82/7 PASS**, install/lint/types/build PASS. Zero test failures.
-Hosted CI **34387688066 SUCCESS**, validate job **102587994085**, exact `0b20061`.
-Browser **264 assertions / 36 phases**, 121 existing commands, en/vi × 375/390/
-desktop, zero failures/page errors. All expensive gates intentionally NOT rerun.
-`RELEASE_CANDIDATE.md` retains original exact commands/timings and proof limits.
-Final-head PR CI must be inspected; source CI is not relabeled as docs-head CI.
+MAIN CI: `34396319671 SUCCESS`
 
-## Preview / Evidence
-Earlier managed preview used real Vite/Worker, isolated SQLite, synthetic session
-and blocked backend external fetch. Existing presentation fixtures are not live
-retailer/provider proof. No new browser run, screenshot or video in this recovery.
-No production preview/data or new framework. Previous screenshot remains in thread.
+DEPLOY WORKFLOW: `34396457582`
 
-## Feature Flags / Legacy Coexistence
-Planner/UI/AI production defaults remain OFF in checked-in state. Live production
-values were NOT inspected. No flag enablement. Legacy Week, auth, inventory commands
-and household/creator isolation remain untouched. Planned != consumed; shopping !=
-purchased; unknown != zero. No reviewed production price/safety adapter is claimed.
+PRODUCTION: **NOT DEPLOYED**
 
-## Findings Deferred / Risks
-Retain genuine T07 KV best-effort quota, duplicate initial compute, bounded option
-quality, fixed-offset time, uncancelled native AI and production-capacity limits.
-No new application defect. Original direct push rejected the configured-base guard;
-original PR updates rejected repository linkage despite listed linkage. These old
-errors do not prevent using the now-authorized writable branch and normal PR flow.
+T01-T07 and the release integration/publication are complete. The main merge
+tree is source-equivalent to the verified release head. The only changes in this
+final cleanup are the four `docs/ai/` release protocol documents.
 
-## Protected Areas
-**PayOS/payment code untouched.**
-**No real payment performed.**
-**MAIN NOT MODIFIED. PRODUCTION DEPLOYMENT NOT PERFORMED.**
-No apps/src/packages/tests/migrations/dependency/lockfile/Wrangler/workflow edits.
+## Verification receipt
 
-## Next Exact Action
-Publish this status checkpoint. Prefer a docs-only PR into kirrha and merge only
-that documentation PR if permitted; otherwise one superseding release PR to main
-from the same continuation. Inspect applicable CI, then mark final release PR ready.
-Do not automatically merge main or repeat verified source tests.
-After operator normal merge, freeze `MAIN_RELEASE_SHA`. Only AFTER GitHub release
-finalization begin separately authorized production-local reconciliation. Deployment,
-remote migrations and rollout are separate operations; retain the existing schema
-gate and planner-OFF default. Never reverse additive schema blindly for rollback.
+- Full: 1,487 tests / 87 files PASS.
+- Focused: 819 tests / 40 files PASS.
+- D1 clean: 22 / 22 migrations PASS.
+- Upgrade sanity: 0020 -> 0022 PASS.
+- Existing rows preserved: 776 rows / 58 tables.
+- Browser: 264 assertions / 36 phases PASS.
+- Payment-adjacent: 82 tests / 7 files PASS.
+- Final release CI: PASS.
+
+The application gates above are preserved evidence; they were not rerun during
+this docs-only cleanup. Deploy packaging completed, staging was not provisioned
+and no staging deployment occurred, and production deployment was not performed.
+
+## Production boundary
+
+PRODUCTION LOCAL RECONCILIATION NOT STARTED
+
+PRODUCTION DATABASE MIGRATION NOT PERFORMED
+
+PRODUCTION DEPLOYMENT NOT PERFORMED
+
+Checked-in planner/UI/AI safe defaults remain under the existing rollout policy.
+Live production values and secrets were not inspected. PayOS/payment code is
+untouched and no real payment was performed.
+
+## Historical PR state
+
+PR #8 is historical/obsolete as an integration vehicle. GitHub already shows it
+closed and merged into `main` at `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d` before
+this cleanup, so no close-without-merge action can be taken. Later `kirrha`
+commits are stale release documentation only and must not be merged or reverted.
+
+## Next task
+
+Reconcile currently running production-local source against MAIN_RELEASE_SHA
+before any production update.
+
+**Do NOT git pull/reset directly inside running production.**
+
+Production-local source must first be snapshotted and compared. Do not SSH for
+changes, deploy frontend/Worker, apply remote D1 migrations, enable planner
+flags, restart production, or alter production configuration as part of this
+bookkeeping task.
+
+The next task may use the eventual post-cleanup GitHub `main` head as its source
+of truth, with application lineage anchored at
+`23ef51d6ec12a5a3e319a2d941dca39d2775cb9d`.
