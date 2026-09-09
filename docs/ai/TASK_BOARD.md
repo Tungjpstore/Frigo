@@ -7,48 +7,37 @@
 | T03 Ranking/personalization | COMPLETE | Preserved `01f9d87` / `3592de9` |
 | T04 Weekly planner | COMPLETE | Preserved hardened `ebd538b` |
 | T05 Shopping/budget/waste | COMPLETE | `4f3f539` / `899b6d7` |
-| T06A Backend/API/trust/persistence | COMPLETE | Published `9f420c0` / `ca60ced` / `c46330c`; 1136 tests verified |
-| T06B Frontend/UX/AI presentation/E2E | IN PROGRESS / RESUMED | Continued exact `c5f8623` on `hoplite/mende-90a2dbb1`; 80 baseline frontend and 110 API/AI tests PASS; browser replay implemented; final gates pending |
-| T07 Final hardening | BLOCKED BY T06B | Do not start implicitly |
+| T06A Backend/API/trust/persistence | COMPLETE | `9f420c0` / `ca60ced` / `c46330c`; regressions retained |
+| T06B Frontend/UX/AI presentation/E2E | COMPLETE | Continued `c5f8623`; final code `0fc78a4`; 1,390 tests / 79 files and 88 browser assertions PASS |
+| T07 Final hardening | READY | Dependencies complete; not started; separate authorization required |
 
-## Task split and recovery
+## Current verified checkpoint
 
-The explicit T06A request supersedes the combined T06 packet's frontend/AI scope.
-`84251cc` exists but was incomplete/unbuildable: references without new source files.
-Case C recovery preserved history, removed dangling hooks/dead navigation and retained
-nonblocking frontend query/layout material. No unpublished workspace was reconstructed.
-The authoritative T05 checkpoint remains `899b6d7`, an ancestor of the current branch.
+Authorized workspace `sex-vn/Frigo`, branch `hoplite/mende-90a2dbb1`.
+Final verified implementation: `0fc78a4fdc624973413259c048e65ed585fa2b8e`, published.
+Continuation also published `e178d04` (browser/focus) and `63aae9d` (component/reason
+coverage), preserving backend `1f7802f`, frontend `08d90fa`, WIP `c5f8623` and every
+T06A/T01–T05 ancestor. No reset, rebuild, payment change or production cutover.
 
-## Current checkpoint
+`pnpm test`: **1,390 / 79 PASS**. `pnpm lint`, `pnpm typecheck`, `pnpm build`,
+`pnpm check:migrations`, `pnpm schema:check:local`: **PASS**, all exit 0.
+Frontend **192 / 5**, T06B-specific suites **254 / 8**, browser **88 assertions /
+12 phase executions**; do not sum overlapping categories. See `T06B_VERIFICATION.md`
+for exact commands, counts, corrected failures and final documentation-head policy.
 
-T06B preservation checkpoint: `08d90fa99ea032e20697744bdab64caa81056d9d`, published.
-Source, new files, preview API integration tests and unfinished UI are preserved.
-93 backend tests / 4 files and 17 preview API tests / 1 file passed; initial browser
-generation/mobile inspection completed. Final integrated gates and remaining UI
-flows are not verified. `T06B_WIP_HANDOFF.md` records exact scope/evidence/next actions.
-The following verification is historical T06A baseline, not T06B acceptance.
+## History and compatibility
 
-Branch `hoplite/leukas-32474504`, authorized `arsvn-vn/Frigo`. Recovery commit
-`9f420c05cf3adf48825f2645bcdc5accf36ac4b4` is published with typecheck/build and
-1077 tests / 66 files passing. Backend adds strict DTOs, a coherent authorized D1
-snapshot, current-plan CAS storage, thin generate/get/regenerate/swap/shopping/
-feedback routes, existing rate limits and exact uncertainty-safe mapping.
-
-Backend initial focused suite: 51 tests / 5 files pass. Initial full suite
-1127 passed / 1 failed due to the migration-head assertion; expected head updated
-from 0021 to newly appended 0022. Full rerun: **1128 tests / 71 files PASS**.
-Final hardened `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm test` PASS:
-**1136 tests / 71 files** (42 HTTP scenarios). `pnpm check:migrations`, local D1 apply
-and local schema gate PASS. Independent follow-up review: **48 tests / 2 files PASS**;
-atomic stale-feedback/replay fix verified. Malformed budget strings return 422.
-Current-time history freshness retains new-event detection. Final test-only TS2571
-was fixed without weakening assertions; all gates reran successfully.
+`84251cc` was an incomplete combined T06 checkpoint; the T06A recovery preserved
+history and removed dangling references rather than inventing unpublished files.
+T06B then supplied the real source preserved in `08d90fa`. Its interrupted status
+is now retired, with `T06B_WIP_HANDOFF.md` retained for audit history.
+Legacy Week and trust/inventory boundaries remain unchanged.
 
 ## Next exact action
 
-When authorized to resume, open `T06B_WIP_HANDOFF.md` and run
-`pnpm exec vitest run tests/unit/meal-planning-client.test.ts tests/unit/planner-presentation.test.ts`
-before new UI. T06B is interrupted, not complete; T07 remains blocked. Preserve
-frontend-safe schemas and `API_INTEGRATION.md`, retaining legacy Week as default.
-No payment, real inventory mutation, implicit purchase, AI authority or production
-configuration cutover is part of this task.
+When authorized, read `AGENT_RULES.md`, `HANDOFF.md`, `T06B_VERIFICATION.md` and
+`tasks/T07-hardening-final-review.md`. Verify clean Git and `0fc78a4` ancestry,
+then run `pnpm test` before evidence-based T07 review. Aggregate quota, bounded
+optimizer/temporal-package and production security assessment remain T07 scope.
+No T07 implementation, deployment, remote migration or PayOS work is authorized
+by this completed T06B handoff.

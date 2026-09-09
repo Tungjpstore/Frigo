@@ -64,6 +64,11 @@ No replacement components or new domain functionality were needed.
 - Real browser alternatives conflict reproduced a timeout after Try again because
   it repeated the old-revision request. Recovery now reads/replaces the entire plan;
   obsolete choices close and reopening loads the latest revision without a swap.
+- Repeated deliberate creation with identical settings reused a completed key.
+  Successful creation now retires that key; failed/lost-response retries retain it.
+  Mounted navigation regressions prove new creation and exact retry separately.
+  Two test-only loading-button selectors were corrected to retain the original
+  button node without weakening disabled/duplicate-submit assertions.
 - A test-only TS2571 from unknown `Response.json().plan` was corrected using the
   typed current-plan client; no assertion/type safety was weakened.
 - Initial vi browser fixture assertion assumed English comma grouping. Corrected
@@ -75,6 +80,11 @@ No replacement components or new domain functionality were needed.
   mirrored to project overrides; the exact setup ran successfully via shell.
   Node 24.19.0, sqlite3 and locked pnpm dependencies were used. Reported to Hoplite;
   no production setup/auth/payment infrastructure was changed.
+- Editing hook structure while the dev browser was open left two historical React
+  hot-reload errors in the browser buffer. Clean document/browser reloads are used
+  for final replay, not those intermediate HMR states. Retired scratch jsdom
+  dependencies were removed after the durable locked install; no symlinked
+  scratch dependency tree remains in browser capture artifacts.
 
 ## Focused executed evidence
 
@@ -92,15 +102,53 @@ These sets overlap; do not sum them as independent totals.
 
 ## Final gates and counts
 
-Final integrated gates and verified implementation SHA are filled only after
-execution. T06B is not complete while this section remains pending.
+Verified implementation SHA: **`0fc78a4fdc624973413259c048e65ed585fa2b8e`**,
+published on `hoplite/mende-90a2dbb1`. Final source was frozen before these runs.
+The earlier 1,386-test integrated run preceded four additional mounted tests and
+is not the final count. Logs: `.hoplite/artifacts/t06b/verified-code-*.log`.
+
+| Exact command | Result on verified implementation |
+| --- | --- |
+| `pnpm test` | PASS, exit 0: **1,390 tests / 79 files**, no failures/skips |
+| `pnpm lint` | PASS, exit 0 |
+| `pnpm typecheck` | PASS, exit 0; web/tests and Worker |
+| `pnpm build` | PASS, exit 0; Vite and Worker TypeScript |
+| `pnpm check:migrations` | PASS, exit 0, `migration-smoke=ok` |
+| `pnpm schema:check:local` | PASS, exit 0 |
+| `pnpm install --frozen-lockfile` | PASS; jsdom 26.1.0 is the sole new direct test dependency, no unrelated upgrades |
+
+Final suites, overlapping categories clearly separated:
+
+- `tests/unit`: **1,015 tests / 55 files**, including component and mounted tests.
+- `tests/integration`: **358 tests / 23 files**.
+- `tests/e2e/planner-preview.test.mjs`: **17 API integration tests / 1 file**.
+- T06B frontend: **192 tests / 5 files** = client 24, presentation 56, semantic
+  components 58, reason/status coverage 6, mounted hooks/interactions 48.
+- Mounted 48 = restoration 10, revision/shopping races 15, session fencing 8,
+  generation interactions 4, other mutation/feedback interactions 11.
+- T06A/T06B planning HTTP: **69 / 2 files** (42 + 27), plus preview API 17 above.
+- AI grounding/fallback unit: **18 / 1 file**; HTTP/provider fencing also covered.
+- T06B-specific addition suites: **254 / 8 files** (frontend 192 + presentation
+  HTTP 27 + AI 18 + preview API 17). Other T06A regressions remain in the full suite.
+- Browser: **88 named assertions / 12 phase executions**, both required locales/
+  viewports; **PASS** on the committed implementation. These are not Vitest cases.
+
+Focused frontend command executed on this SHA:
+`pnpm exec vitest run tests/unit/planner-ui.test.tsx tests/unit/planner-hook.test.tsx tests/unit/planner-reason-coverage.test.ts tests/unit/planner-presentation.test.ts tests/unit/meal-planning-client.test.ts --reporter=json --outputFile=.hoplite/artifacts/t06b/final-frontend.json`
+— **192 passed**, five files. API/AI/preview suites also run inside `pnpm test`.
+
+This subsequent documentation-only checkpoint cannot contain its own future SHA.
+Resolve it with `git log -1 --format=%H -- docs/ai/HANDOFF.md`. Final closure reruns
+the same full gates and browser command matrix on that exact committed HEAD;
+the final response records its SHA/results. No implementation/test change is
+permitted between the verified source and that documentation checkpoint.
 
 ## Browser evidence interpretation
 
 Replay: managed `browser_cli` `batch --bail`, finite stdin from
 `tests/e2e/planner-browser.commands.json`; see `T06B_E2E.md` for exact phases.
-Expected complete matrix: 44 named assertions per locale, 88 total across 12 phase
-executions. Report browser assertion counts separately from Vitest case counts.
+Completed matrix: 44 named assertions per locale, 88 total across 12 phase
+executions. Browser assertion counts are separate from Vitest case counts.
 Real Worker flows cover happy/uncertainty/stale/current restoration and conflicts;
 mixed-price/429 substitutions are explicitly frontend presentation evidence only.
 No actual retail catalog, live provider or production deployment is certified.
