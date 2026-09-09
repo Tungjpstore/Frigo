@@ -75,6 +75,11 @@ No replacement components or new domain functionality were needed.
   the assertion to the locale's grouping (`4.820` in vi); application formatting
   was correct. Native CLI top-level `await` and one incorrect selector were harness
   invocation errors, corrected to promise evaluation and actual accessible names.
+- The final browser replay exposed a harness readiness race: a retained mutation
+  conflict alert appeared while the alternatives query was still pending. The
+  waiter now requires the alternatives alert's enabled retry action, not any alert.
+  A subsequent snapshot confirmed that action appeared normally; no product
+  assertion was removed and no application-source change was needed.
 - Platform setup falsely reported tracked `.hoplite/settings.json` missing and
   rejected the setup lifecycle claim. Exact repository setup/run commands were
   mirrored to project overrides; the exact setup ran successfully via shell.
@@ -140,8 +145,9 @@ Focused frontend command executed on this SHA:
 This subsequent documentation-only checkpoint cannot contain its own future SHA.
 Resolve it with `git log -1 --format=%H -- docs/ai/HANDOFF.md`. Final closure reruns
 the same full gates and browser command matrix on that exact committed HEAD;
-the final response records its SHA/results. No implementation/test change is
-permitted between the verified source and that documentation checkpoint.
+the final response records its SHA/results. A browser-only readiness-wait follow-up
+is documented above and is included in that final rerun. Application source remains
+identical to the verified implementation SHA.
 
 ## Browser evidence interpretation
 

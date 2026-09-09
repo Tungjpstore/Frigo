@@ -28,7 +28,8 @@ Earlier continuation checkpoints `e178d04a04d3acb54d2e3fc8a3878577c5081467` and
 This following documentation-only checkpoint cannot record its own future hash;
 resolve it with `git log -1 --format=%H -- docs/ai/HANDOFF.md`. Final closure reruns
 all listed gates and the browser matrix on that exact HEAD, and records its hash
-in the final response. No source/test change separates these checkpoints.
+in the final response. A browser-only readiness-wait follow-up is documented below;
+application source remains identical to the verified implementation.
 
 ## Implemented
 - Reused all existing T06B APIs/client/components/preview/AI architecture rather
@@ -115,6 +116,8 @@ Original-hook control: 10 failed / 31 passed, now all 48 mounted tests pass.
 Real native reverse-Tab and stale-alternatives retry regressions fixed. Successful
 creation/retry identity is separately tested. Test-only unknown JSON typing,
 loading-button selectors and vi grouping expectations corrected, not weakened.
+The final browser waiter now waits for the alternatives alert's enabled retry
+button rather than a retained earlier mutation alert while that query is pending.
 Intermediate hot-reload errors are not final clean-browser evidence. Initial
 platform setup/settings failure used the exact repository-owned workaround.
 Full details and historical results are in `T06B_VERIFICATION.md`; 1,386 was an

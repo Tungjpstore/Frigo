@@ -205,7 +205,8 @@ export async function alternativesConflict() {
   assert(response.ok, 'Concurrent actor advanced plan before alternative lookup');
   const next = await response.json();
   activate(button(t.swap));
-  await until(() => document.querySelector('dialog [role="alert"]'), 'alternatives revision conflict');
+  await until(() => [...document.querySelectorAll('dialog [role="alert"] button')]
+    .some((node) => node.textContent.trim() === t.retry && !node.disabled), 'alternatives revision conflict retry action');
   activate(button(t.retry, document.querySelector('dialog')));
   await until(() => !document.querySelector('dialog'), 'retry refreshes plan instead of repeating stale alternatives');
   activate(button(t.swap));
