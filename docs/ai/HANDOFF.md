@@ -5,7 +5,8 @@ T07 — final hardening, continuing the published interruption checkpoint.
 
 ## Task Status
 **T01–T05 COMPLETE. T06A COMPLETE. T06B COMPLETE. T07 IN PROGRESS.**
-H1 planner boundary audit passed; H2–H6 and final verification continue.
+H1 planner boundary audit published `65c1367`; H2 fix verified; H3–H6 and final
+verification continue.
 
 ## Repository / Branch Topology
 Current repository-bound tools identify `fri-go/Frigo`; historical `sex-vn/Frigo`
@@ -32,7 +33,9 @@ persisted hard restrictions beat soft preference. No H1 security defect reproduc
 no speculative source fix. Rendering/log breadth continues in H5/H6.
 
 ## In Progress
-H2 aggregate account budget (reproduced fan-out), H3 concurrency/persistence,
+H2 aggregate account budget is verified (95/6 focused PASS and targeted ESLint);
+see `T07_H2_ABUSE.md` for pre-fix failures, real-Hono error proof and non-atomic KV
+characterization. Next checkpoint preserves the fix and ADR-019. H3 concurrency/persistence,
 H4 exact-domain contracts, H5 mounted frontend/AI/flags, H6 operational observations.
 Parallel source/test work is staged only into its own reviewed phase checkpoint.
 
@@ -66,7 +69,7 @@ unrelated auth or production infrastructure change. Preserve unknown != zero,
 best known != proven optimal, planned != actual consumption, and intent != trust.
 
 ## Next Exact Action
-Commit/publish H1, then complete and checkpoint H2–H6 in order. Freeze application
+Publish H2, then complete and checkpoint H3–H6 in order. Freeze application
 source only after all audit fixes are verified, then execute full final gates and
 browser matrix. Current exact progress and preserved historical recovery:
 `T07_WIP_HANDOFF.md`. Do not restart T07, reset history or request branch approval

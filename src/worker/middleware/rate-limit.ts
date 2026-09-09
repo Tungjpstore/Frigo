@@ -26,6 +26,7 @@ interface RateLimitConfig {
   windowSeconds: number;
   prefix?: string;
   enforcement?: RateLimitEnforcement;
+  scope?: 'path' | 'account';
 }
 
 // In-memory fallback sliding window for dev / when KV is not bound
@@ -113,7 +114,7 @@ export function rateLimiter(config: RateLimitConfig) {
       'anonymous_client';
 
     const path = c.req.path;
-    const key = `${prefix}:${ip}:${path}`;
+    const key = config.scope === 'account' ? `${prefix}:${ip}` : `${prefix}:${ip}:${path}`;
     const now = Math.floor(Date.now() / 1000);
 
     const isProduction = (c.env.ENVIRONMENT || 'development') === 'production';
@@ -121,7 +122,7 @@ export function rateLimiter(config: RateLimitConfig) {
       config.enforcement ??
       (c.env.RATE_LIMIT_ENFORCEMENT === 'fail-closed' ? 'fail-closed' : 'best-effort');
 
-    // 1. Cloudflare KV is the only globally-coherent limiter available.
+    // KV shares counters across isolates but read/put is not an atomic reservation.
     const kv = c.env.CACHE;
     if (kv) {
       try {

@@ -62,6 +62,7 @@ export function createMealPlanningRoutes(options: MealPlanningServiceOptions = {
   routes.use('/meal-planning/*', tenancyGuard);
   routes.use('/meal-planning/*', bodyLimit({ maxSize: 65_536, onError: (c) => c.json({ code: 'REQUEST_TOO_LARGE', error: 'Request exceeds 64 KiB' }, 413) }));
   const expensive = rateLimiter({ maxRequests: 10, windowSeconds: 60, prefix: 'meal-planning-expensive' });
+  const compute = rateLimiter({ maxRequests: 10, windowSeconds: 60, prefix: 'planner-compute', scope: 'account' });
   const feedbackLimit = rateLimiter({ maxRequests: 60, windowSeconds: 60, prefix: 'meal-planning-feedback' });
   const reads = rateLimiter({ maxRequests: 60, windowSeconds: 60, prefix: 'meal-planning-read' });
   const service = (c: Ctx) => new MealPlanningApplicationService(c.env.DB, {
@@ -75,7 +76,7 @@ export function createMealPlanningRoutes(options: MealPlanningServiceOptions = {
     return parsed.data;
   };
 
-  routes.post('/meal-planning/plans', expensive, (c) => respond(c, async () =>
+  routes.post('/meal-planning/plans', compute, expensive, (c) => respond(c, async () =>
     service(c).generate(scope(c), await body(c, MealPlanningIntentSchema), key(c))));
   routes.get('/meal-planning/plans/current', reads, (c) => respond(c, () => service(c).current(scope(c))));
   routes.get('/meal-planning/plans/:id', reads, (c) => respond(c, () => service(c).get(scope(c), planId(c))));
@@ -86,13 +87,13 @@ export function createMealPlanningRoutes(options: MealPlanningServiceOptions = {
     }
     return service(c).alternatives(scope(c), planId(c), parsed.data.revision);
   }));
-  routes.post('/meal-planning/plans/:id/explanation', expensive, (c) => respond(c, async () =>
+  routes.post('/meal-planning/plans/:id/explanation', compute, expensive, (c) => respond(c, async () =>
     service(c).explanation(scope(c), planId(c), await body(c, PlanExplanationRequestSchema), c.env.MEAL_PLANNER_AI_ENABLED === 'true')));
-  routes.post('/meal-planning/plans/:id/regenerate', expensive, (c) => respond(c, async () =>
+  routes.post('/meal-planning/plans/:id/regenerate', compute, expensive, (c) => respond(c, async () =>
     service(c).regenerate(scope(c), planId(c), await body(c, RegenerateMealPlanSchema))));
-  routes.post('/meal-planning/plans/:id/swap', expensive, (c) => respond(c, async () =>
+  routes.post('/meal-planning/plans/:id/swap', compute, expensive, (c) => respond(c, async () =>
     service(c).swap(scope(c), planId(c), await body(c, SwapMealSchema))));
-  routes.post('/meal-planning/plans/:id/shopping', expensive, (c) => respond(c, async () =>
+  routes.post('/meal-planning/plans/:id/shopping', compute, expensive, (c) => respond(c, async () =>
     service(c).shopping(scope(c), planId(c), await body(c, OptimizePlanShoppingSchema))));
   routes.post('/meal-planning/plans/:id/feedback', feedbackLimit, (c) => respond(c, async () =>
     service(c).feedback(scope(c), planId(c), await body(c, PlanFeedbackSchema), key(c))));
