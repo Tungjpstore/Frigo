@@ -1,73 +1,80 @@
-# Frigo current state — T07 final hardening verified
+# Frigo current state — existing release PR #8
 
 ## Current task
 
-**T01–T05 COMPLETE. T06A COMPLETE. T06B COMPLETE.**
-**T07 COMPLETE WITH NON-BLOCKING FOLLOW-UPS.**
-Local release candidate verified; production deployment is **not** authorized.
-Hosted CI is **not verified** and remains a release prerequisite.
+**T01–T07 ENGINEERING COMPLETE.** T07's accepted non-blocking follow-ups remain.
+**RELEASE INTEGRATION IN PROGRESS.**
+**PRODUCTION DEPLOYMENT NOT PERFORMED.**
 
-## Intentional continuation topology
+Continue existing Draft PR [#8](https://github.com/vn-2c/Frigo/pull/8), branch
+`hoplite/kirrha-5f4057f0`; do not recreate integration or rewrite history.
+`RELEASE_CANDIDATE.md` is the current release receipt/runbook. Historical T07
+implementation and phase evidence remain in `T07_VERIFICATION.md`, H1–H6 receipts
+and `PRODUCTION_READINESS.md`; their old hosted-CI blocker is superseded below.
 
-- Original T07 branch: `hoplite/lipara-d81160ee`.
-- Published continuation checkpoint: `006742bc179d58aae53106c88aff8a2667dbd1ca`.
-- Writable continuation: `hoplite/prokonnesos-74e71894`.
-- Exact recovery `f39180421f12ff68751dba7898aa39535b2d3a95` was preserved by
-  fast-forward and published. Both checkpoint ancestry checks pass.
-- **Frozen verified application/test SHA:**
-  `f9d2ff871da155ba7f1aaedd3112a5ed6ea8d2c0`.
+## Frozen release identity
 
-The user authorized this publisher topology; it is not an architectural issue.
-No restart/reset or historical source divergence. Final status/verification docs
-follow the frozen SHA without changing application/test/config source.
+- Main remains `db09fa0c4353ddf4840e04c10b96a33240de3497`, unchanged from PR creation.
+- Release/T07 source: `0b20061e7dc7405df68b18a18da4166e09494ecd`.
+- Last application/test commit: `f9d2ff871da155ba7f1aaedd3112a5ed6ea8d2c0`.
+- Full T01–T07 ancestry, including `006742b`, exact recovery `f391804`, and T06B
+  `0fc78a4`/`6d4e873`, remains intact. No squash/rebase/cherry-pick/reset.
+- Existing release branch was checked out from the fresh workspace's alternate
+  local name at the same SHA. No new release branch or remote change.
+- Provider currently identifies the existing repository/PR as `vn-2c/Frigo`.
 
-## Actual changes and findings
+Main and release refs were fetched through the explicit-ref trusted broker and
+matched expected SHAs. No topology reintegration was necessary. Source-equivalence
+comparison from `f9d2ff8` passed; this continuation changes **documentation only**.
 
-| Phase | Result | Published checkpoint |
-| --- | --- | --- |
-| H1 security/trust | 51 new actual-auth creator/household/spoofing cases; ownership matrix; no planner boundary bypass reproduced | `65c1367` |
-| H2 abuse | Reproduced raw-path fan-out fixed by planner-only account budget; existing route/auth policies preserved; KV explicitly approximate | `55020bc` |
-| H3 persistence | Reproduced CAS response race fixed by own UPDATE RETURNING row; six controlled-race cases; no index/migration | `a19063b` |
-| H4 domain | Contradictory shopping currency scale rejected; exact quantity/money/unknown/proof/cap regressions | `865ee91` |
-| H5 frontend/AI | Fixed mounted A→B stale private view and failed/successful 409 recovery; grounded AI and literal-true flag tests | `d579798` |
-| H6 operations | Five real Worker operation measurements; failure/privacy audit; explicit rollout/rollback and known limits | `f9d2ff8` |
+## Fresh release verification — 2026-09-09
 
-Five implementation files changed. No T02–T05 allocation/ranking/search semantics
-were redesigned. No reproduced critical/high issue remains unfixed in this scope.
+| Gate | Actual result |
+| --- | --- |
+| Frozen dependency install | PASS; pnpm 14.1 s, lockfile unchanged |
+| `pnpm test` | **1,487 tests / 87 files PASS**, 0 failures; Vitest 140.36 s, wall 141.834 s |
+| Focused T02–T07 suites | **819 tests / 40 files PASS**, 0 failures; Vitest 56.48 s, wall 59.555 s |
+| Payment-adjacent entitlement/quota/config/limiter suites | **82 tests / 7 files PASS**, 0 failures; Vitest 9.83 s, wall 13.006 s |
+| `pnpm lint` / `pnpm typecheck` / `pnpm build` | PASS; wall 10.682 / 33.524 / 22.997 s |
+| Migration smoke / clean local D1 / schema | PASS; 22/22 migrations; wall 0.666 / 11.844 / 2.642 s |
+| Actual-main 0020 → 0022 upgrade | PASS; 776 rows / 58 old tables unchanged; apply 3.019 s, upgraded schema gate 2.587 s |
+| Foundation/preflight regressions | PASS 22/2; Vitest 3.16 s, wall 4.626 s |
+| Existing managed browser matrix | PASS; 264 assertions / 36 phases, all 121 commands; en/vi × 375/390/1280; 485.976 s; zero failures/page errors |
+| Hosted release-source CI | **SUCCESS**, run `34387688066`, job `102587994085`, exact `0b20061`, completed 18:14:28Z |
 
-## Final verification on frozen source
+All local tests were freshly executed, not copied from the T07 audit. Counts overlap.
+Supplemental direct-PRAGMA Wrangler inspection returned `SQLITE_AUTH`; the supported
+FK query and read-only SQLite integrity check passed. Exact commands, scope and final documentation-head CI belong in
+`RELEASE_CANDIDATE.md`. No application/test/config fix or weakened assertion.
 
-- `pnpm test`: **1,487 tests / 87 files PASS** (97.68 s Vitest; 98.725 s wall).
-- Focused T02–T06 plus all T07 suites: **819 tests / 40 files PASS**.
-- Full lint, both typecheck targets, Vite/Worker build: **PASS**.
-- Migration smoke, **clean local** D1 0001–0022 apply, read-only schema/FK gate,
-  versioned query-plan replay and diff/ancestry checks: **PASS**.
-- Managed real-browser en/vi × 375/390/1280: **264 assertions / 36 phases PASS**,
-  no page errors after any combination. One synthetic screenshot shared.
-- High-confidence credential-marker scan: no source/test/frontend-output matches.
+## Feature flags / readiness / protected areas
 
-Exact commands, timings, pre-fix/fixture failures, observation values and browser
-coverage limits: `T07_VERIFICATION.md` and phase receipts. Focused counts overlap
-the full suite. One browser user only; mounted/real-auth tests cover A→B/IDOR.
-No live provider, screen-reader, production capacity or remote schema claim.
+Backend, UI and AI flags remain literal-true opt-in. Checked-in production defaults
+are off; live deployed values were not inspected. Only the existing isolated
+preview enables backend/UI, with deterministic AI fallback. Legacy Week and real
+inventory commands remain intact. Planned != consumed; shopping != purchased.
 
-## Known follow-ups / readiness
+D1 through 0022 and valid production bindings/auth/origin remain operator gates.
+No reviewed production purchase-catalog adapter or safety registry is provided;
+unknown prices/nutrition/safety remain explicit. KV counters are non-atomic;
+concurrent initial requests may duplicate CPU; fixed-offset time, clipped optimizer
+quality, uncancelled native AI and large-catalog/network limits remain documented.
 
-`PRODUCTION_READINESS.md` records approximate distributed KV, bounded duplicate
-initial compute, native AI non-cancellation, fixed-offset time, clipped optimizer
-quality, large-catalog sorts and lack of custom browser request deadline. These
-are explicit limits, not hidden completed optimizations. No production quota/SLA
-or universal food-safety/optimality guarantee is advertised.
+**PayOS/payment code untouched by release integration.** Main-to-source protected
+paths and shared middleware were reviewed. No dedicated PayOS regression suite was
+found; adjacent test success is not live payment certification. No real payments,
+remote migrations, production flag enablement, deployment or unrelated auth change.
 
-CI does not trigger for the configured checkpoint PR base and has no manual
-entrypoint; exact-frozen-SHA completed push query returned no runs. Obtain safe
-hosted CI and operator release/schema approval before any rollout. No deployment,
-production flag, remote DB, unrelated auth or infrastructure change occurred.
-**PayOS/payment code untouched.** Legacy Week and inventory commands remain intact.
+## Environment and next action
 
-## Next action
+The platform missed tracked `.hoplite/settings.json` and rejected managed setup's
+lifecycle claim. Exact existing setup/run commands were mirrored into overrides;
+unchanged setup ran successfully via shell and managed preview started. Reported
+platform limitation, not an application defect; no repository config change.
 
-Review/publish the final documentation receipt and continuation PR. Then obtain
-exact-head hosted CI and existing operator approvals in a separately authorized
-release task. Do not enable planner/AI flags or deploy from this audit. Follow H6
-staged rollout/rollback only after those release gates; do not restart T07.
+Publish these four release protocol documents on the same branch and inspect latest
+PR validation. All source gates are green; only documentation-head CI remains.
+Do not redo integration or rerun already-green source verification. Once that check
+passes, record it and mark the candidate ready for an explicit operator **normal merge**.
+Before merging, review existing main-push automatic staging behavior. Deployment
+requires separate exact-main push CI, schema/data readiness and operator approval.

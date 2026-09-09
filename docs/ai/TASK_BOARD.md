@@ -10,6 +10,7 @@
 | T06A Backend/API/trust/persistence | COMPLETE | `9f420c0` / `ca60ced` / `c46330c` |
 | T06B Frontend/UX/AI presentation/E2E | COMPLETE | `0fc78a4`, historical 1,390/79 + 88 browser assertions |
 | T07 Final hardening | **COMPLETE WITH NON-BLOCKING FOLLOW-UPS** | Frozen `f9d2ff8`: 1,487/87 full, 819/40 focused, all local gates and 264 browser assertions PASS |
+| Post-T07 release integration | **IN PROGRESS — documentation-head CI remaining** | Existing Draft PR #8, frozen `0b20061`; fresh full 1,487/87, focused 819/40, adjacent 82/7, lint/types/build, local migration/upgrade and 264 browser assertions PASS |
 
 ## Intentional continuation topology
 
@@ -25,14 +26,40 @@ were separately committed and published. Final application/test source:
 only. `T07_VERIFICATION.md` records exact commands, timings and source-equivalence
 proof; `PRODUCTION_READINESS.md` contains severity and accepted limitations.
 
-## Next exact action / release gate
+## Current release continuation / next action
 
-Review the continuation PR and obtain exact-head hosted CI, remote schema readiness
-and normal operator release approval in separately authorized release work.
-**Hosted CI not verified:** existing workflow does not trigger for the configured
-checkpoint base and has no manual entrypoint. Do not rewrite infrastructure to force
-CI, call local checks hosted checks, enable production flags, deploy or migrate
-remotely as part of this audit. No payment/PayOS work.
+**T01–T07 ENGINEERING COMPLETE. RELEASE INTEGRATION IN PROGRESS.**
+**PRODUCTION DEPLOYMENT NOT PERFORMED.**
+
+Continue existing Draft [PR #8](https://github.com/vn-2c/Frigo/pull/8) on
+`hoplite/kirrha-5f4057f0`, not the historical T07 continuation branches above.
+Main is unchanged at `db09fa0c4353ddf4840e04c10b96a33240de3497`; complete lineage
+is preserved. No new branch, topology rewrite, reset or product/source change.
+
+Fresh 2026-09-09 full suite: **1,487 tests / 87 files**, Vitest **140.36 s**,
+wall **141.834 s**, zero failures. Focused T02–T07: **819/40**, **56.48 s**,
+wall **59.555 s**, zero failures. Payment-adjacent: **82/7**, **9.83 s**,
+wall **13.006 s**, zero failures; no dedicated PayOS suite exists. Install,
+lint/typecheck/build pass. Migration smoke (0.666 s), clean local D1 22/22
+(11.844 s), schema (2.642 s), actual-main 0020→0022 upgrade (3.019 s) and upgraded
+schema (2.587 s) pass; 776 rows / 58 old tables unchanged. Foundation/preflight
+tests 22/2 pass (Vitest 3.16 s). Supplemental direct PRAGMA returned `SQLITE_AUTH`;
+supported FK and read-only integrity inspection passed. Fresh browser matrix:
+**264 assertions / 36 phases**, all **121 commands**, en/vi × 375/390/1280,
+**485.976 s**, zero failures/timeouts/retries/page errors. Synthetic screenshot
+shared after parent inspected seven restored meals at revision 6.
+
+The previous checkpoint-base CI limitation is superseded: existing release PR #8
+targets main and source-head `0b20061` hosted CI **34387688066 / validate
+102587994085 PASSED** at 18:14:28Z. Documentation-head validation must be inspected
+after publication. No workflow was changed/dispatched and no deployment occurred.
+
+Publish `RELEASE_CANDIDATE.md`, `CURRENT_STATE.md`, this board and `HANDOFF.md`,
+inspect documentation-head CI, then record readiness and hand off for explicit
+operator normal merge. Do not redo integration or already-green source gates.
+Review existing automatic staging on successful future main-push CI before merge.
+Production requires separately approved schema/data/binding readiness and release
+approval; no remote migrations, production flags or PayOS changes are authorized.
 
 Non-blocking follow-ups are explicitly scoped: approximate KV, bounded duplicate
 initial compute, native AI non-cancellation, fixed-offset time, option-clipping
