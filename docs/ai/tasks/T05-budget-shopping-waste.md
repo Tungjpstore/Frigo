@@ -44,6 +44,22 @@ Frigo has legacy shopping aggregation and price/package tables. Its existing dom
 
 ## Acceptance Criteria
 
+### Implemented contract
+
+- `../SHOPPING_OPTIMIZER.md` and ADR-015 define the pure generated-only T05 API.
+  `shopping-*.ts` consumes authoritative per-slot T04 deficits, never reruns T04 or
+  subtracts initial inventory. Legacy Week/shopping remains unchanged.
+- Opaque scoped server snapshot, sourced package contents/prices, exact minor-unit
+  money, bounded package enumeration, explicit budget proof and separate surplus/risk.
+- Partial-horizon package allocation is not implemented; affected proofs remain
+  incomplete without falsely claiming a search cap or impossible budget. Lossy
+  numeric quantity output boundaries reject rather than underbuying.
+- No schema/API/frontend/payment or real inventory changes. T06 consumes the
+  generated contract after future authorized preload and revalidation.
+- Final verification: 153 new tests / 5 files; full 1077 tests / 66 files, focused
+  T02–T05 403 / 18, all required gates and sandbox-local D1/schema checks PASS.
+  Exact evidence, corrected review failures and publication are in state/handoff.
+
 - Inventory allocated to one earlier plan requirement cannot offset the same quantity a second time.
 - A 500 g package can cover a compatible 300 g mass shortage only when explicit package metadata exists; a `pack` cannot be converted to grams by assumption.
 - Budget calculations compare amounts only in a known common currency and disclose estimate/freshness/provenance.

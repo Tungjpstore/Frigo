@@ -1,80 +1,62 @@
-# Frigo Recipe & Meal Planning Task Board
+# Recipe / Meal Planning Task Board
 
-Source/migrations and live Git are authority. Read with CURRENT_STATE, HANDOFF and
-active packet; implementation presence or local tests alone do not imply publication.
+Verified 2026-09-09. **T05 COMPLETE — T06 READY**. Read `AGENT_RULES.md` and the
+required current documents before editing. No T06 implementation has started.
 
-| Task | Status | Depends on | Exit condition |
+| Task | Status | Dependencies | Verified checkpoint |
 | --- | --- | --- | --- |
-| T01 — Domain & Data Foundation | **COMPLETE** | — | Additive 0019/0020, canonical identity/version/provenance contracts and development protocol. |
-| T02 — Recipe Engine | **COMPLETE** | T01 | Merged `db09fa0`; lot-aware quantity-only candidates, scaling, substitutions, bounded families and explicit catalog adapters. Default behavior retained by T04's opt-in allocation extension. |
-| T03 — Ranking & Personalization | **COMPLETE** | T02 | Immutable checkpoint `3592de9`; implementation `01f9d87`, 850 tests / 56 files and local gates verified. Ranking/personalization source unchanged by T04. |
-| T04 — Weekly Meal Planner | **COMPLETE** | T02, T03 | Published hardening `d7dff8f` after `c28838c` / `a687a63` / handoff `7d76cdf`; sequential bounded planning, truthful incomplete-result metadata and evidence-backed nutrition reasons. 924 tests / 61 files and all final local gates pass. |
-| T05 — Budget / Shopping / Waste Optimizer | **IN PROGRESS** | T04 | Authorized on hardened T04 `ebd538b`; deterministic purchase/package/budget/waste evaluation only, no replanning loop. |
-| T06 — AI Layer + API + Frontend Integration | BLOCKED BY T05 | T04, T05 | Authenticated integration with existing UI; read-only planner shadow/canary path, AI bounded augmentation only. |
-| T07 — Hardening / Tests / Final Architecture Review | BLOCKED BY T05, T06 | T01–T06 | Final safety, integrity, concurrency and end-to-end verification. |
+| T01 — Domain & Data Foundation | **COMPLETE** | — | Additive 0019/0020, canonical identity/version/provenance and development protocol. |
+| T02 — Recipe Engine | **COMPLETE** | T01 | Merged `db09fa0`; exact lot-aware candidates, scaling, approved substitutions, bounded families. |
+| T03 — Ranking & Personalization | **COMPLETE** | T02 | Immutable `3592de9`; scoped deterministic eligibility/ranking, feedback and 0021 persistence. |
+| T04 — Weekly Meal Planner | **COMPLETE** | T02, T03 | Hardened `d7dff8f`, final handoff `ebd538b`; fresh preflight 924 tests / 61 files passed. |
+| T05 — Budget / Shopping / Waste Optimizer | **COMPLETE** | T04 | Published `4f3f539`; fixed-plan deficits, trusted packages/prices, bounded optimization, exact budget proof, surplus/risk, 153 new tests. |
+| T06 — AI Layer + API + Frontend Integration | **READY — NOT STARTED** | T04, T05 | Consume generated contracts through authorized preload/shadow integration; no client/LLM arithmetic authority. |
+| T07 — Hardening / Tests / Final Architecture Review | BLOCKED BY T06 | T01–T06 | Final integrated safety, integrity, concurrency and end-to-end review. |
 
-## Current checkpoint — 2026-09-09
+## Current checkpoint
 
-Repository `ganghienteck-droid/Frigo`, confirmed by the user; branch
-`hoplite/stagiros-728cc726`. T04 is temporarily stacked on this existing branch
-because Hoplite could not allocate a dependent branch. Explicit user authorization
-permits new commits only, after immutable T03 `3592de9832a55a06d4af6fa31491c8f3c0321262`.
-Pre-edit tree was clean and HEAD matched. No history rewrite or main merge occurred.
+Dedicated branch `hoplite/datala-8b986478`, configured repository `ars-vn/Frigo`.
+User-supplied `tun-vn/Frigo` redirects there. Clean immutable T04 base:
+`ebd538b4a57c2af85ad28a34c54f762093bc2403`. New commits only:
+- `f28ab54d8084ec737382cb11a00b49275930fa3b` — preflight/scope checkpoint.
+- `4f3f5394772e0be57108b179775034dbb64e5073` — verified and published T05 implementation.
+- Following documentation checkpoint — records actual verification and readiness;
+  enumerate its own SHA with `git log --reverse --format='%H %s' ebd538b..HEAD`.
 
-T04 commits:
-1. `c28838cf22ee05c6b7eacef0a89091c95846e4ae` — isolated minimal expiry-allocation
-   compatibility change and standalone T02 regression.
-2. `a687a63817fc153849c255562bbf62c1da475e9a` — bounded sequential planner, tests,
-   contract and ADR-014.
-3. `7d76cdfd9efe4cded3af4b7eb102f7ba57c3b624` — original verified T04 handoff.
-4. `d7dff8f5b986c141ddddb464e86524a3a367392a` — surgical result/explanation
-   hardening, eight regressions and contract clarification. First-party push confirmed.
+No T01–T04 history or implementation was rewritten. No PR, merge, deployment or
+remote D1 operation. `SHOPPING_OPTIMIZER.md` and ADR-015 define the accepted T05
+contract. The detailed no-replanning authorization supersedes the original T05
+packet's proposed feedback loop; T05 emits feedback but never invokes T04.
 
-Implementation range: `3592de9..d7dff8f5b986c141ddddb464e86524a3a367392a`.
-This documentation-only checkpoint follows the confirmed implementation push and
-cannot name itself; inspect `git log --reverse --format='%H %s' 3592de9..HEAD` for
-the full T04 range including handoff. No PR, remote migration or deployment.
+## Final executed verification
 
-Hardening preflight was clean at `7d76cdf`, with all required commits and no
-architecture drift. Finding A was **ALREADY_SAFE**; B and C were **CONFIRMED**.
-Unproven results now use `no_plan_found_without_proof` with sorted source-tagged
-incomplete reasons, not a false limit claim. Nutrition support requires above-neutral
-qualified evidence covering the current meal; scoring/selection rules are unchanged.
+- `pnpm test`: **1077 tests / 66 files PASS**; T05 adds **153 / 5**.
+- Focused T02–T05: **403 / 18 PASS**. T05-only: **153 / 5 PASS**.
+- `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm check:migrations`: **PASS**.
+- Existing local D1 migration apply and `pnpm schema:check:local`: **PASS**.
+- `git diff --check`, `git diff --cached --check`: **PASS**.
+- Protected paths and dependency implementation diff against `ebd538b`: **empty**.
+- Independent review: three reproduced defects corrected; re-review found no blockers.
+  Initial review regression run **3 failed / 1 file**; final hardening suite **17 PASS**.
+- Stress: 32 options / 2e9 g, exactly 200 states per repeated deterministic run,
+  sufficient best-known candidate and visible truncation. Ten exhaustive small
+  oracle cases verify optimal cost/surplus/count. No timing claims.
 
-Final executed gates: `pnpm test` (**924 / 61**, **74 added since T03**), `pnpm lint`,
-`pnpm typecheck`, `pnpm build`, `pnpm check:migrations`, `pnpm schema:check:local`,
-`git diff --check`, `git diff --cached --check`: **PASS**. Final source/tests were
-unchanged after those gates. Five new test files contain 73 tests; the allocation
-regression adds one to the existing candidate suite. Stress: 21 slots / 100 recipes,
-200-state test cap, deterministic output, bounded frontier/branching and visible
-truncation. Logs: `.hoplite/artifacts/t04-hardening/final/` (ignored).
+Exact commands, logs, setup/source-control limitations and all results are in
+CURRENT_STATE/HANDOFF. UI/preview and hosted CI were **NOT RUN** because this is a
+pure generated-only subsystem change with no PR. No new schema was needed.
 
-Focused relevant T02/T03 and all T04 tests: **208 / 8 PASS**. Before the fix,
-the two-file regression run reported **9 failed / 38 passed**; all are corrected.
-Exact commands and independent review evidence are in CURRENT_STATE/HANDOFF.
+## Next action / operating rules
 
-Initial shopping-projection failure (1 failed / 19 passed), intermediate typing
-issues and review corrections are resolved and recorded in CURRENT_STATE/HANDOFF.
-UI/preview and hosted CI **NOT RUN**; remote D1/deployment **NOT RUN / not authorized**.
-No migration needed. Protected paths, T03 ranking and legacy Week remain unchanged.
+T06 is READY, not authorized by this completion. On a separate request, read its
+packet plus `WEEKLY_PLANNER.md` and `SHOPPING_OPTIMIZER.md`; establish authorized
+preload, reviewed catalog data and shadow integration before acceptance/cutover.
+T06 must not recompute package combinations or treat client prices as trusted.
 
-## Next action
+Keep money exact, unknown distinct from zero, surplus distinct from certain waste,
+and T04 completeness separate from T05 proof. Partial-horizon purchase allocation,
+live retail data/FX/bundles and global waste optimality are explicitly not claimed.
 
-**T04 COMPLETE — T05 READY**, not started. Review T04, then separately authorize
-T05 if desired. First verify the hardened checkpoint and read its packet plus the
-updated T04 contract, then audit existing shopping/price/package helpers. T05 must
-use selected demands/shortages/final projection without subtracting stock twice;
-T04 expiry allocation is not a globally waste-optimal purchase policy. T06 owns the documented authenticated shadow path;
-leftovers, DST handling and production acceptance remain explicit future limitations.
-Create/link a PR only if requested and subscribe to auto-fix if created. Do not
-merge or deploy without authorization.
-
-## Operating rules
-
-- Existing legacy scoring/Week is not completion of T05–T07 or permission for cutover.
-- Read AGENT_RULES, required documents and active packet; inspect Git each task.
-- Never rewrite applied migrations or silently import global/free-form preferences.
-- PayOS/payment, unrelated auth/production infrastructure are protected. Preserve
-  household isolation, inventory commands and Week compatibility.
-- Update state/board/handoff with exact checks and next action at each boundary.
-- Local verification is not hosted CI or deployment. Merge/deployment require authorization.
+PayOS/payments, unrelated auth/infrastructure and legacy Week/inventory command
+boundaries remain protected. Do not silently change meals, stock or runtime readers.
+Update state/board/handoff with exact executed checks at each future checkpoint.

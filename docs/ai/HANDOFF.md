@@ -1,238 +1,225 @@
 # Frigo AI Handoff
 
-## T05 preflight checkpoint — 2026-09-09
-
-T05 is authorized and IN PROGRESS on dedicated branch `hoplite/datala-8b986478`.
-Clean baseline: `ebd538b4a57c2af85ad28a34c54f762093bc2403`, whose parent is the
-latest T04 hardening `d7dff8f5b986c141ddddb464e86524a3a367392a`. All dependency
-statuses agree; the T04 handoff below is current historical evidence, not stale
-implementation. Current configured repository is `ars-vn/Frigo`; user-supplied
-`tun-vn/Frigo` redirects there. No remote or dependency history changed.
-
-Next: implement T05 after auditing legacy shopping/price/package infrastructure.
-Use per-slot T04 deficits exactly once; never replan, mutate inventory or cut over
-legacy runtime. The older packet's feedback loop is superseded by this task's
-explicit no-replanning authorization. New checks/results will replace this checkpoint.
-
 ## Current Task
-T04 — Weekly Meal Planner
+T05 — Budget / Shopping / Waste Optimizer
 
 ## Task Status
-**T04 COMPLETE — T05 READY**. T05 has not started; separate authorization required.
-
-T04 is temporarily stacked on `hoplite/stagiros-728cc726` because Hoplite could not
-allocate a dependent branch. The user authorized new commits strictly after immutable
-T03 `3592de9832a55a06d4af6fa31491c8f3c0321262`; pre-edit HEAD matched and the tree
-was clean. No T01–T03 amendment, squash, rebase, rewrite or merge to main occurred.
-The topology limitation changes neither architecture nor scope. Keep these commits
-separable for any later authorized cherry-pick.
+**T05 COMPLETE — T06 READY**. T06 is not started. No PR, merge, remote migration or
+deployment was requested/performed.
 
 ## Dependency Baseline
-Immutable T03 checkpoint: `3592de9832a55a06d4af6fa31491c8f3c0321262`.
+Exact immutable hardened T04 checkpoint:
+`ebd538b4a57c2af85ad28a34c54f762093bc2403`, parent hardening
+`d7dff8f5b986c141ddddb464e86524a3a367392a`. Preflight was clean; T01–T04 COMPLETE,
+T05 READY. Latest T04 hardening was already in HANDOFF/CURRENT_STATE/TASK_BOARD.
+Fresh baseline `pnpm test` passed **924 tests / 61 files**. No T04 architecture
+repair or dependency source modification was necessary.
 
-## T04 Commits
-- `c28838cf22ee05c6b7eacef0a89091c95846e4ae` — allocation compatibility extension.
-- `a687a63817fc153849c255562bbf62c1da475e9a` — bounded sequential planner.
-- `7d76cdfd9efe4cded3af4b7eb102f7ba57c3b624` — original verified T04 handoff.
-- `d7dff8f5b986c141ddddb464e86524a3a367392a` — conclusion/metadata and nutrition
-  explanation hardening, eight regressions and clarified contract/ADR.
+## Repository / Branch Topology
+Configured repository `ars-vn/Frigo`; verified user-supplied `tun-vn/Frigo` redirects
+there. Dedicated thread branch `hoplite/datala-8b986478` starts directly at `ebd538b`.
+No fallback dependency branch, remote change, amendment, rebase or history rewrite.
+
+T05 commits:
+- `f28ab54d8084ec737382cb11a00b49275930fa3b` — preflight checkpoint, current identity,
+  and removal of the old packet's now-prohibited replanning-loop requirement.
+- `4f3f5394772e0be57108b179775034dbb64e5073` — implementation, tests, ADR-015 and
+  shopping architecture/contract. **First-party publication confirmed this exact SHA.**
+- This following documentation-only checkpoint cannot record its own SHA. Use
+  `git log --reverse --format='%H %s' ebd538b..HEAD` for the full append-only range.
 
 ## Last Verified Commit
-`d7dff8f5b986c141ddddb464e86524a3a367392a`
-(`fix(meal-planner): harden T04 result semantics`), verified 2026-09-09.
-
-Verified implementation range: `3592de9..d7dff8f5b986c141ddddb464e86524a3a367392a`.
-First-party push confirmed that exact implementation head on the existing branch
-in user-confirmed `ganghienteck-droid/Frigo`. No remote was changed, PR created,
-merge performed or deployment attempted. This following documentation-only checkpoint
-cannot name its own hash; `git log --reverse --format='%H %s' 3592de9..HEAD` enumerates
-all T04 commits including this handoff. Historical T03 evidence remains at the base.
-
-Hardening preflight found a clean tree at `7d76cdf`, all required dependency commits
-and no architecture drift. Finding A was **ALREADY_SAFE**: all three state documents
-already agreed on T04 complete/T05 ready. B (false search-limit wording) and C
-(neutral nutrition producing positive explanation) were **CONFIRMED** and fixed.
+`4f3f5394772e0be57108b179775034dbb64e5073`
+(`feat(shopping): add deterministic bounded budget and waste optimizer`).
+Final source/tests passed all gates before this documentation-only update. Historical
+T04 handoff/verification remains available at `ebd538b:docs/ai/HANDOFF.md`.
 
 ## Implemented
-- Mandatory preflight/specification/implementation review and **850-test baseline**.
-- Pure T02 regeneration → unchanged T03 eligibility/ranking → bounded sequential
-  search → exact projected consumption for each selected future slot.
-- Opaque scoped context and copy-on-write exact inventory; native lot witnesses,
-  date-aware availability, conservation and nonnegative branch isolation.
-- Isolated minimal T02 opt-in expiry ordering; default ID ordering and T03 unchanged.
-- Fixed-offset temporal reference, ordered configurable slots/servings, exact locks,
-  deterministic replay for swaps, future-only variety and period nutrition rules.
-- Explicit cook-now/shopping modes, shortages without hypothetical purchases,
-  no fallback on hard exclusions and no false infeasibility proof on truncated search.
-- Versioned generated-only output with selected facts, deltas, initial versions/final
-  stock, shortage aggregates, nutrition, signed utility and scoped diagnostics for T05.
-- Corrected unproven conclusions, source-tagged incomplete reasons and data-only
-  incomplete status, without changing eligibility, proof scope or search bounds.
-- Evidence-backed nutrition support reasons; neutral utility and hard gates unchanged.
-- `WEEKLY_PLANNER.md`, ADR-014, architecture/domain/task updates, 74 added regressions
-  and all final local gates passing. Verified implementation published.
+- Audited existing package/price/inventory/retail/receipt/shopping infrastructure.
+  Legacy VND benchmarks and package-size rows do not form authoritative package
+  offers. No SKU/barcode/store/bundle platform exists; none was invented.
+- `createShoppingContext`: opaque, copied/frozen authorized server snapshot binding
+  household/user, T04 plan, catalog as-of, explicit currency and scoped budget.
+- Sole demand source: T04 per-slot shortages. Exact physical aggregation, preserved
+  source meals/lines and optional/contextual uncertainty. No second inventory deduction.
+- Trusted sourced package net contents, optional retail identity, price provenance,
+  availability and expiry. Strict validation/deduplication, no fabricated conversions.
+- Exact minor-unit money: safe-integer inputs, BigInt calculation and decimal-string
+  outputs. Unknown/stale/future/estimated/foreign prices stay explicitly unpriced;
+  no FX or fallback price guesses. Explicit proof is required for free offers.
+- Bounded seeded iterative package search, additive global cost aggregation, default
+  cost-first and optional bounded-premium surplus policy. Hard budgets filter all
+  affordable premium alternatives; soft targets diagnose selected overruns.
+- Structured known/incomplete totals, best-known/exhaustive cost distinctions,
+  conservative lower-bound proofs, gaps/cost drivers and explicit feedback without
+  hidden replanning. Unpriced alternatives cannot falsely prove an impossible budget.
+- Temporal evaluation incompleteness is separate from search caps: early-use-only
+  offers and pending expiry review suppress affected economic proof while preserving
+  safe best-known purchases. No global temporal allocation optimum is claimed.
+- Exact quantity round-trip output guard prevents serialization from erasing a tiny
+  deficit or misstating purchased/surplus quantities. Unsupported range fails explicitly.
+- Separate T04 existing-stock remainder and purchase surplus with sourced expiry
+  risk/coverage. Unknown shelf life is unknown; no certain waste or safety inference.
+- T06-ready generated output preserves upstream plan/recipe search, diagnostics,
+  unplanned slots, source revisions and separate shopping search/evaluation metadata.
+- 153 new tests and independent review/re-review, with all repository gates passing.
 
 ## In Progress
-None in T04 implementation. This documentation checkpoint follows its verified push.
+None in T05 implementation. This documentation checkpoint follows confirmed
+implementation publication; it changes no source/tests.
 
 ## Remaining
-- Review T04. Create/link a PR only if requested, subscribing to auto-fix if created.
-- T05 optimization and T06 authenticated shadow/canary integration remain separate
-  work. Do not start T05, merge, deploy or change production under this handoff.
+- Review the published T05 range. Create/link a PR only on request and subscribe
+  to auto-fix updates if one is created. Do not merge or deploy implicitly.
+- T06 may start only with separate authorization. It must establish reviewed trusted
+  data loading and authenticated integration, not accept request prices as authority.
 
 ## Files Changed
-- Compatibility: `packages/domain/src/availability.ts`, `packages/recipes/src/candidates.ts`,
-  `tests/unit/recipe-candidates.test.ts`, `docs/ai/RECIPE_ENGINE.md`.
-- Planner: `packages/recipes/src/{planner-context,planner-inventory,planner-nutrition,
-  planner-policy,planner-request,planner-types,planner-utility,weekly-planner}.ts`
-  and recipe barrel exports.
-- Tests: `tests/helpers/planner-fixtures.ts`, `tests/unit/{weekly-planner,planner-contract,
-  planner-inventory,planner-nutrition}.test.ts`, `tests/integration/weekly-planner.test.ts`.
-- Docs: `WEEKLY_PLANNER`, `ARCHITECTURE`, `DOMAIN_MODEL`, `DECISIONS`, `CURRENT_STATE`,
-  `TASK_BOARD`, `HANDOFF`, and `tasks/T04-weekly-meal-planner.md`.
+- New pure modules: `packages/recipes/src/shopping-{catalog,demand,packages,policy,
+  waste,optimizer}.ts`; additive exports in `packages/recipes/src/index.ts`.
+- Tests: `tests/helpers/shopping-fixtures.ts`, `tests/unit/shopping-{optimizer,
+  catalog,search,hardening}.test.ts`, `tests/integration/shopping-optimizer.test.ts`.
+- Documentation: `SHOPPING_OPTIMIZER.md`, `ARCHITECTURE.md`, `DOMAIN_MODEL.md`,
+  ADR-015 in `DECISIONS.md`, state/board/handoff and the T05 packet.
 
 ## Database / Migration Changes
-None. Migrations 0001–0021 and DB repositories are byte-unchanged from T03. The
-existing local D1 read-only schema gate passes; no T04 migration application needed.
-No remote D1 commands, data import, catalog publication or deployment.
+**None.** Existing 0001–0021 migrations and DB repositories are unchanged.
+Full migration smoke and sandbox-local D1 apply/schema checks passed. No production
+D1 access, catalog import, shopping persistence or inventory update was performed.
+Generated results do not belong in legacy Week JSON or optimizer-state tables.
 
 ## Real Inventory
-**NOT mutated by planning.**
-
-Planning performs no database calls after trusted preload and never mutates real
-stock/events/Week. No new persistence/acceptance writer or real reservation exists.
-Source snapshot versions/fingerprint support comparison but are not authorization
-or sufficient concurrency locks. Future acceptance must reauthorize/revalidate the
-whole inventory, catalog/reviews and preferences, then use existing transactional,
-versioned/idempotent commands and Week compatibility rules.
+**NOT mutated by shopping optimization.** T05 receives no DB binding and performs
+no I/O after preload. SQLite tests demonstrate unchanged stock/events/Week/shopping
+rows and zero statements during generation. Input plan/catalog/budget objects remain
+unchanged. No actual reservation, purchase confirmation or cooking command exists here.
+Future acceptance must reauthorize and revalidate the whole inventory, plan, reviewed
+catalog/prices and budget. Snapshot fingerprints are not concurrency/security tokens.
 
 ## Architecture Decisions
-ADR-014 and `WEEKLY_PLANNER.md` define:
-- Trusted server-owned snapshot, not raw caller safety/preferences/inventory JSON.
-  The callback boundary is not authentication; review providers must be immutable,
-  deterministic in-memory server code. No I/O in beam expansion.
-- Each branch regenerates T02 and invokes T03. No duplicate ingredient conversion,
-  substitution validation, hard safety logic or historical ranking implementation.
-- Exact Quantity native-unit witness consumption; kind-prioritized usable expiry
-  order: use-by, best-before, estimated, unknown, then date/ID. No shelf-life inference.
-- Beam alternatives, deterministic path ties, explicit recipe/planner completeness;
-  best-found feasible results are not global optima, bounded failure is not proof.
-- One fixed-offset instant/date reference, chronological slots, household-total
-  period nutrition and T02 scaling/fractional counts, without invented portions.
-- Only plan-local repetition/continuity/period nutrition supplement T03. Historical
-  tastes are not duplicated and generated meals never become actual cooked events.
-- Leftovers disabled: legacy tags/titles do not provide trusted prepared-food expiry.
-- Generated-only library coexistence with a documented future T06 read-only shadow
-  path. No Week cutover or T05 purchasing/budget/waste optimizer.
+ADR-015 and `SHOPPING_OPTIMIZER.md` specify:
+- Authorized provider boundary, not raw request price/product/safety data.
+- T04 per-slot deficits only; optional shortages excluded from mandatory spending.
+- Exact Quantity semantics and integer minor-unit money with explicit currencies.
+- Unknown price != free; purchase surplus != certain waste.
+- Bounded per-ingredient search and deterministic hard-budget premium admission,
+  not a global meal/bundle/store/waste solver.
+- Best-known != minimum after caps or unsupported temporal evaluation; unknown
+  alternative prices invalidate unjustified economic lower bounds.
+- Existing remainder is the T04 allocation witness, not globally waste-optimal truth.
+- Generated-only coexistence with legacy shopping; no new schema or runtime cutover.
 
-## Planner Search
-Conclusions: `feasible`, `proven_infeasible`, `no_plan_found_without_proof`.
-Proof remains limited to supplied input/hard policy and fixed allocation; hard
-unknowns still fail closed. `partial` preserves a valid nonempty prefix. With no
-selected meals, `incomplete` identifies data/evaluation uncertainty without a cap;
-`search_limited` requires actual truncation. Sorted, deduplicated `{source, code}`
-pairs in `search.incompleteReasons` retain multiple causes. Existing limit reasons,
-completeness flags, counters, family metadata and rejection diagnostics are preserved.
+## Shopping Search
+Default/max limits: options 12/32, states per requirement 2048/16384, total states
+16384/65536, packages per requirement 128/1024. Trusted input caps: 2000 catalog
+options and 2000 per-slot shortages. No full Cartesian product is materialized.
 
-Default bounds: beam 6, candidates/slot 8, states 1024, recipes 80, families 4,
-variants/family 16, family traversal states 128. Maxima: 16 / 32 / 4096 / 500 / 16 /
-64 / 1024. Horizon 1–14 days, 1–42 slots; trusted snapshots bounded to 1000 lots,
-500 recipes, 16 families and 2000 history events. Limits are returned explicitly.
+`optimization.searchExhaustive` covers traversal caps; `exhaustive` also requires
+complete quantity/temporal evaluation. `truncated`/`limitReasons` describe actual
+caps only. `incompleteReasons` retains evaluation limitations. Price completeness
+separately controls cost/minimum and budget claims. A quantity-covered T04 plan,
+fulfillable shopping result and infeasible budget remain three different facts.
 
 ## Tests
 
 ### Passed
-Final source/test content, before documentation-only completion edits:
-- `pnpm test` — **924 tests / 61 files**. T04 adds **74 tests**: weekly planner 25,
-  contract 22, projection 10, nutrition 14, SQLite integration 2, T02 compatibility 1.
-  Five new test files contain 73; one regression extends the existing T02 suite.
+Final source/test content before completion-only documentation edits:
+- `pnpm test` — **1077 tests / 66 files**.
 - `pnpm lint` — PASS.
 - `pnpm typecheck` — PASS, application/packages/tests and Worker.
 - `pnpm build` — PASS, Vite client and Worker TypeScript.
 - `pnpm check:migrations` — PASS, `migration-smoke=ok`.
-- `pnpm schema:check:local` — PASS, existing schema/ledger/foreign keys.
+- `pnpm exec wrangler d1 migrations apply frigo-db --local` — PASS, unchanged
+  existing migration chain applied in the private sandbox.
+- `pnpm schema:check:local` — PASS, required ledger/schema/foreign keys.
 - `git diff --check`, `git diff --cached --check` — PASS.
-- Protected/dependency-path diff against `3592de9` — empty for `src`, migrations,
-  scripts, DB, Week, all T03 ranking/personalization, package/lock/config files.
-- No clock/random/network/DB calls found in planner search modules; integration
-  hooks prove zero database calls during search and unchanged stock/events/Week.
-- Original T04 preflight `pnpm test` — **850 / 56** before implementation (historical).
-- Hardening focused run — **208 tests / 8 files**, all T04 plus relevant T02/T03:
-  `pnpm exec vitest run tests/unit/ingredient-availability.test.ts tests/unit/recipe-candidates.test.ts tests/unit/recipe-ranking.test.ts tests/unit/planner-inventory.test.ts tests/unit/planner-nutrition.test.ts tests/unit/planner-contract.test.ts tests/unit/weekly-planner.test.ts tests/integration/weekly-planner.test.ts`.
+- Protected/dependency path diff against `ebd538b` — empty for src, migrations,
+  scripts/config/package/lock files, DB, AI, domain/Week and T02–T04 implementation.
 
-Final logs: ignored `.hoplite/artifacts/t04-hardening/final/`; focused/red logs in
-`.hoplite/artifacts/t04-hardening/`. Original T04 logs remain historical evidence
-under `.hoplite/artifacts/t04-{preflight,checks,final-checks}/`.
+T05-only: **153 / 5 PASS** (optimizer 56, catalog 61, search 16, hardening 17,
+SQLite integration 3):
 
-Key regressions: sequential depletion, branch isolation, native mixed-unit and exact
-fractional conservation, substitutions/optional demand, future expiry, unknown/hard
-safety and nutrition, slot time/type, locks/version changes/replays, shortage handoff,
-greedy failure avoided by bounded lookahead, future repetition, deterministic ties,
-chosen-prefix diagnostics and tenant/stale-snapshot boundaries.
+```sh
+pnpm exec vitest run tests/unit/shopping-optimizer.test.ts tests/unit/shopping-catalog.test.ts tests/unit/shopping-search.test.ts tests/unit/shopping-hardening.test.ts tests/integration/shopping-optimizer.test.ts
+```
 
-Eight new hardening cases cover catalog incompleteness without a search cap, T02
-family caps, simultaneous data/catalog/planner limits, substitution/numeric data
-failures, zero/partial/positive qualified nutrition and empty future periods.
-Existing feasible, exhaustive-infeasible and state-limit assertions were strengthened.
-Independent full-T04 review found no blockers; only two runtime result/explanation
-modules changed, not inventory, allocation, ranking, nutrition arithmetic or policy.
+Focused T02–T05: **403 / 18 PASS**:
 
-Stress: 21 requested slots, 100 recipes, two identical runs. Test policy explores
-exactly 200 states, frontier ≤6, considered choices ≤8, generated recipes ≤80;
-truncation is explicit and remaining stock nonnegative. No latency guarantee claimed.
+```sh
+pnpm exec vitest run tests/unit/quantity.test.ts tests/unit/ingredient-availability.test.ts tests/unit/recipe-candidates.test.ts tests/unit/recipe-families.test.ts tests/unit/recipe-ranking.test.ts tests/unit/planner-{contract,inventory,nutrition}.test.ts tests/unit/weekly-planner.test.ts tests/integration/recipe-{candidates,catalog,personalization}.test.ts tests/integration/weekly-planner.test.ts tests/unit/shopping-*.test.ts tests/integration/shopping-optimizer.test.ts
+```
+
+Fresh preflight: `pnpm test` **924 / 61 PASS**, before T05 implementation.
+Final logs: `.hoplite/artifacts/t05/final/`; targeted/red/setup evidence is described
+in CURRENT_STATE. These ignored logs are local evidence, not hosted CI artifacts.
+
+Regressions cover multi-meal/cross-unit aggregation, double deduction, optional/
+contextual uncertainty, fractional/count packages, mixed package combinations,
+exact/unknown/mixed/stale/estimated prices, free/invalid prices, all budget states,
+unknown alternatives, hard/soft premiums, no options/availability/expiry exclusions,
+stock/surplus risk, partial T04 plans, deterministic ordering and household isolation.
+
+Structural stress: 32 options and a 2e9 g requirement, exactly **200 explored states**
+on each of two identical runs, sufficient best-known seed, visible truncation and
+no minimum claim. Shared-global-budget case uses exactly 5 states across two
+searches. Ten small independent brute-force oracle cases verify exhaustive
+cost/surplus/count matches. Fractional/free package cases are exhaustive. No latency
+claim or wall-clock threshold is used.
+
+Independent review initially found three issues; all were reproduced and fixed.
+Re-review found **no remaining blockers**, and reran focused T05 **153 / 5 PASS**.
 
 ### Failed / Corrected
-- Hardening pre-fix run:
-  `pnpm exec vitest run tests/unit/planner-contract.test.ts tests/unit/weekly-planner.test.ts`
-  — **9 failed / 38 passed / 2 files**, reproducing confirmed semantics and missing
-  metadata. All cases pass in focused and final full runs after the surgical fix.
-- Initial weekly suite: **1 failed / 19 passed** because projection rejected all
-  shopping shortages. Fixed to consume the existing witness only; later slots see
-  depleted stock and missing requirements remain explicit.
-- Intermediate typecheck exposed the in-progress projection date signature,
-  provenance version access and loose fixture types. Corrected before final gates.
-- Review fixed rejected-branch failures leaking into chosen-plan diagnostics, reused
-  T02's exact quantity schema, hardened opaque projection construction and numeric
-  boundaries. Greedy/minimum-nutrition fixtures now defeat accidental ID-order passes.
-- Hoplite dependent-branch allocation failed; reported and user explicitly authorized
-  append-only stacking after T03. No unauthorized alternate branch was created.
-- Removed one temporary untracked editor artifact; no unexpected final files found.
+- Pre-fix `pnpm exec vitest run tests/unit/shopping-hardening.test.ts`:
+  **3 failed / 1 file**. Early-use offer filtering falsely proved ¥1,000 minimum
+  against a feasible ¥600 alternative; 1 + 5e-17 g rounded to 1 g; hard-budget
+  surplus selection skipped a ¥105 intermediate package. All now pass. The original
+  expiry-only no-option tests were corrected to require unknown/no-proof outcomes,
+  not weakened into allowing expired purchases. Log: `.hoplite/artifacts/t05/review-red.log`.
+- Managed setup reported the tracked settings file missing and rejected a lifecycle
+  claim. Inspected effective settings and repository file, reported the platform
+  fault, then successfully ran the existing durable setup command directly:
+  `command -v sqlite3 >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq sqlite3); pnpm install --frozen-lockfile`.
+  No unrelated environment/dependency/configuration changes were committed.
+- Shell remote-ref discovery was policy-blocked; first-party repository tools and
+  compare-and-swap publication succeeded. An absent initial T05 remote branch was
+  expected; no unauthorized Git credentials/remote were used.
 
 ### Not Run
 - UI/browser/preview — no UI/API change.
-- Hosted CI/PR checks — no PR requested or created, no hosted success claimed.
-- T04 migration apply — no schema changes; existing local schema gate executed.
-- Remote D1, deployment, production integrations — not authorized.
+- Hosted CI/PR checks — no PR requested or created; no hosted success claimed.
+- Remote D1, migrations, deployment and production integrations — not authorized.
 
 ## Known Limitations
-- Bounded catalog/beam search may miss better/feasible plans; completeness is explicit.
-- Fixed offsets are not IANA timezone/DST rules. Targets sum requested meals only,
-  not assumed full-day diets or per-person consumption.
-- Hard safety/nutrition needs trusted exact-dish review evidence. Unknown data stays
-  unknown; no comprehensive review catalog or primary-protein taxonomy invented.
-- Leftovers disabled pending reviewed prepared-food storage/expiry policy.
-- Generated-only API, no Week runtime cutover. Future acceptance must revalidate;
-  the display fingerprint is not a collision-proof optimistic-lock token.
-- T04's deterministic, safety-aware expiry allocation is not globally waste-optimal.
-  No T05 shopping/budget/waste optimizer is implemented. Purchase aggregation,
-  prices/budgets, package decisions, final lists and purchase-vs-inventory tradeoffs
-  belong to T05; this hardening does not change allocation order.
+- Trusted reviewed package/price snapshots must be supplied; no live catalog, FX,
+  delivery fees/coupons, retailer travel/single-store policy, finite stock or bundles.
+- Bounded traversal may miss better purchases; package/option/global caps remain
+  visible. No global waste/knapsack optimum is claimed for premium admission.
+- Offers usable only for earlier meals are not temporally allocated. Affected
+  minimum/budget-infeasibility proofs remain incomplete, not falsely decisive.
+- Waste risk uses existing dated evidence only; no invented shelf life, opening
+  state, safe prepared leftovers or expected discarded mass.
+- Numeric quantity DTOs reject exceptional exact values they cannot round-trip;
+  no new rational-string quantity API was introduced.
+- Generated-only; future integration must revalidate. Current legacy shopping and
+  Week stay the production path; T06 is not implemented.
 
 ## Protected Areas
-PayOS/payment/billing/checkout/callback/webhook code and all existing migrations;
-unrelated authentication and production infrastructure; household isolation,
-inventory command/idempotency/revision semantics, scan confirmation and Week
-compatibility. All protected implementation paths remain untouched.
+**PayOS/payment code untouched.** Billing, checkout, callbacks/webhooks,
+subscriptions, unrelated authentication and production infrastructure unchanged.
+Household isolation, inventory commands/revisions/idempotency, scan confirmation
+and Week dual-write/reconciliation behavior remain intact.
 
 ## Next Task
-T05 — Budget / Shopping / Waste Optimizer (**READY**, not started).
+T06 — AI Layer + API + Frontend Integration (**READY, not started**).
 
 ## Next Exact Action
-1. Review published T04 commits and `WEEKLY_PLANNER.md`; do not merge/deploy implicitly.
-2. Only with separate T05 authorization, verify the hardened checkpoint, read
-   AGENT_RULES, required documents and `tasks/T05-budget-shopping-waste.md`, then
-   audit existing shopping/price/package helpers against T01 unit semantics and
-   T04 selected meals, servings, demands, shortages, final stock, nutrition and
-   incomplete-reason metadata. Do not subtract original inventory twice or assume
-   T04 expiry allocation is the final waste optimum; alternatives require full replay.
-3. If a review PR is requested, create/link it and subscribe to auto-fix updates.
+1. Review the published T05 range without merging/deploying implicitly.
+2. Only on separate T06 authorization, read AGENT_RULES, all required current docs,
+   `tasks/T06-ai-api-frontend.md`, `WEEKLY_PLANNER.md` and `SHOPPING_OPTIMIZER.md`.
+3. Define authorized server preload and reviewed quote/product sources, preserving
+   household scope and product safety; never forward raw client prices as authority.
+4. Integrate through the documented generated/shadow path, preserving legacy Week
+   compatibility and revalidation. T06 consumes arithmetic already solved by T05.
+5. Do not start a hidden T04 replan loop, actual purchase/payment or production
+   cutover. If a PR is requested, create/link it and subscribe to auto-fix updates.
