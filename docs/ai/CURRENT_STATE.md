@@ -1,64 +1,71 @@
-# Frigo current state — release publication recovery
+# Frigo current state - GitHub release finalized
 
-## Current task
+## Release status
 
-**T01–T07 COMPLETE. ENGINEERING RELEASE VERIFICATION COMPLETE.**
-**RELEASE INTEGRATION VERIFIED.**
-**RELEASE PUBLICATION: documentation published; final PR integration IN PROGRESS.**
-**PRODUCTION DEPLOYMENT NOT PERFORMED.**
-Production-local reconciliation: **NOT STARTED**. This is not T08 or another
-hardening/integration pass. Detailed preserved evidence: `RELEASE_CANDIDATE.md`.
+- T01: **COMPLETE**
+- T02: **COMPLETE**
+- T03: **COMPLETE**
+- T04: **COMPLETE**
+- T05: **COMPLETE**
+- T06A: **COMPLETE**
+- T06B: **COMPLETE**
+- T07: **COMPLETE**
+- Release Integration: **COMPLETE**
+- Release Publication: **COMPLETE**
+- Main Integration: **COMPLETE**
+- Main CI: **PASS**
 
-## Immutable source and recovery
+## Authoritative source
 
-- Repository: `vn-2c/Frigo`; no remote changed.
-- Main: `db09fa0c4353ddf4840e04c10b96a33240de3497`, unchanged.
-- Verified application/release: `0b20061e7dc7405df68b18a18da4166e09494ecd`.
-- Last application/test commit: `f9d2ff871da155ba7f1aaedd3112a5ed6ea8d2c0`.
-- Original release branch/PR: `hoplite/kirrha-5f4057f0`, Draft #8.
-- Writable continuation: `hoplite/koroneia-355b17d0`, provisioned for this thread.
-- Recovered docs checkpoint `7b22aaf4ba44c9a059fbf0000f242ed35ef4c616` is available
-  and successfully published to the continuation through the trusted broker.
+- GitHub source of truth: `main`.
+- Authoritative release SHA: `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d`.
+- Verified application SHA: `0b20061e7dc7405df68b18a18da4166e09494ecd`.
+- Verified release head: `0420807968538f61b669569d064c404f67032174`.
+- The main merge tree is source-equivalent to the verified release head.
 
-The original head is this thread's protected configured base. Its old push and
-PR-link errors are recorded in the release receipt. The user authorized a writable
-fallback; existing docs commits were preserved by fast-forward, not reconstructed.
-Complete T01–T07 lineage and `0b20061` remain ancestors. **NO APPLICATION CHANGE.**
-Every post-source change is in the four `docs/ai` release protocol documents.
+The four release protocol documents are the only files in this cleanup. The
+application and its verified test/migration/configuration tree remain frozen.
 
-## Preserved verification, not repeated
+## Verification snapshot
 
-| Gate | Verified result on `0b20061` |
+| Gate | Result |
 | --- | --- |
-| Full suite | 1,487 tests / 87 files PASS, zero failures; Vitest 140.36 s |
-| Focused T02–T07 | 819 tests / 40 files PASS, zero failures; 56.48 s |
-| Payment-adjacent | 82 tests / 7 files PASS, zero failures; 9.83 s |
-| Install / lint / typecheck / build | PASS |
-| Clean local D1 | 22/22 migrations PASS |
-| Actual-main upgrade | 0020→0022 PASS; 776 rows / 58 old tables preserved |
-| Schema / FK / integrity | PASS; supplemental direct-PRAGMA limitation documented |
-| Existing browser matrix | 264 assertions / 36 phases PASS; 121 commands; en/vi × 375/390/desktop; zero failures/page errors |
-| Hosted source CI | Run 34387688066 SUCCESS on `0b20061` |
+| Full suite | 1,487 tests / 87 files PASS |
+| Focused suite | 819 tests / 40 files PASS |
+| Clean D1 | 22 / 22 migrations PASS |
+| Upgrade sanity | 0020 -> 0022 PASS |
+| Existing data | 776 rows / 58 tables preserved |
+| Browser | 264 assertions / 36 phases PASS |
+| Payment-adjacent | 82 tests / 7 files PASS |
+| Main CI | Run 34396319671 SUCCESS |
 
-This publication continuation runs only ancestry/source-equivalence, diff and
-relevant documentation checks. No expensive tests or browser matrix were repeated.
-Final PR/head CI must be observed, not inferred from historical source CI.
+These application gates are preserved evidence and were not rerun for the
+documentation-only cleanup.
 
-## Safety and operator boundary
+## Deployment and production boundary
 
-Planner/UI/AI production defaults remain OFF in checked-in state; live production
-values were NOT inspected. No deployment, remote D1 migration or flag enablement.
-**PayOS/payment code untouched. No real payment performed.** Legacy Week,
-inventory commands, auth and household isolation remain unchanged.
-Accepted T07 KV/duplicate-compute/option-clipping/timezone/provider-capacity limits
-are not new publication blockers. Reviewed prices/safety remain explicitly absent.
+- Deploy workflow `34396457582`: **SUCCESS**.
+- Release packaging completed.
+- Staging was not provisioned; no staging deployment occurred.
+- Production deployment was **NOT PERFORMED**.
+- Production Reconciliation: **NOT STARTED**.
+- Production Deployment: **NOT PERFORMED**.
+- Production database migration: **NOT PERFORMED**.
+- Checked-in planner/UI/AI defaults remain according to rollout policy; live
+  production values were not inspected.
+- PayOS/payment code is untouched; no real payment was performed.
+
+## Historical PR state
+
+PR #8 is already closed and merged into main at `23ef51d` and therefore cannot
+be closed without merge now. Its verified release tree is already in main. The
+later `hoplite/kirrha-5f4057f0` documentation delta is historical and is not an
+application integration request.
 
 ## Next exact action
 
-Publish the updated status docs and prefer a docs-only PR into the original release
-branch. If that branch cannot receive them, use one superseding release PR from
-this continuation to main. Inspect applicable CI and make the final release PR
-ready; do not merge main automatically. **MAIN NOT MODIFIED.**
-After an operator normal merge, freeze `MAIN_RELEASE_SHA`; only then begin
-separately authorized production-local reconciliation. Respect the existing
-pre-deploy schema gate even when deploying later with planner flags OFF.
+Begin a separately authorized production-local reconciliation. First snapshot
+and compare the currently running production-local source against the frozen
+GitHub main release, anchored at `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d`.
+Do not perform deployment, remote D1 migration or flag enablement as part of
+this bookkeeping state.
