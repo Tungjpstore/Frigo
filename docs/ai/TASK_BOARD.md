@@ -10,7 +10,7 @@
 | T06A Backend/API/trust/persistence | COMPLETE | `9f420c0` / `ca60ced` / `c46330c` |
 | T06B Frontend/UX/AI presentation/E2E | COMPLETE | `0fc78a4`, historical 1,390/79 + 88 browser assertions |
 | T07 Final hardening | **COMPLETE WITH NON-BLOCKING FOLLOW-UPS** | Frozen `f9d2ff8`: 1,487/87 full, 819/40 focused, all local gates and 264 browser assertions PASS |
-| Post-T07 release integration | **IN PROGRESS — documentation-head CI remaining** | Existing Draft PR #8, frozen `0b20061`; fresh full 1,487/87, focused 819/40, adjacent 82/7, lint/types/build, local migration/upgrade and 264 browser assertions PASS |
+| Post-T07 release integration | **IN PROGRESS — publication blocked** | All source gates PASS; trusted broker rejects existing PR head as configured base; local documentation cannot push, so new-head CI cannot run |
 
 ## Intentional continuation topology
 
@@ -54,9 +54,16 @@ targets main and source-head `0b20061` hosted CI **34387688066 / validate
 102587994085 PASSED** at 18:14:28Z. Documentation-head validation must be inspected
 after publication. No workflow was changed/dispatched and no deployment occurred.
 
-Publish `RELEASE_CANDIDATE.md`, `CURRENT_STATE.md`, this board and `HANDOFF.md`,
-inspect documentation-head CI, then record readiness and hand off for explicit
-operator normal merge. Do not redo integration or already-green source gates.
+Local four-document receipt commit `e060164650969faefeb7ebb808ad5cbab32c4980`
+could not publish: **`Cannot publish the configured base branch
+hoplite/kirrha-5f4057f0`**. Existing linked PR head is also this thread's protected
+base; platform issue reported. No bypass, replacement branch or PR. Remote remains
+draft at `0b20061`; documentation-head CI cannot run until publication is authorized.
+
+**RELEASE INTEGRATION NOT READY.** Authorized operator/platform owner must reconcile
+publication authority, then publish preserved local docs commits to the existing
+head and inspect exact new-head CI. Record readiness afterward and hand off for
+explicit operator normal merge. Do not redo integration or green source gates.
 Review existing automatic staging on successful future main-push CI before merge.
 Production requires separately approved schema/data/binding readiness and release
 approval; no remote migrations, production flags or PayOS changes are authorized.

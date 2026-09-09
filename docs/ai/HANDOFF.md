@@ -6,11 +6,12 @@ PR #8 on 2026-09-09. Do not restart T01–T07 or recreate integration.
 
 ## Task Status
 **T01–T07 ENGINEERING COMPLETE.** Accepted T07 non-blocking limitations remain.
-**RELEASE INTEGRATION IN PROGRESS.**
+**RELEASE INTEGRATION IN PROGRESS — publication blocked.**
 **PRODUCTION DEPLOYMENT NOT PERFORMED.**
 Fresh local test/static gates and existing release-source hosted CI passed.
-Local migration and browser matrix passed. Documentation-head hosted CI remains
-the last gate; no merge performed. Do not redo already-green source verification.
+Local migration and browser matrix passed. Trusted-broker publication is blocked;
+documentation-head hosted CI therefore cannot run. No merge performed.
+**RELEASE INTEGRATION NOT READY.** Do not redo already-green source verification.
 
 ## Repository / Branch Topology
 Live configured repository: `vn-2c/Frigo`; supplied historical name: `fri-go/Frigo`.
@@ -63,6 +64,10 @@ Hosted source CI **SUCCESS**: run **34387688066**, job **102587994085**, exact
 `0b20061`, completed **2026-09-09T18:14:28Z**. Release PR targets main, superseding
 the old checkpoint-base CI limitation. New documentation head needs normal PR CI.
 PR auto-fix updates are enabled. No workflow dispatch/deployment action was used.
+Local documentation commit `e060164650969faefeb7ebb808ad5cbab32c4980` failed to
+publish with **`Cannot publish the configured base branch hoplite/kirrha-5f4057f0`**.
+Remote PR remains at `0b20061`; no docs-head run could start. This later blocker
+receipt is local-only too. The application/test/config tree remains unchanged.
 
 ## Preview / Evidence
 Existing managed `node scripts/security-preview.mjs`, real Vite/Worker, private
@@ -101,10 +106,12 @@ No production flag enablement, deployment, remote migration or destructive rollb
 Payment-adjacent tests do not replace absent direct PayOS regression coverage.
 
 ## Next Exact Action
-Publish the four release protocol docs on the existing branch. Inspect exact latest
-PR CI; if pending, retain integration-in-progress, without rerunning green source
-gates. When it passes, record the receipt and mark the candidate ready for main
-merge. Keep PR #8 draft for operator review; do not merge automatically.
+Authorized operator/platform owner: reconcile this thread's protected configured
+base with the existing PR #8 writable head. Do not bypass protection or create a
+new branch/PR. Once authorized, publish both preserved local documentation commits
+through the trusted broker, inspect exact new-head CI, then record readiness.
+No need to repeat integration or source tests unless source/main changes. Keep
+PR #8 draft for operator review; do not merge automatically.
 A normal merge must preserve lineage. Before merge, the operator must review
 existing automatic staging behavior on successful main-push CI. Production needs
 separate explicit release/schema/data/binding approval; do not deploy or enable flags.

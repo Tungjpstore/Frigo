@@ -3,7 +3,7 @@
 ## Current task
 
 **T01–T07 ENGINEERING COMPLETE.** T07's accepted non-blocking follow-ups remain.
-**RELEASE INTEGRATION IN PROGRESS.**
+**RELEASE INTEGRATION IN PROGRESS — publication blocked.**
 **PRODUCTION DEPLOYMENT NOT PERFORMED.**
 
 Continue existing Draft PR [#8](https://github.com/vn-2c/Frigo/pull/8), branch
@@ -44,7 +44,8 @@ comparison from `f9d2ff8` passed; this continuation changes **documentation only
 
 All local tests were freshly executed, not copied from the T07 audit. Counts overlap.
 Supplemental direct-PRAGMA Wrangler inspection returned `SQLITE_AUTH`; the supported
-FK query and read-only SQLite integrity check passed. Exact commands, scope and final documentation-head CI belong in
+FK query and read-only SQLite integrity check passed. Exact commands, scope and
+documentation-head CI limitation belong in
 `RELEASE_CANDIDATE.md`. No application/test/config fix or weakened assertion.
 
 ## Feature flags / readiness / protected areas
@@ -72,9 +73,17 @@ lifecycle claim. Exact existing setup/run commands were mirrored into overrides;
 unchanged setup ran successfully via shell and managed preview started. Reported
 platform limitation, not an application defect; no repository config change.
 
-Publish these four release protocol documents on the same branch and inspect latest
-PR validation. All source gates are green; only documentation-head CI remains.
-Do not redo integration or rerun already-green source verification. Once that check
-passes, record it and mark the candidate ready for an explicit operator **normal merge**.
+All source gates are green. Local docs commit
+`e060164650969faefeb7ebb808ad5cbab32c4980` could not publish:
+**`Cannot publish the configured base branch hoplite/kirrha-5f4057f0`**.
+The linked PR head is also this thread's protected base. No bypass or replacement
+branch/PR was attempted; platform issue reported. Remote PR remains draft at
+`0b20061`, existing CI green; new documentation-head CI cannot run without a push.
+
+An authorized operator/platform owner must reconcile publication authority for the
+existing release head. Then publish preserved local docs commits, inspect new-head
+CI and record readiness. **RELEASE INTEGRATION NOT READY** until those two gates.
+Do not redo integration or already-green source verification unless source/main
+changes. Final **normal merge** remains an explicit operator action.
 Before merging, review existing main-push automatic staging behavior. Deployment
 requires separate exact-main push CI, schema/data readiness and operator approval.

@@ -6,9 +6,10 @@
 **RELEASE INTEGRATION IN PROGRESS.**
 **PRODUCTION DEPLOYMENT NOT PERFORMED.**
 
-All frozen-source local and hosted-source gates are green. The remaining release
-gate is publication and successful validation of the documentation head on PR #8;
-do not treat the prior source-head check as the new documentation-head check.
+All frozen-source local and hosted-source gates are green. **Publication is
+blocked by the thread's configured-base protection.** The documentation head has
+not reached PR #8, so its new-head hosted CI cannot execute. Do not treat the prior
+source-head check as the unpushed documentation-head check.
 
 This continues the existing release PR, not another integration or product change.
 Application, tests, migrations, dependencies, scripts and config remain frozen.
@@ -181,7 +182,19 @@ attempt 1, `pull_request`, exact source head `0b20061e7dc7405df68b18a18da4166e09
 **2026-09-09T18:14:28Z**; install, lint, typecheck, tests, migration smoke and build
 all succeeded. This is actual release-PR CI, not historical T07 local evidence.
 
-Documentation publication must trigger/recheck PR validation on its new head.
+Publication of local documentation commit
+`e060164650969faefeb7ebb808ad5cbab32c4980` was rejected by
+`source_control_publish_git_commit` with the exact error:
+**`Cannot publish the configured base branch hoplite/kirrha-5f4057f0`**.
+The existing linked PR head is also this thread's protected configured base. No
+alternate branch/PR, shell bypass or history rewrite was attempted. The problem
+was reported to Hoplite. This subsequent blocker receipt is another local-only
+documentation checkpoint; the remote PR head remains `0b20061`.
+
+A fresh provider read after the rejection confirmed PR #8 open/draft and existing
+`validate` SUCCESS on `0b20061`. **No documentation-head CI run exists because the
+push was rejected**, not because application verification failed. Restore authorized
+publication to the existing PR head, then trigger/recheck its ordinary PR validation.
 No CI/deployment workflow was rewritten or dispatched. PR CI against the merge
 test ref does **not** satisfy the later deployment gate: `release-check.mjs` requires
 a successful exact-SHA **push run on main**, main ancestry and approved hardening.
@@ -268,9 +281,15 @@ build and checks, not the warning alone, establish usability. No dependency upgr
 
 ## Next action
 
-Publish this documentation-only receipt on the existing release branch and inspect
-exact latest PR CI. If it is pending, retain **RELEASE INTEGRATION IN PROGRESS**;
-do not rerun integration or already-green source tests. After that check succeeds,
-record the hosted receipt and mark **RELEASE CANDIDATE READY FOR MAIN MERGE** in
-the release protocol documents. Final normal merge is an explicit operator action.
-Do not deploy, remotely migrate D1, enable production flags or change PayOS.
+An authorized operator/platform owner must reconcile this thread's protected base
+with the existing PR #8 writable head, without replacing the branch or PR. Then
+publish the preserved local documentation commits to `hoplite/kirrha-5f4057f0`
+using the trusted broker and inspect exact new-head CI. Do not reset, recreate
+integration or rerun already-green source tests unless source/main changes.
+
+After successful publication and CI, record the hosted receipt and mark
+**RELEASE CANDIDATE READY FOR MAIN MERGE** in the release protocol documents.
+Current final verdict: **RELEASE INTEGRATION NOT READY** solely because publication
+is blocked and documentation-head CI consequently cannot run. Final normal merge
+is an explicit operator action. Do not deploy, remotely migrate D1, enable
+production flags or change PayOS.
