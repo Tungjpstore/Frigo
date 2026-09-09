@@ -1,63 +1,73 @@
-# Frigo current state — T07 hardening in progress
+# Frigo current state — T07 final hardening verified
 
 ## Current task
 
-**T01–T05 COMPLETE. T06A COMPLETE. T06B COMPLETE. T07 IN PROGRESS.**
-The user authorized the writable continuation on 2026-09-09. The prior publication
-blocker is resolved; this is not an architectural repository issue.
+**T01–T05 COMPLETE. T06A COMPLETE. T06B COMPLETE.**
+**T07 COMPLETE WITH NON-BLOCKING FOLLOW-UPS.**
+Local release candidate verified; production deployment is **not** authorized.
+Hosted CI is **not verified** and remains a release prerequisite.
+
+## Intentional continuation topology
 
 - Original T07 branch: `hoplite/lipara-d81160ee`.
 - Published continuation checkpoint: `006742bc179d58aae53106c88aff8a2667dbd1ca`.
 - Writable continuation: `hoplite/prokonnesos-74e71894`.
-- Exact recovery documentation `f39180421f12ff68751dba7898aa39535b2d3a95` was
-  preserved by fast-forward and successfully published on the continuation branch.
-- T06B base `6d4e873b180e46edcaf8088f848b3afab853bc66` and verified application
-  `0fc78a4fdc624973413259c048e65ed585fa2b8e` remain ancestors. No reset or restart.
+- Exact recovery `f39180421f12ff68751dba7898aa39535b2d3a95` was preserved by
+  fast-forward and published. Both checkpoint ancestry checks pass.
+- **Frozen verified application/test SHA:**
+  `f9d2ff871da155ba7f1aaedd3112a5ed6ea8d2c0`.
 
-## Phase evidence
+The user authorized this publisher topology; it is not an architectural issue.
+No restart/reset or historical source divergence. Final status/verification docs
+follow the frozen SHA without changing application/test/config source.
 
-| Phase | Current evidence | Status |
+## Actual changes and findings
+
+| Phase | Result | Published checkpoint |
 | --- | --- | --- |
-| H1 security/trust/tenancy | 51 new actual-auth HTTP cases; route/repository ownership matrix; related boundary 125/4 and CSRF/CORS 87/2 PASS | Planner boundary audited; broader rendering/log review continues H5/H6 |
-| H2 abuse | Reproduced fan-out fixed with planner account bucket; 95/6 targeted PASS; KV concurrency remains approximate (ADR-019) | Published `55020bc` |
-| H3 persistence | Own-CAS-response race fixed with RETURNING; 68/6 parent focused, local migration/schema/query-plan checks PASS | Published `a19063b` |
-| H4 domain | Currency-scale contract fixed; six exact-domain regressions, 449/17 broad focused PASS | Published `865ee91` |
-| H5 frontend/AI | Private-session render and failed-409 fixes; 93/4 focused PASS, 30 pre-freeze mobile assertions PASS | Published `d579798`; final matrix pending |
-| H6 operations | Five measured Worker actions, three failure/integrity tests PASS; readiness/deferred limits documented | Ready for source freeze |
+| H1 security/trust | 51 new actual-auth creator/household/spoofing cases; ownership matrix; no planner boundary bypass reproduced | `65c1367` |
+| H2 abuse | Reproduced raw-path fan-out fixed by planner-only account budget; existing route/auth policies preserved; KV explicitly approximate | `55020bc` |
+| H3 persistence | Reproduced CAS response race fixed by own UPDATE RETURNING row; six controlled-race cases; no index/migration | `a19063b` |
+| H4 domain | Contradictory shopping currency scale rejected; exact quantity/money/unknown/proof/cap regressions | `865ee91` |
+| H5 frontend/AI | Fixed mounted A→B stale private view and failed/successful 409 recovery; grounded AI and literal-true flag tests | `d579798` |
+| H6 operations | Five real Worker operation measurements; failure/privacy audit; explicit rollout/rollback and known limits | `f9d2ff8` |
 
-H1 adds `tests/integration/t07-security.test.ts` and `T07_H1_SECURITY.md` only.
-No H1 security bug was reproduced, so no speculative security change was made.
-Parallel later-phase work may exist uncommitted; phase commits stage only their
-own reviewed files. Final application source has not been frozen.
+Five implementation files changed. No T02–T05 allocation/ranking/search semantics
+were redesigned. No reproduced critical/high issue remains unfixed in this scope.
 
-## Verification boundaries
+## Final verification on frozen source
 
-Fresh recovery on unchanged `006742b`: frozen pnpm install PASS; `pnpm test`
-**1,390 tests / 79 files PASS** (57.44 s); focused limiter/planner HTTP
-**74 tests / 3 files PASS** (5.33 s). These checks are not being needlessly rerun.
-H1 exact commands and scoped limits are in `T07_H1_SECURITY.md`.
-Final source-freeze gates, clean D1/schema, full browser matrix and hosted CI
-are still pending; no production-readiness conclusion is claimed.
+- `pnpm test`: **1,487 tests / 87 files PASS** (97.68 s Vitest; 98.725 s wall).
+- Focused T02–T06 plus all T07 suites: **819 tests / 40 files PASS**.
+- Full lint, both typecheck targets, Vite/Worker build: **PASS**.
+- Migration smoke, **clean local** D1 0001–0022 apply, read-only schema/FK gate,
+  versioned query-plan replay and diff/ancestry checks: **PASS**.
+- Managed real-browser en/vi × 375/390/1280: **264 assertions / 36 phases PASS**,
+  no page errors after any combination. One synthetic screenshot shared.
+- High-confidence credential-marker scan: no source/test/frontend-output matches.
 
-## Preserved system and compatibility
+Exact commands, timings, pre-fix/fixture failures, observation values and browser
+coverage limits: `T07_VERIFICATION.md` and phase receipts. Focused counts overlap
+the full suite. One browser user only; mounted/real-auth tests cover A→B/IDOR.
+No live provider, screen-reader, production capacity or remote schema claim.
 
-T06B's private current-plan discovery, strict intent-only API, revision CAS,
-server-loaded T02–T05 snapshots, explicit uncertainty/proof DTOs, private query
-keys/session generations, exact money display and grounded on-demand AI remain
-the baseline. Canonical contracts are in `API_INTEGRATION.md`,
-`FRONTEND_MEAL_PLANNER.md`, `AI_LAYER.md` and the four engine guides.
-Historical completed frontend verification is in `T06B_VERIFICATION.md` and
-`T06B_E2E.md`; the original T07 receipt is `T07_BASELINE.md`.
+## Known follow-ups / readiness
 
-Planner/UI/AI flags remain literal-true opt-in. Legacy Week and inventory commands
-remain intact. Planned consumption is not actual consumption; shopping is not a
-purchase. No remote D1, deployment, production flag or payment work is authorized.
-**PayOS/payment code untouched.**
+`PRODUCTION_READINESS.md` records approximate distributed KV, bounded duplicate
+initial compute, native AI non-cancellation, fixed-offset time, clipped optimizer
+quality, large-catalog sorts and lack of custom browser request deadline. These
+are explicit limits, not hidden completed optimizations. No production quota/SLA
+or universal food-safety/optimality guarantee is advertised.
+
+CI does not trigger for the configured checkpoint PR base and has no manual
+entrypoint; exact-frozen-SHA completed push query returned no runs. Obtain safe
+hosted CI and operator release/schema approval before any rollout. No deployment,
+production flag, remote DB, unrelated auth or infrastructure change occurred.
+**PayOS/payment code untouched.** Legacy Week and inventory commands remain intact.
 
 ## Next action
 
-Publish H6's operational evidence, freeze that exact application/test revision,
-then run full tests/lint/types/build/migration smoke/clean local D1/schema and the
-six-combination browser matrix. Record actual final results in `T07_VERIFICATION.md`
-and update `PRODUCTION_READINESS.md`. Hosted CI is not triggered for the configured
-topic base and remains unverified. Never return to the original branch to publish.
+Review/publish the final documentation receipt and continuation PR. Then obtain
+exact-head hosted CI and existing operator approvals in a separately authorized
+release task. Do not enable planner/AI flags or deploy from this audit. Follow H6
+staged rollout/rollback only after those release gates; do not restart T07.

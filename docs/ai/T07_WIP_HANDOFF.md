@@ -1,8 +1,8 @@
 # T07 WIP Handoff
 
-## Active continuation — 2026-09-09
+## Completed continuation — 2026-09-09
 
-**T07 IN PROGRESS. Publication is working.** This section supersedes the
+**T07 COMPLETE WITH NON-BLOCKING FOLLOW-UPS.** This section supersedes the
 historical blocked/interrupted instructions below.
 
 - Original T07 branch: `hoplite/lipara-d81160ee`.
@@ -24,21 +24,22 @@ historical blocked/interrupted instructions below.
 | H2 | `T07_H2_ABUSE.md`: 11th cross-plan request reproduction fixed; 95/6 focused PASS and targeted ESLint PASS; KV race/real-Hono error characterization | Published `55020bc`; ADR-019 records approximate guarantee |
 | H3 | `T07_H3_PERSISTENCE.md`: own-CAS-response race fixed with RETURNING; six new cases, 68/6 parent focused PASS; local migrations/schema/EXPLAIN and assembled typecheck PASS | Published `a19063b`; no new migration/index |
 | H4 | `T07_H4_DOMAIN.md`: scale contract fix; 449/17 broad focused and refined-schema 71/4 PASS | Published `865ee91` |
-| H5 | `T07_H5_FRONTEND.md`: session privacy and 409 recovery fixes; 93/4 focused and initial 30 real-browser assertions PASS | Published `d579798`; final six-combination replay pending |
-| H6 | `T07_H6_OPERATIONS.md`: five actual Worker measurements; 3/1 failure/observation tests PASS; `PRODUCTION_READINESS.md` records scoped findings/limits | Ready for checkpoint and source freeze |
+| H5 | `T07_H5_FRONTEND.md`: session privacy and 409 recovery fixes; 93/4 focused; final en/vi × 375/390/1280 replay 264 assertions PASS | Published `d579798`; final source verified |
+| H6 | `T07_H6_OPERATIONS.md`: five actual Worker measurements; 3/1 failure/observation tests PASS; `PRODUCTION_READINESS.md` records scoped findings/limits | Published `f9d2ff8`, final frozen candidate |
 
-The fresh recovery baseline **1,390/79** and focused **74/3** already passed; do
-not rerun it merely because of the branch change. Phase-specific targeted checks
-are new evidence, not final full verification. No final source freeze yet.
-Other phase files can exist in the shared worktree; commit only each phase's
-reviewed changes, preserve all others, and push promptly.
+**Frozen application/test SHA: `f9d2ff871da155ba7f1aaedd3112a5ed6ea8d2c0`.**
+Final full **1,487/87**, focused **819/40**, lint/types/build, migration smoke,
+clean local D1/schema/query-plan and **264 browser assertions** all passed after
+freeze, with no page errors. Source remained unchanged. Final receipt/status
+changes are documentation only; preserve source equivalence. Exact results:
+`T07_VERIFICATION.md`. Historical baseline 1,390/79 is not the final result.
 
 ### Next exact action
 
-Publish H6's operational/readiness evidence, freeze the final application SHA, then
-run full tests/lint/types/build/migrations/clean local D1/schema, focused suites,
-375/390/desktop browser matrix and safe hosted CI where available. Never weaken
-assertions to hide a failure. No remote D1, production deployment or flag cutover.
+Review/publish the final receipt and continuation PR. Obtain exact-head hosted CI,
+remote schema readiness and operator release approval in separate authorized work.
+**Hosted CI not verified**: configured workflow does not run for this checkpoint
+base and has no manual entrypoint. No production/remote release action authorized.
 **PayOS/payment code untouched.**
 
 ## Historical recovery attempt (blocker resolved above)

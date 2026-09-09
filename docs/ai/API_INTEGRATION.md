@@ -159,7 +159,8 @@ uses the existing AIRouter/native Workers AI provider only, with one request,
 256 output-token cap and 2500 ms response deadline. External chat paths are not
 used because their current transports lack equivalent token/time bounds. Missing
 native binding or mock mode falls back deterministically. The existing expensive
-10/minute/account/path limiter applies; no automatic card-render calls or retries.
+10/minute/account/path limiter and T07 shared planner-account compute budget both
+apply; no automatic card-render calls or retries.
 See `AI_LAYER.md` for grounding, timeout limitations, cost scope and verification.
 
 ### Exact values
@@ -264,11 +265,12 @@ horizon, slot or replacement intent; 409 stale source/revision or retry-key conf
 limiter unavailability may return 503. Error envelopes use `{code,error}` and never
 include SQL, evidence tokens or stack traces, including in development.
 
-Existing rateLimiter: expensive generate/regenerate/swap/shopping **10/minute per
-account and route path**, reads/feedback **60/minute per account and route path**.
-Respect `Retry-After`. Existing KV policy/fail-closed config remains; fallback is
-explicitly isolate-local/best-effort, not globally atomic quota. Dynamic plan paths
-have independent buckets. T07 should assess cross-plan aggregate abuse limits.
+Existing rateLimiter: expensive generate/regenerate/swap/shopping/explanation
+**10/minute per account/path**, reads/feedback **60/minute per account/path**.
+T07 additionally shares **10/minute per authenticated account** across all five
+expensive actions and plan IDs. Respect `Retry-After`. KV/fail-closed configuration
+is unchanged; non-atomic/eventually consistent KV and isolate-local fallback are
+best-effort abuse controls, not exact global quotas. See ADR-019 and H2 evidence.
 Existing request logs provide path/action/status/duration; structured engine events
 include result status/search caps, not private ingredients/preferences/evidence.
 
@@ -277,6 +279,9 @@ include result status/search caps, not private ingredients/preferences/evidence.
 Migration `0022_generated_meal_plans.sql` adds a current-final-result row and cooked
 annotations. Membership/plan composite FKs cascade on membership/household/user
 deletion. Creation retry identity is scoped; mutations are single-statement CAS.
+T07 returns the exact row from `UPDATE ... RETURNING`, not a separate read that
+could observe a later writer's revision. Membership/owner/revision predicates stay
+inside the same conditional write.
 Internal version-1 JSON envelopes hold validated intent/locks, safe result, minimal
 T05 projection and source hashes, not beam frontiers, ranking contexts or reviews.
 No historical plan revisions are archived. Migration and schema gate must be applied

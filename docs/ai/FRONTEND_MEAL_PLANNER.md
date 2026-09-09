@@ -126,7 +126,8 @@ session changed or its owner component unmounted. The locale preference is the
 only planner-specific localStorage value, not plan content.
 
 The hook resets busy/error/recovery state and retained retry keys on owner change
-or private-session reset. Each action owns a unique gate token, so completion of an
+or private-session reset. It also advances a render epoch so an already mounted
+idle view recomputes its owner-scoped query key. Each action owns a unique gate token, so completion of an
 obsolete session's request cannot unlock a newer session's active action.
 
 ## Revisions, in-flight work and retries
@@ -155,10 +156,12 @@ revision discards view-local receipts, explanations, budget form and checklist
 state; preparing shopping for the new revision is an explicit action, not an
 automatic optimization loop.
 
-On a 409 action failure, the hook removes shopping/alternatives and refetches the
-selected plan; it does not blindly retry the mutation. A successful refresh uses
-the same full-plan cache replacement and shows recovery copy. Failed refetches do
-not claim success merely because old cached data exists. `PLAN_REVALIDATION_REQUIRED`
+On a 409 action failure, the hook removes shopping/alternatives and makes one
+independent validated latest-plan read; it does not blindly retry the mutation or
+turn the accepted route query into an error. Success uses full-plan cache
+replacement, clears the obsolete conflict and shows recovery copy. Unavailable or
+malformed recovery retains the last accepted plan and conflict alert without
+claiming success from cached data. `PLAN_REVALIDATION_REQUIRED`
 and `PLAN_REVISION_CONFLICT` have localized
 messages, not raw `409 Conflict`. Failed/infeasible swaps and ordinary network
 failures do not replace the old plan. A lost mutation response can still mean the
@@ -234,11 +237,13 @@ exceptions and arbitrary response text never become UI copy. Read/alternative
 errors offer manual retry; mutations are explicitly retried by the user. There is
 no infinite automatic 429/planning retry and no offline mutation replay.
 
-The existing backend limiter is per account and route path: expensive planning,
-shopping and explanation actions use 10/minute; reads and feedback use 60/minute.
+T07 retains the per-account/path limits (expensive actions 10/minute, reads and
+feedback 60/minute) and adds a shared **10/minute/account** planner compute bucket
+across generation, regeneration, swap, shopping and explanation, regardless of ID.
 The UI shows retry-later wording rather than an exact `Retry-After` countdown.
-These best-effort KV/isolate limits are not an aggregate cross-plan quota; final
-abuse/performance review remains T07.
+KV is non-atomic/eventually consistent and fallback isolate-local, so the shared
+budget is still best-effort abuse control, not an exact distributed quota. See
+ADR-019, `T07_H2_ABUSE.md` and final `T07_VERIFICATION.md`.
 
 ## Shopping, budget and exact display
 

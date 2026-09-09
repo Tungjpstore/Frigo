@@ -1,82 +1,84 @@
 # Frigo AI Handoff
 
 ## Current Task
-T07 — final hardening, continuing the published interruption checkpoint.
+T07 — final hardening continuation, verified on 2026-09-09.
 
 ## Task Status
-**T01–T05 COMPLETE. T06A COMPLETE. T06B COMPLETE. T07 IN PROGRESS.**
-H1 `65c1367`, H2 `55020bc`, H3 `a19063b`, H4 `865ee91`, H5 `d579798` are published.
-H6 operational evidence is ready; final source-freeze verification continues.
+**T01–T05, T06A, T06B COMPLETE. T07 COMPLETE WITH NON-BLOCKING FOLLOW-UPS.**
+Locally verified release candidate; no production deployment authorization.
+**Hosted CI not verified**; exact-head hosted CI and release/schema approval remain
+prerequisites for deployment, not a reason to mislabel local checks as CI.
 
 ## Repository / Branch Topology
-Current repository-bound tools identify `fri-go/Frigo`; historical `sex-vn/Frigo`
-checkpoint objects are present. No remote was changed.
+Repository-bound tools identify `fri-go/Frigo`; historical `sex-vn/Frigo`
+checkpoint objects are present. No remote changed.
 Original T07 branch: `hoplite/lipara-d81160ee`.
-Continuation checkpoint: **`006742bc179d58aae53106c88aff8a2667dbd1ca`**.
-Writable continuation branch: **`hoplite/prokonnesos-74e71894`**.
-The user explicitly authorized this topology because of Hoplite publisher binding;
-it is not a repository architecture problem. Never publish back to the old branch.
+Published continuation checkpoint: `006742bc179d58aae53106c88aff8a2667dbd1ca`.
+Writable continuation: `hoplite/prokonnesos-74e71894`.
+This user-authorized publisher topology is intentional, not an architecture issue.
+Never publish to the old protected base or restart/reset T07.
 
-## Last Verified Commit
-Exact recovery checkpoint **`f39180421f12ff68751dba7898aa39535b2d3a95`** was safely
-fast-forwarded onto and successfully published on the writable branch. Ancestry
-through `006742b`, `0f6c382` and T06B base `6d4e873` passed; no source divergence at
-recovery. The last historical verified T06B application remains `0fc78a4`.
-There is no final T07 application freeze yet.
+## Last Verified Application Commit
+**`f9d2ff871da155ba7f1aaedd3112a5ed6ea8d2c0`**, clean and published before final
+verification. Exact `f39180421f12ff68751dba7898aa39535b2d3a95` recovery and `006742b`
+remain ancestors, preserving T06B `6d4e873` / `0fc78a4` history. Final receipt/status
+changes afterward are documentation only; verify source equivalence when publishing.
 
 ## Implemented / Audited
-H1 adds 51 adversarial actual-cookie-authenticated planner HTTP cases and a complete
-route/repository ownership matrix in `T07_H1_SECURITY.md`. Cross-household and
-same-household noncreator IDs are denied, membership revocation is enforced,
-trusted snapshot/price/substitution/mass-assignment claims are rejected, and
-persisted hard restrictions beat soft preference. No H1 security defect reproduced;
-no speculative source fix. Rendering/log breadth continues in H5/H6.
-
-## In Progress
-H2 aggregate account budget is published `55020bc` (95/6 focused PASS and targeted ESLint);
-see `T07_H2_ABUSE.md` for pre-fix failures, real-Hono error proof and non-atomic KV
-characterization. Next checkpoint preserves the fix and ADR-019. H3 concurrency/persistence,
-H4 exact-domain contracts, H5 mounted frontend/AI/flags, H6 operational observations.
-Parallel source/test work is staged only into its own reviewed phase checkpoint.
-
-H3 confirmed a post-CAS reread could return a later writer's revision. The update
-now returns its own atomic `RETURNING` row, retaining all owner/revision predicates.
-Six new controlled-race cases and 68/6 parent related tests pass. Local migration/schema
-and versioned `scripts/t07-query-plans.mjs` checks pass; no index/migration added.
-Assembled typecheck passes after correcting H2's test-only array inference.
+H1 `65c1367`: 51 actual-auth household/creator/mass-assignment regressions, ownership
+matrix. H2 `55020bc`: account-wide planner compute budget fixes raw-path fan-out;
+KV remains explicitly best-effort. H3 `a19063b`: own-CAS-row response fixes a later
+writer race, with six controlled concurrency cases and query evidence. H4 `865ee91`:
+reject contradictory currency scale; exact-domain/proof/unknown/cap tests. H5
+`d579798`: force query-owner reevaluation on private reset, preserve failed 409
+recovery and clear obsolete errors on success; AI and flags matrix. H6 `f9d2ff8`:
+real Worker observations and graceful failure/privacy/readiness evidence.
 
 ## Database / Migration Changes
-None in H1. No remote database operation. Existing local SQLite-backed tests replay
-0001–0022; final clean Wrangler D1 apply/schema checks remain pending.
+None. No new index justified. Existing migrations 0001–0022 replayed into clean
+**local-only** Wrangler D1; previous local test state preserved under ignored
+artifacts. Schema/ledger/Week/ranking/generated-plan/FK gate passes. No remote DB,
+production catalog, reservation/in-progress table, or inventory command rewrite.
 
 ## Tests / Verification
-Fresh recovery, not final T07: frozen install PASS, full **1,390/79** PASS (57.44 s),
-requested limiter/planner HTTP **74/3** PASS (5.33 s).
-H1: new suite **51/1**, related planner HTTP/presentation/snapshot **125/4**,
-existing CSRF/CORS **87/2**, targeted ESLint PASS. Exact executed commands,
-intermediate assertion correction and limitations are in `T07_H1_SECURITY.md`.
-Final full gates/browser/hosted CI have not been completed. Counts overlap.
+Frozen full suite **1,487/87 PASS**, focused **819/40 PASS**, lint/typecheck/build,
+migration smoke, clean local D1/schema/query-plan, credential-marker and diff/
+ancestry checks PASS. Browser **264 named assertions / 36 phases PASS** across
+en/vi at 375×812, 390×844 and 1280×900, no page errors. Source remained unchanged.
+Counts overlap; 97 new regressions / 8 files beyond preserved 1,390/79 baseline.
+See `T07_VERIFICATION.md` for exact commands/timings, final source identity and
+proof limitations; H1–H6 receipts retain all intermediate failures/corrections.
 
-## Environment / Preview
-Managed preview uses the existing isolated `node scripts/security-preview.mjs`.
-Project settings discovery incorrectly reported the tracked `.hoplite/settings.json`
-missing; exact tracked setup/run commands were mirrored as overrides and the
-platform issue reported. No production settings or repository scripts changed.
-The preview is real Vite/Worker with private in-memory SQLite and synthetic cookie
-sessions; external backend fetch is blocked. Final browser verification is pending.
+## Preview / Evidence
+Managed `node scripts/security-preview.mjs`, real Vite/Worker, in-memory SQLite,
+synthetic registered session, external fetch blocked. Exact tracked setup/run
+commands mirrored into overrides after platform settings discovery missed the
+existing repo file. sqlite3 installed by existing setup path. No production config
+change. Final screenshot is synthetic-only; no recordings or private media.
+Browser has one user; mounted A→B and actual-cookie cross-actor HTTP cover separate
+privacy boundaries, not a claimed real account-B browser login.
 
 ## Feature Flags / Legacy Coexistence
-Planner and AI remain opt-in on literal `true`; legacy Week, shopping and real
-inventory commands are preserved. No deployment/production cutover is implied.
+All planner/UI/AI flags retain literal-true opt-in; ordinary build flags unchanged.
+Legacy Week routes and inventory commands coexist. Planned != actual consumption;
+shopping != purchase; unknown != zero; bounded best-known != proven optimal.
+
+## Findings Deferred / Risks
+No reproduced critical/high issue remains unfixed in audited scope. Explicit
+non-blocking limits: non-atomic distributed KV, duplicate concurrent initial CPU,
+native AI timeout without cancellation, fixed-offset dates, option clipping,
+large-catalog/sort capacity and browser transport without custom deadline.
+Full details and severity: `PRODUCTION_READINESS.md`; staged rollout/rollback: H6.
+No live provider, remote schema, production secret/history or capacity certification.
 
 ## Protected Areas
 **PayOS/payment code untouched.** No billing/checkout/subscription/webhook,
-unrelated auth or production infrastructure change. Preserve unknown != zero,
-best known != proven optimal, planned != actual consumption, and intent != trust.
+unrelated auth/session, dependency, migration, `.github`, Wrangler or repository
+setup change. No production flag enablement, deployment or remote migration.
 
 ## Next Exact Action
-Publish H6 evidence, freeze exact application/test source, then execute full final
-gates and six-combination browser matrix. Do not claim earlier phase tests as
-frozen-source results. Current exact progress and preserved historical recovery:
-`T07_WIP_HANDOFF.md`. Do not restart T07, reset history or request branch approval
-again unless ancestry genuinely fails.
+Publish/review final documentation and the continuation PR, keeping source pinned
+to the verified SHA. Obtain exact-head hosted CI and normal operator schema/release
+approval in separately authorized release work. Do not deploy or enable flags now.
+`T07_WIP_HANDOFF.md` retains the phase ledger and historical interruption; its old
+blocked instructions are explicitly superseded by the completed continuation.

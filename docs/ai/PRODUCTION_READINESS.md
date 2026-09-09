@@ -2,7 +2,10 @@
 
 ## Status
 
-**Audit phases H1–H6 implemented; final frozen-source verification pending.**
+**T07 COMPLETE WITH NON-BLOCKING FOLLOW-UPS.** Frozen source
+`f9d2ff871da155ba7f1aaedd3112a5ed6ea8d2c0` passed all local gates: **1,487/87 full**,
+**819/40 focused**, lint/types/build/migration/clean local D1/schema and **264 browser
+assertions**. Exact final receipt: `T07_VERIFICATION.md`.
 This document is not deployment authorization. No production flags were enabled,
 no remote migrations ran, and no deployment was requested.
 
@@ -66,8 +69,8 @@ provider capacity and release authorization were not assessed against live data.
 - `T07_H5_FRONTEND.md`: mounted session/routing/recovery, grounded AI and flags.
 - `T07_H6_OPERATIONS.md`: actual endpoint latency/query/payload observations,
   failure privacy, staged rollout and nondestructive rollback.
-- Final source freeze, exact command receipts and browser results will be recorded
-  in `T07_VERIFICATION.md`; historical `T07_BASELINE.md` is not final verification.
+- `T07_VERIFICATION.md` records the exact source freeze, command receipts and fresh
+  browser results; historical `T07_BASELINE.md` is not final verification.
 
 ## Release gate
 

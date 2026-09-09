@@ -1,8 +1,9 @@
 # T07 H5 — Frontend, AI, flags and legacy audit
 
 **Status: completed scoped audit; T07 remains in progress.** This is H5 evidence,
-not a production-readiness conclusion. No browser/dev-server session was started;
-the parent owns the fresh managed-browser matrix.
+not deployment authorization. The initial scoped contribution did not start a
+browser; the parent's final frozen-source matrix is recorded below and in
+`T07_VERIFICATION.md`.
 
 ## Continuation topology
 
@@ -145,7 +146,7 @@ appeared in literal-true route cases; all assertions passed. No full suite, brow
 or final T07 gate was run here, per scope. The parent must rerun this focused command
 after merging concurrent H1–H4/H6 changes.
 
-## Remaining parent action
+## Parent browser verification and final closure
 
 Parent pre-freeze browser verification: the existing `happy('en')` replay at
 375×812 passed **30 named assertions** against real Worker/SQLite after the fixes,
@@ -158,10 +159,12 @@ This initial check is not the final frozen-source browser matrix.
 en/vi at 375×812, 390×844 and 1280×900 (264 named assertions / 36 phase executions
 when all pass). Both replay command files wait 61 real seconds before conflict
 phases because happy-path actions now share the H2 account budget; they do not
-disable or reset the limiter between those actions. Final execution is pending.
+disable or reset the limiter between those actions. Final execution on frozen
+`f9d2ff871da155ba7f1aaedd3112a5ed6ea8d2c0` passed **264/264 assertions**, with
+`browser_errors: []` after every combination. Exact commands and limitations are
+in `T07_VERIFICATION.md`; mounted A→B is not a claimed real second-user browser login.
 
-Run the managed-browser H5 matrix after all source phases settle, including desktop
-and 375/390 vi/en, keyboard/visible-focus/native-dialog behavior, route navigation,
-logout/login A→B, shopping/regenerate and both conflict outcomes. Keep the native
-AI timeout-versus-cancellation limitation documented; do not claim live provider or
-production rollout evidence.
+The native AI timeout-versus-cancellation limitation remains documented; no live
+provider or production rollout evidence is claimed. Failed/malformed 409 recovery
+and session A→B are mounted regressions; actual browser phases are listed exactly
+in the final receipt rather than overstating their scope.
