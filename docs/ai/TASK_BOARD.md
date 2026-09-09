@@ -2,6 +2,7 @@
 
 ## Completed release work
 
+- T01-T07: COMPLETE.
 - T01 ✅
 - T02 ✅
 - T03 ✅
@@ -12,7 +13,7 @@
 - T07 ✅
 - Release Integration ✅
 - Release Publication ✅
-- Main Merge ✅
+- Main Integration ✅
 - Main CI ✅
 
 | Task | Status | Evidence |
@@ -25,9 +26,9 @@
 | T06A Backend/API/trust/persistence | COMPLETE | `9f420c0` / `ca60ced` / `c46330c` |
 | T06B Frontend/UX/AI presentation/E2E | COMPLETE | `0fc78a4` / `6d4e873` |
 | T07 Final hardening | COMPLETE | Final application SHA `0b20061e` |
-| Release Integration | ✅ COMPLETE | Main merge `23ef51d` |
-| Release Publication | ✅ COMPLETE | Final release docs published through normal PR workflow |
-| Main Merge | ✅ COMPLETE | Main merge SHA `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d` |
+| Release Integration | ✅ COMPLETE | Application integration in main at `23ef51d` |
+| Release Publication | ✅ COMPLETE | Release docs published |
+| Main Integration | ✅ COMPLETE | Main merge SHA `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d` |
 | Main CI | ✅ PASS | Run `34396319671` |
 
 ## Next authorized work
@@ -37,28 +38,47 @@
 - Controlled Production Deployment ⏳
 - Planner Rollout ⏳
 
-Production work is intentionally pending. Do not invent T08 and do not mark
-production deployment or migration complete.
+Do not invent T08. Production work remains pending and must be separately
+authorized.
+
+GitHub source of truth: main.
+Release Integration: COMPLETE.
+Main Integration: COMPLETE.
+PRE_CLEANUP_MAIN_HEAD: `41d2de6bc76331322cc63e8038432b0b02f60da1`.
+APPLICATION INTEGRATION: complete in main at `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d`.
+Production local reconciliation: NOT STARTED.
+Production DB migration: NOT PERFORMED.
+Production deployment: NOT PERFORMED.
+Planner rollout: NOT STARTED.
+Next task: PRODUCTION-LOCAL RECONCILIATION.
 
 ## Frozen release evidence
 
+- PRODUCTION_APPLICATION_BASE_SHA:
+  `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d`.
 - Verified application SHA: `0b20061e7dc7405df68b18a18da4166e09494ecd`.
 - Verified release head: `0420807968538f61b669569d064c404f67032174`.
-- Main merge SHA: `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d`.
-- Main merge tree is source-equivalent to the verified release head.
+- Previous final-head CI: `34405307196 SUCCESS`.
+- Previous release deploy workflow: `34396457582 SUCCESS`.
 - Full: **1,487 tests / 87 files PASS**; focused: **819 tests / 40 files PASS**.
-- D1 clean: **22 / 22 migrations PASS**; upgrade **0020 -> 0022 PASS**.
+- D1: **22 / 22 migrations PASS**; upgrade **0020 -> 0022 PASS**.
 - Existing rows preserved: **776 rows / 58 tables**.
 - Browser: **264 assertions / 36 phases PASS**.
 - Payment-adjacent: **82 tests / 7 files PASS**.
-- Deploy workflow `34396457582`: packaging completed; staging was not provisioned
-  and no staging deploy occurred; production was not deployed.
+- Previous docs-cleanup deploy workflow `34405457796`: packaging completed; staging was not
+  provisioned and no staging deploy occurred; production was not deployed.
 
-## Historical branch note
+## PR #8 metadata and archival branches
 
-PR #8 is already closed and merged into main at `23ef51d`; it is not a pending
-integration action. The remaining `hoplite/kirrha-5f4057f0` delta is stale
-documentation only. Do not merge kirrha again, revert its history, or recreate
-release integration.
+PR #8 METADATA: `MERGED`, `isDraft=false`, merged and closed at
+`2026-09-09T19:38:59Z`, merge commit `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d`.
+Application integration is complete in main at `23ef51d`; do not merge PR #8 or
+kirrha again. Kirrha remains archival documentation-only divergence.
 
-**PayOS/payment code untouched. Production local source and database untouched.**
+## Protected areas
+
+PayOS/payment code untouched.
+
+No real payment performed.
+
+Production local source and database are untouched.
