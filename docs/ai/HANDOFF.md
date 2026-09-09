@@ -1,84 +1,89 @@
 # Frigo AI Handoff
 
 ## Current Task
-T07 — final hardening continuation, verified on 2026-09-09.
+Complete documentation publication for the already verified T01–T07 release.
+Not a new integration, hardening pass or T08. User authorized publication fallback
+on the provisioned writable continuation if original PR #8 cannot be updated.
 
 ## Task Status
-**T01–T05, T06A, T06B COMPLETE. T07 COMPLETE WITH NON-BLOCKING FOLLOW-UPS.**
-Locally verified release candidate; no production deployment authorization.
-**Hosted CI not verified**; exact-head hosted CI and release/schema approval remain
-prerequisites for deployment, not a reason to mislabel local checks as CI.
+**T01–T07 ENGINEERING COMPLETE. RELEASE INTEGRATION VERIFIED.**
+**RELEASE PUBLICATION: docs published; final PR integration IN PROGRESS.**
+**PRODUCTION DEPLOYMENT NOT PERFORMED.**
+Production-local reconciliation **NOT STARTED**. Main merge **NOT PERFORMED**.
 
 ## Repository / Branch Topology
-Repository-bound tools identify `fri-go/Frigo`; historical `sex-vn/Frigo`
-checkpoint objects are present. No remote changed.
-Original T07 branch: `hoplite/lipara-d81160ee`.
-Published continuation checkpoint: `006742bc179d58aae53106c88aff8a2667dbd1ca`.
-Writable continuation: `hoplite/prokonnesos-74e71894`.
-This user-authorized publisher topology is intentional, not an architecture issue.
-Never publish to the old protected base or restart/reset T07.
+Repository: `vn-2c/Frigo`.
+MAIN: `db09fa0c4353ddf4840e04c10b96a33240de3497`, unchanged on explicit-ref fetch.
+Original release: `hoplite/kirrha-5f4057f0`, Draft PR #8.
+Writable continuation: `hoplite/koroneia-355b17d0` (this thread's provisioned branch).
+The old local-only `7b22aaf4ba44c9a059fbf0000f242ed35ef4c616` was available and
+safe: only the four release protocol docs changed. Preserved all three docs commits
+by fast-forwarding the writable branch, then successfully published that exact SHA.
+No reset, squash, rebase, cherry-pick or T01–T07 reconstruction. Main did not advance.
 
 ## Last Verified Application Commit
-**`f9d2ff871da155ba7f1aaedd3112a5ed6ea8d2c0`**, clean and published before final
-verification. Exact `f39180421f12ff68751dba7898aa39535b2d3a95` recovery and `006742b`
-remain ancestors, preserving T06B `6d4e873` / `0fc78a4` history. Final receipt/status
-changes afterward are documentation only; verify source equivalence when publishing.
+VERIFIED APPLICATION SHA: **`0b20061e7dc7405df68b18a18da4166e09494ecd`**.
+Last application/test implementation SHA: `f9d2ff871da155ba7f1aaedd3112a5ed6ea8d2c0`.
+Non-`docs/ai` tree is unchanged. **NO APPLICATION CHANGE.**
+FINAL DOC HEAD: use the final PR's live head; this file cannot contain its own
+commit hash. Last confirmed published checkpoint:
+**`7b22aaf4ba44c9a059fbf0000f242ed35ef4c616`**. The PR receipt/final response records
+the subsequent exact status-documentation head after publication.
 
 ## Implemented / Audited
-H1 `65c1367`: 51 actual-auth household/creator/mass-assignment regressions, ownership
-matrix. H2 `55020bc`: account-wide planner compute budget fixes raw-path fan-out;
-KV remains explicitly best-effort. H3 `a19063b`: own-CAS-row response fixes a later
-writer race, with six controlled concurrency cases and query evidence. H4 `865ee91`:
-reject contradictory currency scale; exact-domain/proof/unknown/cap tests. H5
-`d579798`: force query-owner reevaluation on private reset, preserve failed 409
-recovery and clear obsolete errors on success; AI and flags matrix. H6 `f9d2ff8`:
-real Worker observations and graceful failure/privacy/readiness evidence.
+Recovered, published and updated `RELEASE_CANDIDATE.md`, `CURRENT_STATE.md`,
+`TASK_BOARD.md` and this `HANDOFF.md`. They preserve exact verification evidence,
+source ancestry, flag state, known limits, rollout/rollback and operator actions.
+Only lightweight ancestry/source-equivalence and documentation diff checks in this
+continuation. Application/test/config source remains frozen.
 
 ## Database / Migration Changes
-None. No new index justified. Existing migrations 0001–0022 replayed into clean
-**local-only** Wrangler D1; previous local test state preserved under ignored
-artifacts. Schema/ledger/Week/ranking/generated-plan/FK gate passes. No remote DB,
-production catalog, reservation/in-progress table, or inventory command rewrite.
+None. Preserved evidence: clean local D1 **22/22 PASS**, actual-main **0020→0022
+PASS**, **776 rows across 58 tables preserved**, schema/FK/integrity PASS.
+The old supplemental direct-PRAGMA `SQLITE_AUTH` query-form limitation remains
+recorded; supported FK and read-only SQLite integrity checks passed. No new DB work,
+remote migration, production data access or schema edit during publication recovery.
 
 ## Tests / Verification
-Frozen full suite **1,487/87 PASS**, focused **819/40 PASS**, lint/typecheck/build,
-migration smoke, clean local D1/schema/query-plan, credential-marker and diff/
-ancestry checks PASS. Browser **264 named assertions / 36 phases PASS** across
-en/vi at 375×812, 390×844 and 1280×900, no page errors. Source remained unchanged.
-Counts overlap; 97 new regressions / 8 files beyond preserved 1,390/79 baseline.
-See `T07_VERIFICATION.md` for exact commands/timings, final source identity and
-proof limitations; H1–H6 receipts retain all intermediate failures/corrections.
+Preserved on `0b20061`: full **1,487 tests / 87 files PASS**, focused **819/40 PASS**,
+payment-adjacent **82/7 PASS**, install/lint/types/build PASS. Zero test failures.
+Hosted CI **34387688066 SUCCESS**, validate job **102587994085**, exact `0b20061`.
+Browser **264 assertions / 36 phases**, 121 existing commands, en/vi × 375/390/
+desktop, zero failures/page errors. All expensive gates intentionally NOT rerun.
+`RELEASE_CANDIDATE.md` retains original exact commands/timings and proof limits.
+Final-head PR CI must be inspected; source CI is not relabeled as docs-head CI.
 
 ## Preview / Evidence
-Managed `node scripts/security-preview.mjs`, real Vite/Worker, in-memory SQLite,
-synthetic registered session, external fetch blocked. Exact tracked setup/run
-commands mirrored into overrides after platform settings discovery missed the
-existing repo file. sqlite3 installed by existing setup path. No production config
-change. Final screenshot is synthetic-only; no recordings or private media.
-Browser has one user; mounted A→B and actual-cookie cross-actor HTTP cover separate
-privacy boundaries, not a claimed real account-B browser login.
+Earlier managed preview used real Vite/Worker, isolated SQLite, synthetic session
+and blocked backend external fetch. Existing presentation fixtures are not live
+retailer/provider proof. No new browser run, screenshot or video in this recovery.
+No production preview/data or new framework. Previous screenshot remains in thread.
 
 ## Feature Flags / Legacy Coexistence
-All planner/UI/AI flags retain literal-true opt-in; ordinary build flags unchanged.
-Legacy Week routes and inventory commands coexist. Planned != actual consumption;
-shopping != purchase; unknown != zero; bounded best-known != proven optimal.
+Planner/UI/AI production defaults remain OFF in checked-in state. Live production
+values were NOT inspected. No flag enablement. Legacy Week, auth, inventory commands
+and household/creator isolation remain untouched. Planned != consumed; shopping !=
+purchased; unknown != zero. No reviewed production price/safety adapter is claimed.
 
 ## Findings Deferred / Risks
-No reproduced critical/high issue remains unfixed in audited scope. Explicit
-non-blocking limits: non-atomic distributed KV, duplicate concurrent initial CPU,
-native AI timeout without cancellation, fixed-offset dates, option clipping,
-large-catalog/sort capacity and browser transport without custom deadline.
-Full details and severity: `PRODUCTION_READINESS.md`; staged rollout/rollback: H6.
-No live provider, remote schema, production secret/history or capacity certification.
+Retain genuine T07 KV best-effort quota, duplicate initial compute, bounded option
+quality, fixed-offset time, uncancelled native AI and production-capacity limits.
+No new application defect. Original direct push rejected the configured-base guard;
+original PR updates rejected repository linkage despite listed linkage. These old
+errors do not prevent using the now-authorized writable branch and normal PR flow.
 
 ## Protected Areas
-**PayOS/payment code untouched.** No billing/checkout/subscription/webhook,
-unrelated auth/session, dependency, migration, `.github`, Wrangler or repository
-setup change. No production flag enablement, deployment or remote migration.
+**PayOS/payment code untouched.**
+**No real payment performed.**
+**MAIN NOT MODIFIED. PRODUCTION DEPLOYMENT NOT PERFORMED.**
+No apps/src/packages/tests/migrations/dependency/lockfile/Wrangler/workflow edits.
 
 ## Next Exact Action
-Publish/review final documentation and the continuation PR, keeping source pinned
-to the verified SHA. Obtain exact-head hosted CI and normal operator schema/release
-approval in separately authorized release work. Do not deploy or enable flags now.
-`T07_WIP_HANDOFF.md` retains the phase ledger and historical interruption; its old
-blocked instructions are explicitly superseded by the completed continuation.
+Publish this status checkpoint. Prefer a docs-only PR into kirrha and merge only
+that documentation PR if permitted; otherwise one superseding release PR to main
+from the same continuation. Inspect applicable CI, then mark final release PR ready.
+Do not automatically merge main or repeat verified source tests.
+After operator normal merge, freeze `MAIN_RELEASE_SHA`. Only AFTER GitHub release
+finalization begin separately authorized production-local reconciliation. Deployment,
+remote migrations and rollout are separate operations; retain the existing schema
+gate and planner-OFF default. Never reverse additive schema blindly for rollback.
