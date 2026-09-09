@@ -2,8 +2,8 @@
 
 ## Current task
 
-**T06A IN PROGRESS**. T01–T05 remain COMPLETE; T06B is blocked until final backend
-verification/review. T07 is blocked by T06B. This replaces the interrupted combined
+**T06A COMPLETE — T06B READY** for a separately authorized frontend task.
+T01–T05 remain COMPLETE; T07 is blocked by T06B. This replaces the interrupted combined
 T06 progress claims, which referred to source files that were never published.
 
 ## Recovery and repository identity
@@ -49,19 +49,29 @@ Fresh recovery typecheck/build and 1077 tests / 66 files passed.
   reservations or future consumption authority.
 - Feedback identity/time/scope are server-established. Cooked is annotation-only;
   real cooked history and inventory remain untouched. No purchase/payment exists.
+- Non-cooked feedback INSERT and replay are atomically plan/revision/member-fenced;
+  concurrent exact retries share one durable event/receipt. Malformed budget strings
+  return 422 rather than reaching an unsafe BigInt conversion.
 
 ## Current verification
 
 - Recovery: `pnpm typecheck`, `pnpm build`, `pnpm test` PASS (1077 / 66).
-- Backend: `pnpm typecheck`, `pnpm lint`, `pnpm build` PASS.
-- `pnpm exec vitest run tests/integration/meal-planning-http.test.ts tests/integration/meal-planning-persistence.test.ts tests/integration/meal-planning-snapshot.test.ts tests/unit/shopping-plan-snapshot.test.ts tests/unit/meal-shopping-dto.test.ts`: **51 tests / 5 files PASS**.
+- Final hardening: `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm test` PASS:
+  **1136 tests / 71 files**, including **42 HTTP tests**.
+- Independent review: `pnpm exec vitest run tests/integration/meal-planning-http.test.ts tests/integration/meal-planning-persistence.test.ts`:
+  **48 tests / 2 files PASS**. Feedback-race fix verified; no remaining blocking finding.
 - Initial backend full test: 1127 passed / 1 failed (last-migration assertion expected
-  0021). Updated expected applied head to 0022, not weakened schema coverage; final
-  full rerun PASS: **1128 tests / 71 files**. Independent review remains pending.
+  0021). Updated expected applied head to 0022, not weakened schema coverage;
+  pre-hardening rerun PASS: **1128 tests / 71 files**.
 - `pnpm check:migrations`, `pnpm exec wrangler d1 migrations apply frigo-db --local`
   (no pending migrations), `pnpm schema:check:local`: PASS, schema 0001–0022.
 - Initial HTTP failures exposed new codec nullability for `openedAt`; fixed and
   regressed. Test fixture/field assumptions corrected without relaxing engines.
+- Review reproduced stale feedback after concurrent regeneration (200 instead of
+  409); atomic INSERT and scoped replay now pass. Current-time history checks are
+  intentionally retained to catch later feedback; a new HTTP regression proves it.
+- Final typecheck initially caught a test-only unknown-JSON property access (TS2571);
+  retained the assertion using `toMatchObject`, then reran all gates successfully.
 - Logs: ignored `.hoplite/artifacts/t06a/`. No hosted CI, browser/UI, remote migration
   or production deployment verification is claimed.
 
@@ -86,5 +96,8 @@ claim. Executed the existing repository-owned sqlite3 install and
 `pnpm install --frozen-lockfile` via shell successfully; platform issue reported.
 No unrelated setup or production configuration change. Node 24.19.0.
 
-Finish review and full gates, publish the coherent A2/A3 backend checkpoint, then
-finalize docs and T06B readiness. Exact checkpoint log: `T06A_HANDOFF.md`.
+A2/A3 backend `ca60ced703efc7e1720f885addf551c0ff8b6f51` is published. Final verified
+hardening accompanies this documentation; its SHA is recorded by the following
+documentation checkpoint in `T06A_HANDOFF.md` (no self-referential commit claim).
+Next: separately authorize T06B, consume the shared schemas and `API_INTEGRATION.md`,
+and keep legacy Week as default. Deployment/remote migration remains operator-owned.

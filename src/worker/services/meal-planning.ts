@@ -236,7 +236,7 @@ export class MealPlanningApplicationService {
       const target = input.type === 'swapped' ? swap!.previous : meal.source;
       const replacement = input.type === 'swapped' ? swap!.replacement : undefined;
       event = await recordPlanningTaste(this.db, scope, {
-        planId: id, key, type: input.type, occurredAt: now,
+        planId: id, revision: input.revision, slotId: input.slotId, key, type: input.type, occurredAt: now,
         target: { kind: target.kind, id: target.id },
         replacement: replacement ? { kind: replacement.kind, id: replacement.id } : undefined,
       });

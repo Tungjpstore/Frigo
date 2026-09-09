@@ -10,7 +10,7 @@ import { saveRankingPreferences } from '../../packages/db/src/personalization';
 import { MealPlanDtoSchema, PlanShoppingDtoSchema, PlanFeedbackDtoSchema } from '../../packages/domain/src/meal-planning-api';
 import type { PurchaseOption } from '../../packages/recipes/src/shopping-catalog';
 import * as planner from '../../packages/recipes/src/weekly-planner';
-import { SqliteD1 } from '../helpers/sqlite-d1';
+import { createBarrier, SqliteD1 } from '../helpers/sqlite-d1';
 
 vi.mock('../../src/worker/services/email', () => ({
   sendEmail: vi.fn(), buildOtpEmail: vi.fn(),
@@ -73,7 +73,7 @@ beforeEach(async () => {
     options: offers.map((offer) => ({ ...offer, price: offer.price ? { ...offer.price, asOf } : null })),
   }) }));
 });
-afterEach(() => { db.close(); vi.restoreAllMocks(); });
+afterEach(() => { db.close(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
 async function request(path = '', body?: unknown, options: { cookie?: string | null; key?: string; headers?: Record<string, string>; realWorker?: boolean; raw?: string } = {}) {
   const headers = new Headers({ Origin: ORIGIN, 'Content-Type': 'application/json',
@@ -206,6 +206,19 @@ describe('T06A real authenticated Worker/API boundary', () => {
     expect(db.query<{ quantity: number }>("SELECT quantity FROM inventory_items WHERE id = 'stock'")[0].quantity).toBe(50);
   });
 
+  it('revalidates history at the current time so later feedback makes a stored plan stale', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2030-01-01T10:00:00Z'));
+    const plan = await generate();
+    expect(plan.freshness.status).toBe('fresh');
+    vi.setSystemTime(new Date('2030-01-01T10:01:00Z'));
+    expect((await request(`/${plan.id}/feedback`, { revision: 1, slotId: SLOT, type: 'liked' })).status).toBe(200);
+    const current = MealPlanDtoSchema.parse(await (await request(`/${plan.id}`)).json());
+    expect(current.freshness.reasons).toEqual(['stale_history']);
+    expect(current.freshness.checkedAt).toBe('2030-01-01T10:01:00.000Z');
+    expect((await request(`/${plan.id}/shopping`, { revision: 1, currency: 'JPY' })).status).toBe(409);
+  });
+
   it('keeps missing reviewed prices unknown and never converts them into free shopping', async () => {
     db.seed('DELETE FROM inventory_items');
     const before = inventoryState();
@@ -258,6 +271,39 @@ describe('T06A real authenticated Worker/API boundary', () => {
   it('does not let a client claim a swap that never happened', async () => {
     const plan = await generate();
     expect((await request(`/${plan.id}/feedback`, { revision: 1, slotId: SLOT, type: 'swapped' })).status).toBe(422);
+  });
+
+  it('rejects feedback if regeneration advances the revision before the event write', async () => {
+    const plan = await generate();
+    let raced = false;
+    db.hooks.beforeStatement = async ({ sql }) => {
+      if (!raced && /INSERT\s+(?:OR IGNORE\s+)?INTO recipe_feedback_events/i.test(sql)) {
+        raced = true;
+        await new MealPlanningApplicationService(db).regenerate(scope, plan.id, { revision: 1 });
+      }
+    };
+    const response = await request(`/${plan.id}/feedback`, { revision: 1, slotId: SLOT, type: 'liked' }, { key: 'racing-feedback' });
+    expect(raced).toBe(true);
+    expect(response.status).toBe(409);
+    expect(db.query('SELECT * FROM recipe_feedback_events')).toEqual([]);
+    expect(db.query<{ revision: number }>('SELECT revision FROM generated_meal_plans')[0].revision).toBe(2);
+  });
+
+  it('deduplicates concurrent feedback retries with one server event timestamp', async () => {
+    const plan = await generate();
+    const barrier = createBarrier(2);
+    db.hooks.beforeStatement = async ({ sql }) => {
+      if (/INSERT INTO recipe_feedback_events/i.test(sql)) await barrier.wait();
+    };
+    const payload = { revision: 1, slotId: SLOT, type: 'liked' };
+    const responses = await Promise.all([
+      request(`/${plan.id}/feedback`, payload, { key: 'concurrent-feedback' }),
+      request(`/${plan.id}/feedback`, payload, { key: 'concurrent-feedback' }),
+    ]);
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+    const receipts = await Promise.all(responses.map(async (response) => PlanFeedbackDtoSchema.parse(await response.json())));
+    expect(receipts[0]).toEqual(receipts[1]);
+    expect(db.query('SELECT * FROM recipe_feedback_events')).toHaveLength(1);
   });
 
   it('records skipped/disliked and a server-established swapped identity without inventing likes', async () => {
@@ -324,6 +370,17 @@ describe('T06A real authenticated Worker/API boundary', () => {
     expect(limited.status).toBe(429);
     expect(limited.headers.get('Retry-After')).toBeTruthy();
   });
+
+  it.each(['not-money', '1.5', '-1', '01', 'Infinity'])(
+    'rejects malformed minor-unit string %s without a server error', async (minorAmount) => {
+      const plan = await generate();
+      const response = await request(`/${plan.id}/shopping`, {
+        revision: 1, currency: 'JPY', budget: { mode: 'hard', money: { currency: 'JPY', minorAmount } },
+      });
+      expect(response.status).toBe(422);
+      expect(await response.json()).toMatchObject({ code: 'INVALID_REQUEST' });
+    },
+  );
 
   it('sanitizes unexpected service errors even outside production', async () => {
     vi.spyOn(MealPlanningApplicationService.prototype, 'generate').mockRejectedValue(new Error('secret SQL and private stack'));

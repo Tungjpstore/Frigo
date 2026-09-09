@@ -7,8 +7,8 @@
 | T03 Ranking/personalization | COMPLETE | Preserved `01f9d87` / `3592de9` |
 | T04 Weekly planner | COMPLETE | Preserved hardened `ebd538b` |
 | T05 Shopping/budget/waste | COMPLETE | `4f3f539` / `899b6d7` |
-| T06A Backend/API/trust/persistence | IN PROGRESS | Recovery published `9f420c0`; backend checkpoint and review |
-| T06B Frontend/UX/AI presentation/E2E | BLOCKED BY T06A | Use `API_INTEGRATION.md` after backend verification |
+| T06A Backend/API/trust/persistence | COMPLETE | Published `9f420c0` / `ca60ced`; final hardening and 1136 tests verified |
+| T06B Frontend/UX/AI presentation/E2E | READY, NOT STARTED | Separate authorization; use `API_INTEGRATION.md` and shared schemas |
 | T07 Final hardening | BLOCKED BY T06B | Do not start implicitly |
 
 ## Task split and recovery
@@ -27,15 +27,20 @@ Branch `hoplite/leukas-32474504`, authorized `arsvn-vn/Frigo`. Recovery commit
 snapshot, current-plan CAS storage, thin generate/get/regenerate/swap/shopping/
 feedback routes, existing rate limits and exact uncertainty-safe mapping.
 
-Backend typecheck/lint/build and 51 focused tests / 5 files pass. Initial full suite
+Backend initial focused suite: 51 tests / 5 files pass. Initial full suite
 1127 passed / 1 failed due to the migration-head assertion; expected head updated
 from 0021 to newly appended 0022. Full rerun: **1128 tests / 71 files PASS**.
-Migration smoke, local D1 apply and local schema gate PASS. Independent review and
-final handoff remain; do not mark COMPLETE before review.
+Final hardened `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm test` PASS:
+**1136 tests / 71 files** (42 HTTP scenarios). `pnpm check:migrations`, local D1 apply
+and local schema gate PASS. Independent follow-up review: **48 tests / 2 files PASS**;
+atomic stale-feedback/replay fix verified. Malformed budget strings return 422.
+Current-time history freshness retains new-event detection. Final test-only TS2571
+was fixed without weakening assertions; all gates reran successfully.
 
 ## Next exact action
 
-Complete/publish backend checkpoint and final review. T06B should then start from
-frontend-safe schemas and `API_INTEGRATION.md`, retaining legacy Week as default.
+Publish the tested hardening/documentation checkpoints and preserve their exact SHAs
+in `T06A_HANDOFF.md`. Separately authorize T06B to start from frontend-safe schemas
+and `API_INTEGRATION.md`, retaining legacy Week as default.
 No payment, real inventory mutation, implicit purchase, AI authority or production
 configuration cutover is part of this task.

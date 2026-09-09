@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { CatalogIdSchema } from '../../domain/src/foundation';
 import { canonicalJson } from '../../recipes/src/planner-context';
+import { RecipeIdentitySchema } from '../../recipes/src/personalization';
 import type { D1DatabaseBinding, D1Response } from './index';
 
 const GeneratedMealPlanScopeSchema = z.object({
@@ -19,6 +20,16 @@ const VersionedPayloadSchema = z.object({
   data: z.record(z.unknown()),
 }).strict();
 const TimestampSchema = z.string().datetime({ offset: true });
+const PlanFeedbackWriteSchema = z.object({
+  id: CatalogIdSchema,
+  planId: CatalogIdSchema,
+  expectedRevision: RevisionSchema,
+  type: z.enum(['liked', 'disliked', 'skipped', 'swapped']),
+  target: RecipeIdentitySchema,
+  replacement: RecipeIdentitySchema.optional(),
+  occurredAt: TimestampSchema,
+}).strict().refine((value) => (value.type === 'swapped') === (value.replacement !== undefined),
+  'Only swapped feedback requires a replacement');
 
 const CreateGeneratedMealPlanSchema = z.object({
   id: CatalogIdSchema,
@@ -270,6 +281,38 @@ export async function findGeneratedMealPlanByRequest(
   const requestKey = RequestKeySchema.parse(rawRequestKey);
   await assertMembership(db, scope);
   return currentPlanByRequestKey(db, scope, requestKey);
+}
+
+/** The source plan revision and membership are checked in the feedback INSERT itself. */
+export async function insertGeneratedMealPlanFeedback(
+  db: D1DatabaseBinding,
+  rawScope: unknown,
+  rawInput: unknown,
+): Promise<boolean> {
+  const scope = GeneratedMealPlanScopeSchema.parse(rawScope);
+  const input = PlanFeedbackWriteSchema.parse(rawInput);
+  const response = await db.prepare(`INSERT INTO recipe_feedback_events
+    (id, household_id, user_id, event_type, target_recipe_id, target_family_id,
+     replacement_recipe_id, replacement_family_id, occurred_at)
+    SELECT ?, plan.household_id, plan.creator_user_id, ?, ?, ?, ?, ?, ?
+    FROM generated_meal_plans plan
+    JOIN household_members member ON member.household_id = plan.household_id
+      AND member.user_id = plan.creator_user_id
+    WHERE plan.id = ? AND plan.household_id = ? AND plan.creator_user_id = ? AND plan.revision = ?
+    ON CONFLICT(id) DO NOTHING`).bind(
+    input.id, input.type,
+    input.target.kind === 'recipe' ? input.target.id : null,
+    input.target.kind === 'family' ? input.target.id : null,
+    input.replacement?.kind === 'recipe' ? input.replacement.id : null,
+    input.replacement?.kind === 'family' ? input.replacement.id : null,
+    new Date(input.occurredAt).toISOString(),
+    input.planId, scope.householdId, scope.userId, input.expectedRevision,
+  ).run();
+  assertSuccess(response);
+  if (changes(response) === 1) return true;
+  const plan = await getGeneratedMealPlan(db, scope, input.planId);
+  if (plan.revision !== input.expectedRevision) throw new GeneratedMealPlanPersistenceError('REVISION_CONFLICT');
+  return false;
 }
 
 /**

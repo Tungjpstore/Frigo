@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { D1DatabaseBinding } from '../../../packages/db/src/index';
-import { recordRecipeFeedback } from '../../../packages/db/src/personalization';
+import { insertGeneratedMealPlanFeedback } from '../../../packages/db/src/meal-planning';
 import { RecipeIdentitySchema } from '../../../packages/recipes/src/personalization';
 import { canonicalJson } from '../../../packages/recipes/src/planner-context';
 import { sha256Hex } from '../utils/session';
@@ -17,10 +17,10 @@ const StoredEventSchema = z.object({
 export async function recordPlanningTaste(
   db: D1DatabaseBinding,
   scope: Scope,
-  input: { planId: string; key: string; type: 'liked' | 'disliked' | 'skipped' | 'swapped';
+  input: { planId: string; revision: number; slotId: string; key: string; type: 'liked' | 'disliked' | 'skipped' | 'swapped';
     target: Identity; replacement?: Identity; occurredAt: string },
 ) {
-  const id = `mpf_${await sha256Hex(canonicalJson([scope, input.planId, input.key]))}`;
+  const id = `mpf_${await sha256Hex(canonicalJson([scope, input.planId, input.revision, input.slotId, input.key]))}`;
   const expected = {
     event_type: input.type,
     target_recipe_id: input.target.kind === 'recipe' ? input.target.id : null,
@@ -31,8 +31,9 @@ export async function recordPlanningTaste(
   async function replay() {
     const raw = await db.prepare(`SELECT e.* FROM recipe_feedback_events e
       JOIN household_members m ON m.household_id = e.household_id AND m.user_id = e.user_id
-      WHERE e.id = ? AND e.household_id = ? AND e.user_id = ?`)
-      .bind(id, scope.householdId, scope.userId).first();
+      JOIN generated_meal_plans p ON p.household_id = e.household_id AND p.creator_user_id = e.user_id
+      WHERE e.id = ? AND e.household_id = ? AND e.user_id = ? AND p.id = ? AND p.revision = ?`)
+      .bind(id, scope.householdId, scope.userId, input.planId, input.revision).first();
     if (!raw) return null;
     const event = StoredEventSchema.parse(raw);
     if (Object.entries(expected).some(([key, value]) => event[key as keyof typeof expected] !== value)) {
@@ -42,15 +43,12 @@ export async function recordPlanningTaste(
   }
   const prior = await replay();
   if (prior) return prior;
-  try {
-    const event = await recordRecipeFeedback(db, scope, {
-      id, type: input.type, target: input.target, replacement: input.replacement, occurredAt: input.occurredAt,
-    });
-    return { id: event.id, occurredAt: event.occurredAt };
-  } catch (error) {
-    // A concurrent exact retry may have won with a different server timestamp.
-    const concurrent = await replay();
-    if (concurrent) return concurrent;
-    throw error;
-  }
+  const inserted = await insertGeneratedMealPlanFeedback(db, scope, {
+    id, planId: input.planId, expectedRevision: input.revision,
+    type: input.type, target: input.target, replacement: input.replacement, occurredAt: input.occurredAt,
+  });
+  if (inserted) return { id, occurredAt: input.occurredAt };
+  const concurrent = await replay();
+  if (concurrent) return concurrent;
+  throw new MealPlanningError('PLAN_REVISION_CONFLICT', 409, 'Plan changed before feedback could be recorded');
 }

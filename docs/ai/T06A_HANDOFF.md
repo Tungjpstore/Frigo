@@ -18,17 +18,17 @@
 
 Recovery checks PASS: `pnpm typecheck`, `pnpm build`, `pnpm test` (**1077 tests /
 66 files**). Logs under ignored `.hoplite/artifacts/t06a/`. Initial typecheck
-failure is retained in `recovery-typecheck.log`. Recovery commit is the next
-append-only commit; its exact SHA will be recorded by the following checkpoint.
+failure is retained in `recovery-typecheck.log`. History is append-only.
 
 - **A1 recovery published:** `9f420c05cf3adf48825f2645bcdc5accf36ac4b4`.
-- **A2/A3 combined backend checkpoint in progress:** coherent trusted preload,
+- **A2/A3 backend published:** `ca60ced703efc7e1720f885addf551c0ff8b6f51`.
+- **A2/A3 combined backend delivered:** coherent trusted preload,
   strict API schemas/DTOs, minimal current-plan persistence (0022), generate/get,
   regenerate/swap/shopping/feedback routes. `API_INTEGRATION.md` describes exact
   contracts and limitations. `pnpm typecheck` PASS; focused 51 tests / 5 files PASS;
   `pnpm lint` and `pnpm build` PASS. Full test initially 1127 passed / 1 failed:
   foundation test's last migration assertion still expected 0021. Updated to 0022
-  because this task intentionally appends that migration; rerun pending.
+  because this task intentionally appends that migration; rerun passed below.
 - Initial HTTP suite found nullable `openedAt` incompatibility in the new persisted
   T05 projection; corrected with a regression. Initial assertions/fixtures were
   corrected to use `totalCost`, scoped stock and genuinely underflowing quantities;
@@ -37,13 +37,40 @@ append-only commit; its exact SHA will be recorded by the following checkpoint.
   `pnpm exec wrangler d1 migrations apply frigo-db --local` (no pending migrations),
   `pnpm schema:check:local` PASS. `git diff --check` PASS. The test shell tool lost
   its result record; complete PASS log and no remaining Vitest process were checked
-  read-only rather than blindly rerunning. Review/documentation readiness pending.
+  read-only rather than blindly rerunning. Final review/gates are recorded below.
+- Independent review found a stale-feedback race: revision could advance between
+  the service check and T03 event INSERT. Reproduced with an actual concurrent
+  regeneration (HTTP returned 200 instead of 409), then fixed with a plan/revision/
+  membership-guarded INSERT. All 35 HTTP tests PASS after the fix. Added an explicit
+  concurrent exact-feedback replay regression. Final gate rerun passed below.
+- **A4 hardening verified:** plan/revision/member-fenced feedback INSERT and replay;
+  safe malformed-budget validation; HTTP coverage of later feedback making history
+  stale. Keep current-time history windows: freezing the upper cutoff at generation
+  would incorrectly hide new feedback/cooked events. No freshness algorithm change.
+- Final `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm test`: **PASS, 1136 tests /
+  71 files**, including **42 HTTP tests**. `pnpm check:migrations`,
+  `pnpm exec wrangler d1 migrations apply frigo-db --local` (no pending migrations),
+  `pnpm schema:check:local`, `git diff --check`: **PASS**. Logs: `final-*.log`.
+- Final typecheck initially failed TS2571 in the new malformed-budget assertion;
+  `toMatchObject` preserves the same assertion without reading a property of unknown
+  JSON. All final gates reran after this test-only correction.
+- Independent final review ran `pnpm exec vitest run tests/integration/meal-planning-http.test.ts tests/integration/meal-planning-persistence.test.ts`:
+  **48 tests / 2 files PASS**, including stale-feedback race, exact concurrent replay
+  and later-history freshness. No blocking review finding remains. Per-plan-path
+  rate-limit buckets remain documented T07 follow-up, not an aggregate quota claim.
+- Final acceptance audit: source intent-only validation, auth/CSRF/owner fencing,
+  cross-household/private-member IDOR, CAS stale writes, full downstream swap replay,
+  unknown prices/domain results, exact Money/Quantity DTOs, feedback isolation and
+  unchanged real inventory covered. T02–T05 core algorithms and protected areas
+  unchanged; no untracked required source/test files. No remote migration, hosted
+  CI, browser/UI verification or production deployment claimed.
 
 ## Next exact action
 
-Commit/publish verified recovery, then implement typed intent/DTO contracts,
-server-owned context and minimal revisioned final-plan persistence. Reuse T02–T05,
-existing auth/CSRF/household authorization/rate limits. No UI/AI/payment expansion.
+**T06A COMPLETE — T06B READY.** Publish final hardening, then record its exact SHA
+in a documentation-only checkpoint. Separately authorize T06B; start with shared
+domain DTO schemas and `API_INTEGRATION.md`, cookie HTTP transport and explicit
+partial/unknown/stale states. No UI/AI/payment expansion is part of T06A.
 
 ## T06B recovery material
 

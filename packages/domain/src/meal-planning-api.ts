@@ -52,8 +52,9 @@ export const OptimizePlanShoppingSchema = z.object({
     money: MoneyDtoSchema,
   }).strict().optional(),
 }).strict().superRefine((value, ctx) => {
-  if (value.budget && (value.budget.money.currency !== value.currency ||
-    BigInt(value.budget.money.minorAmount) > BigInt(Number.MAX_SAFE_INTEGER))) {
+  if (!value.budget || !MoneyDtoSchema.safeParse(value.budget.money).success) return;
+  if (value.budget.money.currency !== value.currency ||
+    BigInt(value.budget.money.minorAmount) > BigInt(Number.MAX_SAFE_INTEGER)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Budget currency or supported minor-unit range is invalid' });
   }
 });

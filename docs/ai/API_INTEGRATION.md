@@ -186,9 +186,11 @@ household/user, event ID and time from the authorized plan/clock. Like/dislike/s
 are T03 feedback; swapped refers to the previous and replacement identities of a
 server-applied swap in the **current revision**. A client cannot fabricate a swap.
 Record it before another regenerate/swap replaces that revision's last-swap metadata.
-T03 event IDs are server-generated SHA-256 identities scoped by household/user/plan
-and retry key, avoiding global client-ID collisions. Exact concurrent retries reuse
-the first event timestamp; conflicting event intent returns 409.
+T03 event IDs are server-generated SHA-256 identities scoped by household/user/plan/
+revision/slot and retry key, avoiding global client-ID collisions. The event INSERT
+checks the plan revision and membership atomically, so a concurrent regeneration
+cannot accept stale feedback. Exact concurrent retries reuse the first event
+timestamp; conflicting event intent returns 409.
 
 Cooked is a revision/slot-scoped **annotation only** with idempotent replay, not an
 inventory command and not fabricated actual `cooked_meals` history. It never implies
