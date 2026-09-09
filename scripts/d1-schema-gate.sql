@@ -21,7 +21,8 @@ required_migrations(name) AS (
     ('0019_recipe_domain_foundation.sql'),
     ('0020_t01_foundation_hardening.sql'),
     ('0021_recipe_personalization.sql'),
-    ('0022_generated_meal_plans.sql')
+    ('0022_generated_meal_plans.sql'),
+    ('0023_inventory_truth_foundation.sql')
 ),
 required_tables(name) AS (
   VALUES
@@ -29,6 +30,8 @@ required_tables(name) AS (
     ('households'),
     ('inventory_items'),
     ('inventory_events'),
+    ('inventory_lots'),
+    ('storage_locations'),
     ('scans'),
     ('meal_plans'),
     ('shopping_import_commands'),
@@ -59,6 +62,11 @@ required_tables(name) AS (
 required_columns(table_name, column_name) AS (
   VALUES
     ('inventory_items', 'version'),
+    ('inventory_lots', 'quantity_milli'),
+    ('inventory_lots', 'canonical_unit'),
+    ('inventory_lots', 'storage_location_id'),
+    ('inventory_lots', 'source_id'),
+    ('inventory_lots', 'version'),
     ('inventory_items', 'opened_at'),
     ('inventory_items', 'expiry_kind'),
     ('inventory_items', 'expiry_source'),

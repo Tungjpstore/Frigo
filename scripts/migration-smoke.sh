@@ -62,12 +62,15 @@ VALUES ('migration_smoke_req_only', 'migration_smoke_plan', 'GINGER', 'Gừng', 
 .read migrations/0020_t01_foundation_hardening.sql
 .read migrations/0021_recipe_personalization.sql
 .read migrations/0022_generated_meal_plans.sql
+.read migrations/0023_inventory_truth_foundation.sql
 
 CREATE TEMP TABLE assert_zero (value INTEGER NOT NULL CHECK (value = 0));
 INSERT INTO assert_zero SELECT COUNT(*) FROM pragma_foreign_key_check;
 INSERT INTO assert_zero SELECT COUNT(*) FROM pragma_integrity_check WHERE integrity_check <> 'ok';
 
 CREATE TEMP TABLE assert_one (value INTEGER NOT NULL CHECK (value = 1));
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'inventory_lots';
+INSERT INTO assert_one SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'storage_locations';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('ingredient_aliases') WHERE name = 'normalized_alias';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('inventory_items') WHERE name = 'expiry_source';
 INSERT INTO assert_one SELECT COUNT(*) FROM pragma_table_info('recipes') WHERE name = 'verification_state';
