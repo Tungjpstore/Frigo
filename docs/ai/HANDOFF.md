@@ -4,9 +4,10 @@
 T06B — Frontend/Product UX/Grounded AI Presentation/E2E.
 
 ## Task Status
-**T06B IN PROGRESS**. Authorized after clean `9ec7b68` preflight with `c46330c` ancestor.
-T06A remains complete. Frontend, compatible current/choice endpoints and optional
-grounded presentation are being verified; no T06B completion/rollout is claimed.
+**T06B IN PROGRESS / INTERRUPTED — NOT COMPLETE. T07 BLOCKED.**
+User stopped implementation on 2026-09-09 for preservation only. Start with
+`T06B_WIP_HANDOFF.md` for exact files, checks, missing work and first actions.
+T06A remains complete; no T06B completion/rollout is claimed.
 
 ## Dependency Baseline
 T05 `899b6d790b0902c93a17ba060437e3f9802e03e9`; partial T06
@@ -21,6 +22,11 @@ found on fetched published task branches. No alternate remote or unpublished
 workspace recovery was used.
 
 ## Last Verified Commit
+Latest preserved/published T06B WIP: `08d90fa99ea032e20697744bdab64caa81056d9d`.
+Backend compatibility/AI slice: `1f7802f48b64c5998ccac28d532070a3721c07f9`.
+These are not full-gate T06B completion commits. The following is the verified
+T06A baseline from which T06B started at documentation commit `9ec7b68`:
+
 `c46330c61bc1bf3685508716a8ab10d72ec30b1e` — final A4 hardening, **published**.
 A2/A3 backend `ca60ced703efc7e1720f885addf551c0ff8b6f51` and recovery
 `9f420c05cf3adf48825f2645bcdc5accf36ac4b4` are also published. This subsequent
@@ -51,19 +57,24 @@ documentation-only checkpoint records the verified implementation SHA.
 ## In Progress
 T06B: opt-in planner routes, safe API client, current-plan restoration, full-revision
 swap/regenerate, truthful shopping/budget/feedback, vi/en reason labels and optional
-grounded AI. Isolated preview/browser regression setup and final verification remain.
+grounded AI. Isolated preview and 17 API integration cases are implemented/passing;
+only initial browser generation/mobile layout is verified. Component tests,
+remaining browser flows and final integrated gates remain. All work is stopped.
 
 ## Remaining
-T06B, reviewed data provisioning, and production migration/deployment each require
-separate authorization. Aggregate
-cross-plan abuse limits remain T07; no candidate-browser/list/history API is supplied.
+Resume unfinished T06B only under a continuation mandate; preserve trusted API
+boundaries. Reviewed data provisioning and production migration/deployment remain
+separately authorized work. Aggregate cross-plan abuse limits remain T07; bounded
+catalog choices are not eligibility and no plan-list/history API is supplied.
 
 ## Files Changed
 New DB snapshot/persistence, domain API/shopping DTOs, narrow recipe-shopping
 snapshot codec, Worker application/DTO/feedback/error services and route. Small DB
 reader prepare/map refactors and T05 input type/normalization bridge preserve existing
 callers. Migration/schema gate, HTTP/persistence/snapshot/DTO tests and docs.
-Recovery frontend/AI changes only remove absent implementation hooks; no new UI.
+The recovery slice only removed missing hooks. Subsequent T06B adds real new
+frontend source, shared presentation DTOs, compatible APIs, fixtures and tests;
+see the file-by-file interruption record rather than inferring recovery completeness.
 
 ## Database / Migration Changes
 `0022_generated_meal_plans.sql`: current-plan JSON envelopes/CAS state, creator+
@@ -72,6 +83,14 @@ No legacy Week table change, prior migration rewrite or stored optimizer frontie
 Local D1 apply (no pending migrations) and schema gate PASS; no remote migration.
 
 ## Tests / Verification
+T06B: 93 backend tests/4 files, 17 real preview API tests/1 file PASS; frontend
+delegate reported 129 tests/4 files (exact invocation not retained). Earlier
+typecheck/lint/build passed; final WIP gates have not run. Initial unused React
+imports and current-plan membership regression were corrected, with passing reruns.
+Browser verified login, empty state, generation and vi mobile week only. Full
+commands, failures and remaining checks are in `T06B_WIP_HANDOFF.md`.
+
+The subsections below retain **historical T06A** verification, not T06B gate claims.
 ### Passed
 - Recovery: `pnpm typecheck`, `pnpm build`, `pnpm test` (1077 tests / 66 files).
 - Backend: `pnpm typecheck`, `pnpm lint`, `pnpm build`.
@@ -121,8 +140,10 @@ production infrastructure; household inventory command/version/idempotency behav
 legacy Week compatibility/reconciliation. No planning/shopping stock mutation.
 
 ## Next Task
-T06B — READY for a separately authorized frontend/UX/optional AI-presentation task.
+T06B — IN PROGRESS / INTERRUPTED; resume only when authorized. T07 remains blocked.
 
 ## Next Exact Action
-Only when authorized, build T06B from the stable API schemas and `API_INTEGRATION.md`,
-not T02–T05 implementation imports. Keep legacy Week default and render uncertainty.
+Open `T06B_WIP_HANDOFF.md` and `tests/unit/planner-presentation.test.ts`; run
+`pnpm exec vitest run tests/unit/meal-planning-client.test.ts tests/unit/planner-presentation.test.ts`
+before new UI. The missing component suite and remaining browser/gate work are
+explicitly listed there. Preserve legacy Week and all protected boundaries.

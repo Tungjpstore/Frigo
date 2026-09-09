@@ -2,15 +2,23 @@
 
 ## Current task
 
-**T06A COMPLETE; T06B IN PROGRESS** under the attached frontend/UX/AI/E2E task.
+**T06A COMPLETE; T06B IN PROGRESS / INTERRUPTED. T07 BLOCKED.**
+The user stopped implementation on 2026-09-09 for account/agent handoff. Read
+`T06B_WIP_HANDOFF.md` first: published backend slice `1f7802f`, preserved/published
+frontend/client/preview/test WIP `08d90fa`. All required source was captured,
+including new files. No T06B completion or final integrated gate success is claimed.
+Scoped checks: 93 backend tests and 17 preview API tests pass; frontend delegate
+reported 129 tests/4 files (exact invocation not retained). Earlier T06B typecheck,
+lint/build passed, but all final gates require rerun. Browser verified only login,
+empty state, real seven-day generation and Vietnamese mobile week layout.
 Preflight: clean `9ec7b68`, verified `c46330c` ancestry, no missing/untracked T06A
 source. Existing planner query keys/layout exclusion reused; absent historical
 pages are not treated as working implementations. T06B adds opt-in React routes,
 typed cookie API client, exact localized presentation, current-plan restoration,
 revisioned actions, shopping and grounded optional explanations. ADR-018 records
 the minimal compatible discovery/choice endpoints. Initial integrated typecheck
-found two unused React imports; corrected before checkpoint verification. Browser
-and final gates remain pending; do not infer T06B completion from T06A checks below.
+found two unused React imports; corrected before checkpoint verification. Remaining browser flows and final gates are pending; do not infer T06B completion
+from the historical T06A checks below.
 
 T01–T05 remain COMPLETE; T07 is blocked by T06B. This replaces the interrupted combined
 T06 progress claims, which referred to source files that were never published.
@@ -91,12 +99,14 @@ scope. Default reviewed retail catalog is empty, so costs remain unknown rather
 than using legacy/OCR guesses. No reviewed safety/substitution registry is fabricated;
 active hard safety restrictions without reviewed evidence fail closed. Typed T03
 preferences are separate from legacy free-form settings; no implicit import occurs.
-No candidate-browser or plan-list/history API, annotation-list UX, stock acceptance,
-AI explanation, frontend implementation, global atomic quota or production cutover.
+T06B adds private current-plan discovery, bounded non-eligibility catalog choices,
+grounded explanations and the unfinished frontend described in `T06B_WIP_HANDOFF.md`.
+No plan-list/history API, annotation-list UX, stock acceptance, global atomic quota
+or production cutover is supplied.
 
 Legacy Week/recipe/shopping/cooking, household command semantics and PayOS/payment
-code remain untouched. Recovery's only frontend edits remove broken references;
-`queryKeys.ts` planner keys and `AppLayout.tsx` exclusion survive for T06B.
+code remain untouched. Recovery removed broken frontend references; the new opt-in T06B implementation
+reuses its surviving query keys and layout exclusion without changing Week default.
 
 ## Environment and next action
 
@@ -108,5 +118,6 @@ No unrelated setup or production configuration change. Node 24.19.0.
 A2/A3 backend `ca60ced703efc7e1720f885addf551c0ff8b6f51` and final verified hardening
 `c46330c61bc1bf3685508716a8ab10d72ec30b1e` are published. This documentation-only
 checkpoint records that verified implementation SHA, not its own future hash.
-Next: separately authorize T06B, consume the shared schemas and `API_INTEGRATION.md`,
-and keep legacy Week as default. Deployment/remote migration remains operator-owned.
+Next, when authorized to resume: open `T06B_WIP_HANDOFF.md` and run the two explicit
+frontend unit suites in its first action before adding UI. T06B remains interrupted;
+T07 and deployment/remote migration are not authorized by this preservation step.

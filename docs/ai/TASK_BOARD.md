@@ -8,7 +8,7 @@
 | T04 Weekly planner | COMPLETE | Preserved hardened `ebd538b` |
 | T05 Shopping/budget/waste | COMPLETE | `4f3f539` / `899b6d7` |
 | T06A Backend/API/trust/persistence | COMPLETE | Published `9f420c0` / `ca60ced` / `c46330c`; 1136 tests verified |
-| T06B Frontend/UX/AI presentation/E2E | IN PROGRESS | Authorized attached task; clean base `9ec7b68`, ADR-018; checkpoints/browser gates pending |
+| T06B Frontend/UX/AI presentation/E2E | IN PROGRESS / INTERRUPTED | User stop 2026-09-09; backend `1f7802f`, published WIP `08d90fa`; see `T06B_WIP_HANDOFF.md`; not complete |
 | T07 Final hardening | BLOCKED BY T06B | Do not start implicitly |
 
 ## Task split and recovery
@@ -20,6 +20,13 @@ nonblocking frontend query/layout material. No unpublished workspace was reconst
 The authoritative T05 checkpoint remains `899b6d7`, an ancestor of the current branch.
 
 ## Current checkpoint
+
+T06B preservation checkpoint: `08d90fa99ea032e20697744bdab64caa81056d9d`, published.
+Source, new files, preview API integration tests and unfinished UI are preserved.
+93 backend tests / 4 files and 17 preview API tests / 1 file passed; initial browser
+generation/mobile inspection completed. Final integrated gates and remaining UI
+flows are not verified. `T06B_WIP_HANDOFF.md` records exact scope/evidence/next actions.
+The following verification is historical T06A baseline, not T06B acceptance.
 
 Branch `hoplite/leukas-32474504`, authorized `arsvn-vn/Frigo`. Recovery commit
 `9f420c05cf3adf48825f2645bcdc5accf36ac4b4` is published with typecheck/build and
@@ -39,8 +46,9 @@ was fixed without weakening assertions; all gates reran successfully.
 
 ## Next exact action
 
-Tested hardening `c46330c61bc1bf3685508716a8ab10d72ec30b1e` is published and recorded
-in `T06A_HANDOFF.md`. Separately authorize T06B to start from frontend-safe schemas
-and `API_INTEGRATION.md`, retaining legacy Week as default.
+When authorized to resume, open `T06B_WIP_HANDOFF.md` and run
+`pnpm exec vitest run tests/unit/meal-planning-client.test.ts tests/unit/planner-presentation.test.ts`
+before new UI. T06B is interrupted, not complete; T07 remains blocked. Preserve
+frontend-safe schemas and `API_INTEGRATION.md`, retaining legacy Week as default.
 No payment, real inventory mutation, implicit purchase, AI authority or production
 configuration cutover is part of this task.
