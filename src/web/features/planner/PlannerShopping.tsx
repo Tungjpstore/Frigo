@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ShoppingBag } from 'lucide-react';
 import type { MealPlanDto, PlanShoppingDtoSchema } from '../../../../packages/domain/src/meal-planning-api';
 import type { MoneyDto } from '../../../../packages/domain/src/meal-shopping-api';
@@ -10,7 +10,7 @@ import { Button } from '../../components/common/Button';
 import { mealPlanningApi } from '../../services/meal-planning';
 import { queryKeys } from '../../lib/queryKeys';
 import { plannerCopy, type PlannerLocale } from './copy';
-import { budgetStatusLabel, formatMoney, formatQuantity, ingredientLabel, parseBudgetMinorAmount, reasonLabel, wasteRiskLabel } from './presentation';
+import { budgetStatusLabel, formatMoney, formatQuantity, ingredientLabel, parseBudgetMinorAmount, reasonLabel, shoppingStatusLabel, wasteRiskLabel } from './presentation';
 import { plannerInputClass } from './PlannerSetup';
 import type { usePlanner } from './usePlanner';
 
@@ -23,7 +23,7 @@ export function PlannerShopping({ plan, model, locale }: { plan: MealPlanDto; mo
   const [mode, setMode] = useState<'hard' | 'soft'>('hard');
   const [invalid, setInvalid] = useState(false);
   const key = [...queryKeys.mealPlanningShopping(plan.id), plan.revision, currency, budget, mode];
-  const shopping = useQuery<Shopping>({ queryKey: key, enabled: false, retry: false });
+  const shopping = useQuery<Shopping>({ queryKey: key, queryFn: skipToken, enabled: false, retry: false });
   const fresh = plan.freshness.status === 'fresh';
   const response = fresh && !model.busy && !model.error && shopping.data?.planRevision === plan.revision ? shopping.data : null;
   async function submit(event: React.FormEvent) {
@@ -61,6 +61,7 @@ export function ShoppingResult({ response, locale }: { response: Shopping; local
       {result.cost.status === 'unknown' ? <p className="font-semibold text-lg leading-snug">{t.priceUnavailable}</p> : <p className="text-3xl font-heading font-bold break-all">{formatMoney(complete ? result.cost.totalCost : result.cost.knownCost, locale)}</p>}
       {result.cost.unknownCostItemCount > 0 && <p className="text-sm text-amber-100">{result.cost.unknownCostItemCount} {t.unknownPrices}</p>}
       <p className="text-sm font-semibold border-t border-white/20 pt-3" data-testid="budget-status">{budgetStatusLabel(result.budget.status, locale)}</p>
+      <p className="text-sm" data-testid="shopping-status">{shoppingStatusLabel(result.shoppingStatus, locale)}</p>
       {result.budget.status === 'over_budget' && <p className="text-sm">{t.gap}: {formatMoney(result.budget.selectedKnownGap, locale)}</p>}
       {!result.optimization.exhaustive && <p className="text-xs text-emerald-100">{t.bestKnown}</p>}
     </section>
@@ -69,6 +70,7 @@ export function ShoppingResult({ response, locale }: { response: Shopping; local
     <section className="space-y-3"><h2 className="font-heading text-lg font-bold">{t.list}</h2><p className="text-xs text-slate-500">{t.checklistNote}</p>
       {[...result.requirements, ...result.optionalRequirements].map((requirement) => {
         const line = result.purchaseLines.find((item) => item.requirementId === requirement.id);
+        const unresolved = result.unresolvedRequirements.find((item) => item.requirementId === requirement.id);
         return <Card key={requirement.id}>
           <label className="flex gap-3 items-start cursor-pointer min-h-11"><input type="checkbox" className="mt-1 w-5 h-5 accent-emerald-700 shrink-0" checked={checked.has(requirement.id)} onChange={(e) => setChecked((prior) => { const next = new Set(prior); if (e.target.checked) next.add(requirement.id); else next.delete(requirement.id); return next; })} />
             <span className="min-w-0"><span className="font-semibold text-sm">{ingredientLabel(requirement.ingredientId, locale)}</span>{requirement.optional && <span className="block text-xs text-slate-500">{t.optional}</span>}<span className="block text-sm mt-1">{t.required}: {formatQuantity(requirement.required, locale)}</span></span>
@@ -78,7 +80,7 @@ export function ShoppingResult({ response, locale }: { response: Shopping; local
             <p className="text-xs font-semibold text-slate-500">{t.selectedPackages}</p>
             {line.selectedPackages.map((pack) => <p key={pack.purchaseOptionId} className="flex flex-wrap justify-between gap-2"><span>{pack.packageCount} × {formatQuantity(pack.packageContent, locale)}</span><span>{formatMoney(pack.lineCost, locale)}</span></p>)}
             <p className="text-xs text-slate-600">{t.surplus}: {formatQuantity(line.surplus, locale)}</p>
-          </div> : <p className="text-xs text-amber-900 mt-2">{t.priceUnavailable}</p>}
+          </div> : <p className="text-xs text-amber-900 mt-2">{requirement.optional ? t.optionalNotPurchased : unresolved ? reasonLabel(unresolved.code, locale) : t.priceUnavailable}</p>}
           <p className="mt-3 text-xs text-slate-500">{[...new Set(requirement.sourceMealSlots.map((slot) => slot.date))].join(' · ')}</p>
         </Card>;
       })}

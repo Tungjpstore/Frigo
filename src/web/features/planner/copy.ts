@@ -3,6 +3,7 @@ import { useState } from 'react';
 export type PlannerLocale = 'vi' | 'en';
 export const plannerCopy = {
   vi: {
+    optionalNotPurchased: 'Nguyên liệu không bắt buộc không được tính vào gói mua đề xuất hoặc ngân sách.',
     quantityReview: 'Cần kiểm tra số lượng nguyên liệu', alternativesLimited: 'Đang hiển thị một phần danh mục để bạn lựa chọn.',
     rejectionNote: 'Các lý do loại trừ bên dưới thuộc về phương án đã xét, không phải kết luận lỗi của món được chọn.',
     shoppingPartial: 'Danh sách này chưa đầy đủ cho mọi nhu cầu của kế hoạch. Kiểm tra các bữa chưa xếp và các số lượng chưa rõ.',
@@ -47,6 +48,7 @@ export const plannerCopy = {
     mealUnavailable: 'Không tìm thấy bữa này trong phiên bản hiện tại.', back: 'Về thực đơn', checked: 'Đã ghi nhớ',
   },
   en: {
+    optionalNotPurchased: 'Optional items are not included in suggested purchases or the budget.',
     quantityReview: 'Ingredient quantity review needed', alternativesLimited: 'Showing a limited selection from the catalog.',
     rejectionNote: 'Rejection reasons below concern evaluated alternatives, not failures of the selected meals.',
     shoppingPartial: 'This list does not cover every planning need. Review unplanned meals and unresolved quantities.',
