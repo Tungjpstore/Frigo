@@ -54,9 +54,10 @@ outage prose is explicitly not accepted as AI success.
 Disabled AI, empty reasons, absent native binding, explicit mock mode, timeout,
 provider outage/rate rejection, malformed output or fabricated/dropped fact IDs all
 fall back deterministically. Rejected raw outputs and provider errors are not
-returned or logged. The route uses T06A's existing 10/minute/account/path expensive
-limiter. That is best-effort per-path policy, not a globally atomic cross-plan
-quota or monetary guarantee; aggregate abuse/cost assessment remains T07.
+returned or logged. The route retains T06A's 10/minute/account/path limit and now
+shares T07's 10/minute/account planner compute bucket with generation, regeneration,
+swap and shopping. Non-atomic KV/isolate enforcement is still best-effort, not a
+global atomic quota or monetary guarantee. See ADR-019 and `T07_H2_ABUSE.md`.
 
 ## Verification ownership
 

@@ -1,5 +1,10 @@
 # Architecture — T01 foundation through T05 shopping optimization
 
+T07 adds an aggregate authenticated-account budget to expensive new-planner
+routes, retaining their per-path limits. KV and isolate-local fallback remain
+best-effort abuse controls, not atomic quotas; see ADR-019 and `T07_H2_ABUSE.md`.
+No legacy/auth/payment policy or deployment architecture changes.
+
 T05 adds pure `recipes/src/shopping-*.ts`: opaque authorized plan/catalog/budget
 preload, authoritative shortage normalization, bounded package enumeration, exact
 minor-unit money, budget proof and evidence-only stock/surplus risk. No T04

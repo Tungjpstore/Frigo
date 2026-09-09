@@ -251,16 +251,16 @@ describe('on-demand explanations and HTTP guard inheritance', () => {
     expect(PlanExplanationDtoSchema.parse(await response.json())).toMatchObject({ source: 'deterministic', fallbackReason: 'provider_unavailable' });
   });
 
-  it('applies the existing expensive-route limit before an eleventh AI request', async () => {
+  it('counts generation toward the aggregate budget before a tenth AI request', async () => {
     env.MEAL_PLANNER_AI_ENABLED = 'true';
     const plan = await generate();
-    for (let count = 0; count < 10; count += 1) {
+    for (let count = 0; count < 9; count += 1) {
       expect((await request(`/${plan.id}/explanation`, { revision: 1, slotId: SLOT, locale: 'vi' })).status).toBe(200);
     }
     const response = await request(`/${plan.id}/explanation`, { revision: 1, slotId: SLOT, locale: 'vi' });
     expect(response.status).toBe(429);
     expect(response.headers.get('Retry-After')).toBeTruthy();
-    expect(transport).toHaveBeenCalledTimes(10);
+    expect(transport).toHaveBeenCalledTimes(9);
   });
 
   it('rejects stale revision for both new plan-specific actions', async () => {

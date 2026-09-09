@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const CurrencySchema = z.enum(['VND', 'JPY', 'USD', 'EUR']);
+const CurrencyMinorDigits = { VND: 0, JPY: 0, USD: 2, EUR: 2 } as const;
 const UnitSchema = z.enum(['g', 'kg', 'ml', 'l', 'piece', 'pack', 'bunch', 'slice']);
 const CodeSchema = z.string().min(1).max(200);
 const InstantSchema = z.string().datetime({ offset: true });
@@ -92,7 +93,7 @@ const RequirementDtoSchema = z
   .strict();
 
 /** Public shopping result: all engine evidence and search branches remain server-only. */
-export const ShoppingResultDtoSchema = z
+const ShoppingResultDtoObjectSchema = z
   .object({
     schemaVersion: z.literal(1),
     id: z.string().min(1).max(200),
@@ -178,4 +179,16 @@ export const ShoppingResultDtoSchema = z
     diagnostics: z.array(z.object({ code: CodeSchema, requirementId: z.string().nullable(), ingredientId: z.string().nullable(), purchaseOptionId: z.string().nullable() }).strict()),
   })
   .strict();
+
+export const ShoppingResultDtoSchema = ShoppingResultDtoObjectSchema.superRefine(
+  (result, context) => {
+    if (result.currencyMinorDigits !== CurrencyMinorDigits[result.currency]) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['currencyMinorDigits'],
+        message: 'Currency minor digits must match currency',
+      });
+    }
+  },
+);
 export type ShoppingResultDto = z.infer<typeof ShoppingResultDtoSchema>;

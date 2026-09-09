@@ -1,5 +1,131 @@
 # T07 WIP Handoff
 
+## Completed continuation — 2026-09-09
+
+**T07 COMPLETE WITH NON-BLOCKING FOLLOW-UPS.** This section supersedes the
+historical blocked/interrupted instructions below.
+
+- Original T07 branch: `hoplite/lipara-d81160ee`.
+- Continuation checkpoint: `006742bc179d58aae53106c88aff8a2667dbd1ca`.
+- Writable continuation branch: `hoplite/prokonnesos-74e71894`.
+- The user explicitly authorized this branch. It was safely fast-forwarded to
+  preserve the exact `f39180421f12ff68751dba7898aa39535b2d3a95` documentation
+  commit and then successfully published by the trusted tool. Both checkpoint
+  ancestor checks passed; source/tests/migrations/config had no divergence.
+- This intentional publisher topology is not an architectural repository issue.
+  Do not return to `lipara` for publication or request branch confirmation again
+  unless ancestry actually fails. Do not reset/restart T07.
+
+### Phase ledger
+
+| Phase | Evidence | Current status |
+| --- | --- | --- |
+| H1 | `T07_H1_SECURITY.md`, 51 new actual-auth HTTP cases; related boundary 125/4 and CSRF/CORS 87/2 PASS | Published `65c1367`; no H1 production fix justified |
+| H2 | `T07_H2_ABUSE.md`: 11th cross-plan request reproduction fixed; 95/6 focused PASS and targeted ESLint PASS; KV race/real-Hono error characterization | Published `55020bc`; ADR-019 records approximate guarantee |
+| H3 | `T07_H3_PERSISTENCE.md`: own-CAS-response race fixed with RETURNING; six new cases, 68/6 parent focused PASS; local migrations/schema/EXPLAIN and assembled typecheck PASS | Published `a19063b`; no new migration/index |
+| H4 | `T07_H4_DOMAIN.md`: scale contract fix; 449/17 broad focused and refined-schema 71/4 PASS | Published `865ee91` |
+| H5 | `T07_H5_FRONTEND.md`: session privacy and 409 recovery fixes; 93/4 focused; final en/vi × 375/390/1280 replay 264 assertions PASS | Published `d579798`; final source verified |
+| H6 | `T07_H6_OPERATIONS.md`: five actual Worker measurements; 3/1 failure/observation tests PASS; `PRODUCTION_READINESS.md` records scoped findings/limits | Published `f9d2ff8`, final frozen candidate |
+
+**Frozen application/test SHA: `f9d2ff871da155ba7f1aaedd3112a5ed6ea8d2c0`.**
+Final full **1,487/87**, focused **819/40**, lint/types/build, migration smoke,
+clean local D1/schema/query-plan and **264 browser assertions** all passed after
+freeze, with no page errors. Source remained unchanged. Final receipt/status
+changes are documentation only; preserve source equivalence. Exact results:
+`T07_VERIFICATION.md`. Historical baseline 1,390/79 is not the final result.
+
+### Next exact action
+
+Review/publish the final receipt and continuation PR. Obtain exact-head hosted CI,
+remote schema readiness and operator release approval in separate authorized work.
+**Hosted CI not verified**: configured workflow does not run for this checkpoint
+base and has no manual entrypoint. No production/remote release action authorized.
+**PayOS/payment code untouched.**
+
+## Historical recovery attempt (blocker resolved above)
+
+## Recovery attempt — 2026-09-09, publication blocked
+
+**T07 NOT COMPLETE.** The user renewed authorization to continue from
+`006742bc179d58aae53106c88aff8a2667dbd1ca` on `hoplite/lipara-d81160ee`.
+Recovery and the requested new-environment baseline succeeded. Implementation
+has not resumed because this thread cannot publish the requested branch.
+This section supersedes the historical stop/authorization instructions below;
+the original audit leads and remaining-work matrix are unchanged.
+
+### Verified recovery and blocker
+
+- First commands: `git branch --show-current`, `git rev-parse HEAD`,
+  `git status --short`, `git log --oneline -15`, and
+  `git merge-base --is-ancestor 0f6c3824efa359e5b2e6938840ac2c40b06e7004 HEAD`.
+- Initial local branch: `hoplite/prokonnesos-74e71894`; exact starting HEAD:
+  **`006742bc179d58aae53106c88aff8a2667dbd1ca`**. Tree clean; ancestry exit 0.
+- Trusted fetch of `hoplite/lipara-d81160ee` returned the same exact SHA.
+  No newer remote commits were found or discarded. No existing PR for that
+  head was returned by the repository-bound PR lookup.
+- The configured repository now reports `https://github.com/fri-go/Frigo.git`;
+  the commit API confirms the exact supplied checkpoint there. Historical
+  `sex-vn/Frigo` labels were not used to rewrite remotes or request credentials.
+- A no-content-change publication attempt used branch `hoplite/lipara-d81160ee`,
+  source SHA and expected remote SHA both `006742bc179d58aae53106c88aff8a2667dbd1ca`.
+  The trusted publisher rejected it with:
+  **`Cannot publish the configured base branch hoplite/lipara-d81160ee`**.
+  This is a publication-policy blocker, not an application test failure.
+- `git switch hoplite/lipara-d81160ee` safely selected the existing local branch
+  at that exact SHA. Tree remained clean and the ancestor check passed. Switching
+  locally does not change the protected-base publication policy.
+- No reset, rebase, implementation change, remote mutation, PR, deployment,
+  remote migration or production flag change was performed.
+
+### Fresh recovery verification (not final T07 gates)
+
+Executed sequentially on unchanged `006742b` source:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm test
+pnpm exec vitest run tests/unit/rate-limit.test.ts tests/integration/meal-planning-http.test.ts tests/integration/meal-planning-presentation-http.test.ts
+```
+
+All exit 0. Install used pnpm 10.26.0 without manifest/lockfile changes.
+Full suite: **1,390 tests / 79 files PASS**, Vitest duration **57.44 s**.
+Focused recovery set: **74 tests / 3 files PASS**, **5.33 s**: limiter 5,
+planner HTTP 42, presentation HTTP 27. Counts overlap the full suite.
+Existing mounted planner tests **48**, planner explanation unit tests **18**,
+and preview API tests **17** also passed within the full suite; the actual
+managed-browser matrix was **not run** in this recovery attempt.
+Expected failure-injection/degraded-KV warnings appeared; no assertion failed.
+Install reported ignored dependency build scripts; the requested tests passed.
+
+The mandatory protocol and listed task/subsystem documents were consumed
+(subsystem/task reading was delegated read-only). No new adversarial reproducer,
+regression, route/repository audit sign-off, query plan, benchmark or fix exists.
+No final lint/typecheck/build/migration/D1/schema/browser/hosted-CI gates were run.
+The historical baseline below must not be substituted for final T07 evidence.
+
+### Local checkpoint and exact next action
+
+Only this handoff, `CURRENT_STATE.md`, `TASK_BOARD.md` and `HANDOFF.md` change
+to preserve the blocker and fresh test receipt. This recovery documentation
+checkpoint is **local-only / not pushed** while the branch is protected; discover
+its SHA with `git log -1 --format=%H -- docs/ai/T07_WIP_HANDOFF.md`.
+Application source still matches verified T06B `0fc78a4`; there is no final
+T07 application SHA or production-readiness report.
+
+Ask the user to either provide a writable thread/PR binding for the requested
+`hoplite/lipara-d81160ee`, or explicitly authorize continuing from this checkpoint
+on the provisioned writable `hoplite/prokonnesos-74e71894` branch. Do not bypass
+the protected-base rule or silently publish on a substitute branch. Preserve this
+local documentation checkpoint. Once publication is authorized, publish it through
+the trusted path, recheck remote ancestry, and begin H1 security/trust/tenancy
+reproduction before H2 limiter work. Do not redo the green recovery baseline
+without a source/environment change or other concrete reason.
+
+**PayOS/payment code untouched.** All H1–H6 audits and final verification remain
+outstanding; the prior hypotheses are not promoted to confirmed findings.
+
+## Historical interruption record (preserved)
+
 Recorded 2026-09-09 after an explicit user instruction to **stop T07 immediately**,
 preserve work, commit/push checkpoints and hand off. Do not resume audits or fixes
 without renewed user authorization. This document is the current interruption

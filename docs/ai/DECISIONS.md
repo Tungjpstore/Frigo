@@ -1,5 +1,23 @@
 # Architecture Decisions
 
+## ADR-019 — T07 planner-wide best-effort account compute budget
+
+**Status:** Accepted 2026-09-09 after authenticated fan-out reproduction.
+
+**Decision:** Add one planner-only `planner-compute:<authenticated-user>` bucket
+at 10 requests per 60 seconds for generation, regeneration, swaps, shopping and
+on-demand explanations, alongside existing per-path controls. Keep read/feedback,
+auth and payment policies unchanged. Reuse the installed limiter rather than
+introducing a quota/reservation platform.
+
+**Evidence and consequences:** Alternating two plan IDs previously admitted an
+eleventh compute request; regressions now reject it before T04. KV read/put remains
+non-atomic and eventually consistent, with same-key write throttling and explicit
+isolate-local fallback. Neither fail-closed nor the account key promises an exact
+global quota. Keep hard per-request search bounds and staged rollout; require a
+separate recovery-safe atomic design only if measured abuse demands it. Exact
+tests, guarantees and Cloudflare references are in `T07_H2_ABUSE.md`.
+
 ## ADR-018 — T06B opt-in presentation and minimal plan discovery
 
 **Status:** Accepted 2026-09-09 for the authorized T06B task.

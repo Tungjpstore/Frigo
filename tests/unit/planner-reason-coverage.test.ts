@@ -50,6 +50,7 @@ const publicCodes = {
   T05: ['shopping-optimizer.ts', 'shopping-packages.ts'].flatMap((file) =>
     strings(source(`recipes/src/${file}`)).filter((value) => /^[A-Z][A-Z0-9_]+$/.test(value))),
 };
+const shoppingResultShape = ShoppingResultDtoSchema.innerType().shape;
 
 describe('complete public T02–T05 reason presentation', () => {
   it.each(Object.entries(publicCodes))('%s codes have intentional Vietnamese and English explanations', (_layer, codes) => {
@@ -71,10 +72,10 @@ describe('complete public T02–T05 reason presentation', () => {
     const statuses = {
       status: PlanResultDtoSchema.shape.status.options,
       conclusion: PlanResultDtoSchema.shape.conclusion.options,
-      budget: ShoppingResultDtoSchema.shape.budget.shape.status.options,
-      shopping: ShoppingResultDtoSchema.shape.shoppingStatus.options,
+      budget: shoppingResultShape.budget.shape.status.options,
+      shopping: shoppingResultShape.shoppingStatus.options,
       requirement: PlannedMealDtoSchema.shape.requirements.element.shape.status.options,
-      waste: ShoppingResultDtoSchema.shape.purchaseSurplus.element.shape.risk.shape.status.options,
+      waste: shoppingResultShape.purchaseSurplus.element.shape.risk.shape.status.options,
       freshness: [
         ...PlanningFreshnessSchema.shape.status.options,
         ...PlanningFreshnessSchema.shape.reasons.element.options,
