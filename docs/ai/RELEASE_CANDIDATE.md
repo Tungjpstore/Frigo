@@ -4,17 +4,21 @@
 
 **T01–T07 ENGINEERING COMPLETE.**
 **ENGINEERING RELEASE VERIFICATION COMPLETE. RELEASE INTEGRATION VERIFIED.**
-**RELEASE DOCUMENTATION PUBLICATION COMPLETE ON THE WRITABLE CONTINUATION.**
-Final release PR integration/readiness is in progress.
+**RELEASE DOCUMENTATION PUBLICATION COMPLETE IN ORIGINAL PR #8.**
+**RELEASE CANDIDATE READY FOR MAIN MERGE**, subject to user permission and green
+checks on the actual PR head after this documentation-only closing checkpoint.
 **PRODUCTION DEPLOYMENT NOT PERFORMED.**
 
 All frozen-source local and hosted-source gates are green. The previous local-only
 documentation head `7b22aaf4ba44c9a059fbf0000f242ed35ef4c616` was recovered and
 published through the trusted broker on the user-authorized provisioned branch
 `hoplite/koroneia-355b17d0`. No expensive verification was repeated during this
-publication continuation. The next step is a documentation PR into the original
-release branch; use a single superseding release PR to main only if that route is
-unavailable. Do not merge main automatically.
+publication continuation. Docs PR #9 merged normally into the original release
+branch at `0420807968538f61b669569d064c404f67032174`. Its exact-head CI run
+**34394236696 SUCCESS** (validate job **102609844068**) is independently confirmed.
+Live PR #8 is non-draft, mergeable, with no unresolved review threads. The previous
+draft/publication limitations are historical, not current merge blockers. No
+replacement release PR is needed. Do not merge main automatically.
 
 This continues the existing release PR, not another integration or product change.
 Application, tests, migrations, dependencies, scripts and config remain frozen.
@@ -25,7 +29,7 @@ checks on 2026-09-09, not reused historical T07 test results.
 
 | Item | Verified identity |
 | --- | --- |
-| Existing draft PR | [#8 — Release: consolidate complete T01–T07 lineage onto main](https://github.com/vn-2c/Frigo/pull/8) |
+| Existing non-draft PR | [#8 — Release: consolidate complete T01–T07 lineage onto main](https://github.com/vn-2c/Frigo/pull/8) |
 | Original release branch | `hoplite/kirrha-5f4057f0` |
 | Writable documentation continuation | `hoplite/koroneia-355b17d0`, provisioned for this thread, fast-forwarded from `0b20061` |
 | Recovered and published documentation checkpoint | `7b22aaf4ba44c9a059fbf0000f242ed35ef4c616` |
@@ -313,15 +317,31 @@ gate, even with the planner OFF. Production reconciliation has **NOT STARTED**.
 
 ## Next action
 
-Publish this status checkpoint, then prefer a small docs-only PR from
-`hoplite/koroneia-355b17d0` into `hoplite/kirrha-5f4057f0` and merge only that
-documentation PR if permitted. If PR #8 cannot technically receive the docs,
-create one superseding complete release PR from the same preserved source to main.
-Inspect actual new-head CI and mark the final release PR ready only when its
-applicable checks are green. Main remains `db09fa0`; **MAIN NOT MODIFIED**.
+Publish this documentation-only closing checkpoint on the existing release lineage.
+Original #8 is already non-draft and docs #9 merged; no release replacement or draft
+promotion is required. Await explicit user permission for normal protected merge,
+with green actual-head CI. Main remains `db09fa0`; **MAIN NOT MODIFIED**.
 
 Do not reset, reconstruct integration or repeat expensive verification while the
 non-documentation tree is unchanged. Final normal merge into main is an operator
 action. Freeze its resulting `MAIN_RELEASE_SHA`; only afterward begin separately
 authorized production-local reconciliation. Do not deploy, remotely migrate D1,
 enable production flags or change PayOS.
+
+## Final readiness checkpoint — 2026-09-09
+
+Fetched exact main/head refs and checked out `hoplite/kirrha-5f4057f0` before edits.
+The published head `0420807` and main `db09fa0` matched the prior receipts. Newly
+executed `git diff --check origin/main...HEAD`, ancestor checks, non-`docs/ai`
+equivalence against `0b20061`, protected-path diff and clean-tree checks passed.
+Bounded added-line private-key/token marker inspection found no matches. The full
+release/configuration audit found no new application merge blocker. No expensive
+local gate was repeated, no failing check was suppressed, and no live secret or
+production state was accessed. This checkpoint edits only the four release docs.
+
+Deployment owner must review/apply pending `0021_recipe_personalization.sql` and
+`0022_generated_meal_plans.sql` and pass `scripts/d1-schema-gate.sql` before
+production deployment, even with the planner OFF. Release owner must keep
+`MEAL_PLANNER_ENABLED`, build-time `VITE_MEAL_PLANNER_ENABLED` and optional
+`MEAL_PLANNER_AI_ENABLED` unset/false until separately approved enablement. These
+are deployment/enablement conditions, not blockers to merging the disabled code.
