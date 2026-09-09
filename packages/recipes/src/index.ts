@@ -19,3 +19,9 @@ export * from './planner-request';
 export * from './planner-nutrition';
 export * from './planner-types';
 export { planWeeklyMeals } from './weekly-planner';
+export { createShoppingContext, PurchaseOptionSchema, ShoppingBudgetSchema, ShoppingCurrencySchema,
+  CURRENCY_MINOR_DIGITS, type ShoppingContext, type ShoppingSourceInput, type PurchaseOption,
+  type ShoppingBudget, type ShoppingCurrency } from './shopping-catalog';
+export * from './shopping-policy';
+export { aggregateShoppingDemand, type PurchaseRequirement, type PurchaseRequirementSource } from './shopping-demand';
+export { optimizeShopping, type OptimizedShoppingPlan, type ShoppingPurchaseLine, type SelectedPurchasePackage } from './shopping-optimizer';

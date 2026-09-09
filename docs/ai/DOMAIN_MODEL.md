@@ -1,4 +1,12 @@
-# Domain Model — T01 foundation through T04 projected planning
+# Domain Model — T01 foundation through T05 shopping optimization
+
+T05 introduces `ShoppingContext`, `PurchaseOption`, `PurchaseRequirement`, scoped
+`ShoppingBudget` and generated-only `OptimizedShoppingPlan`. Packages are explicit
+sourced net contents tied to a canonical ingredient and optional retail identity;
+they are not inventory lots. Prices retain currency/source/as-of. Authoritative
+money uses integer minor units (BigInt internally; decimal strings in output).
+Unknown costs, purchase surplus and dated waste risk remain distinct. See
+`SHOPPING_OPTIMIZER.md`; no new tables or legacy shopping/runtime replacement.
 
 T04 introduces `PlanningContext`, `PlanningReference`, `PlannerRequest`,
 `WeeklyMealPlan` and native `ProjectedInventoryDelta` contracts. A plan is generated
@@ -41,7 +49,7 @@ bounded family candidates share one deterministic quantity path.
 | Concept | Identity / ownership | Meaning |
 | --- | --- | --- |
 | Ingredient | Existing global `ingredients.id` (e.g. `CHICKEN_BREAST`) | Food concept, not brand or stock |
-| Retail Product | Deferred to T05 | Retailer/SKU/barcode, actual package amount/price/currency and optional canonical mapping |
+| Purchase Option / Retail identity | T05 server-owned snapshot; optional product/retailer IDs | Explicit canonical mapping, sourced package contents/price/currency; no new SKU/barcode platform |
 | Inventory Item | `inventory_items.id`, household FK | A lot owned now, raw label, nullable ingredient FK, quantity/unit, storage, expiry, revision |
 | Recipe | Existing global catalog recipe ID | Recognizable dish and base servings with structured lines/steps |
 | Recipe Ingredient | Existing line ID + recipe/ingredient FKs | Demand at recipe's base servings; `required_quantity`, `unit`, `is_optional` |

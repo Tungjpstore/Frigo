@@ -1,5 +1,36 @@
 # Architecture Decisions
 
+## ADR-015 — Trusted, generated-only economic evaluation of the fixed T04 plan
+
+**Status:** Accepted 2026-09-09 (T05)
+
+**Decision:** T04 per-slot deficits are the sole purchase-demand authority; no second
+stock deduction or hidden replanning loop. Reuse exact T02 Quantity arithmetic.
+Legacy VND benchmark/package tables lack a trustworthy offer-price relationship,
+so accept a validated opaque server-owned, household-scoped price/package snapshot
+without a new retail persistence platform. Currency is explicit; safe-integer minor
+unit inputs, BigInt monetary arithmetic and decimal-string outputs prevent rounding
+and overflow. Stale/estimated/foreign/unpriced observations remain qualified unknowns.
+
+Use bounded iterative per-ingredient package enumeration plus additive aggregation.
+Cost-first is the default; an explicit dimensionless cost-premium policy may reduce
+surplus without absurd spending. Hard budgets constrain those upgrades; soft targets
+only diagnose. Expose best-known versus exhaustive minima, and derive infeasibility
+only from proven lower bounds that account for unknown-price alternatives. Keep
+T04, shopping and budget feasibility/search completeness separate.
+
+Surplus is not certain waste. Report existing remainder and new purchase surplus
+separately using only dated expiry evidence; unknown risk remains unknown. No
+global optimal-waste/allocation claim. See `SHOPPING_OPTIMIZER.md` for full proof,
+limits, exact money fields, trust/temporal semantics and T06 output.
+
+**Consequences:** No schema migration, live pricing, FX, route/UI cutover, real
+inventory mutation, actual purchase or payment. Existing Week/standalone shopping
+stays unchanged. This task's explicit no-replanning directive supersedes the older
+T05 packet's proposed feedback loop; future orchestration must explicitly invoke
+T04. Trusted catalog providers must authorize/review offers; a callback wrapper
+does not turn client price/product/safety claims into authority.
+
 Entries identify the task in which they were accepted. Supersede an ADR explicitly; do not silently rewrite
 the agreed architecture. Later tasks must record migration and compatibility impact.
 

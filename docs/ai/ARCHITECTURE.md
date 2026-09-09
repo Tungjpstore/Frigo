@@ -1,4 +1,11 @@
-# Architecture — T01 foundation through T04 sequential planning
+# Architecture — T01 foundation through T05 shopping optimization
+
+T05 adds pure `recipes/src/shopping-*.ts`: opaque authorized plan/catalog/budget
+preload, authoritative shortage normalization, bounded package enumeration, exact
+minor-unit money, budget proof and evidence-only stock/surplus risk. No T04
+replanning, persistence, legacy shopping cutover or T06 route/UI integration.
+Legacy VND benchmark/package helpers are not authoritative price offers.
+See `SHOPPING_OPTIMIZER.md` and ADR-015 for the T06 contract and proof scope.
 
 T04 adds `recipes/src/planner-*.ts` and `weekly-planner.ts`: opaque preloaded
 context, fixed-offset ordered slots, exact branch-local inventory, T02 regeneration,
