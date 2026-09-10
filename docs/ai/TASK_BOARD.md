@@ -41,8 +41,8 @@
 Do not invent T08. Planner rollout remains separately authorized work.
 
 GitHub source of truth: main.
-Current main head: `89eeb52a56f06d766d4ecbe3c4abf9993bbebcb6` (docs-only merge).
 Deployed application SHA: `d1b06732f8a80db4e77986df31ff28d9f04641fa`.
+Post-deployment main changes are documentation-only receipt merges.
 Release Integration: COMPLETE.
 Main Integration: COMPLETE.
 PRE_CLEANUP_MAIN_HEAD: `41d2de6bc76331322cc63e8038432b0b02f60da1`.
