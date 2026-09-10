@@ -33,24 +33,23 @@
 
 ## Next authorized work
 
-- Production Reconciliation ⏳
-- Production DB Migration ⏳
-- Controlled Production Deployment ⏳
+- Production Reconciliation ✅ COMPLETE - post-cutover verified
+- Production DB Migration ✅ COMPLETE - `frigo-db` ledger `0001`-`0022`
+- Controlled Production Deployment ✅ COMPLETE - Worker SHA `d1b06732`
 - Planner Rollout ⏳
 
-Do not invent T08. Production work remains pending and must be separately
-authorized.
+Do not invent T08. Planner rollout remains separately authorized work.
 
 GitHub source of truth: main.
 Release Integration: COMPLETE.
 Main Integration: COMPLETE.
 PRE_CLEANUP_MAIN_HEAD: `41d2de6bc76331322cc63e8038432b0b02f60da1`.
 APPLICATION INTEGRATION: complete in main at `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d`.
-Production local reconciliation: NOT STARTED.
-Production DB migration: NOT PERFORMED.
-Production deployment: NOT PERFORMED.
+Production reconciliation: COMPLETE - schema/code/health/traffic verified.
+Production DB migration: COMPLETE - exact ledger `0001` through `0022`.
+Production deployment: COMPLETE - version `48e0c366-3c8a-4f2b-a2d5-965785995431`.
 Planner rollout: NOT STARTED.
-Next task: PRODUCTION-LOCAL RECONCILIATION.
+Next task: POST-DEPLOY MONITORING / FUTURE GUARDED WORKFLOW SETUP.
 
 ## Frozen release evidence
 
@@ -66,7 +65,9 @@ Next task: PRODUCTION-LOCAL RECONCILIATION.
 - Browser: **264 assertions / 36 phases PASS**.
 - Payment-adjacent: **82 tests / 7 files PASS**.
 - Previous docs-cleanup deploy workflow `34405457796`: packaging completed; staging was not
-  provisioned and no staging deploy occurred; production was not deployed.
+  provisioned and no staging deploy occurred. The current production cutover was
+  completed directly with Wrangler OAuth because GitHub production configuration
+  is not provisioned.
 
 ## PR #8 metadata and archival branches
 
@@ -81,4 +82,25 @@ PayOS/payment code untouched.
 
 No real payment performed.
 
-Production local source and database are untouched.
+Local production source checkout is untouched; the production D1 schema was
+updated only through the approved additive migrations.
+
+## Production cutover receipt (2026-09-10)
+
+- Worker readiness: `status=degraded`, `environment=production`, full commit
+  `d1b06732f8a80db4e77986df31ff28d9f04641fa`; active version
+  `48e0c366-3c8a-4f2b-a2d5-965785995431` at 100%.
+- Landing/liveness/readiness smoke passed; readiness database/queue/AI/email are
+  healthy/configured and only `CONFIG_PLUS_GRANT_SECRET_MISSING` remains as a
+  warning.
+- Remote D1 exact ledger is `0001`-`0022`; schema gate passes and FK violations are `0`.
+- Strict Week reconciliation passes 2/2 plans with 0 orphans and 0 mismatches.
+- Preserved counts: users 28, households 28, inventory items 13, recipes 59,
+  meal plans 2, scan queue jobs 15, sessions 2 and auth OTPs 0.
+- Backup export is retained at
+  `.artifacts/frigo-db-pre-main-d1b0673-20260910T205627Z.sql` with
+  SHA-256 `000c9cb88d6045afb19cca6ce3e1caa308b20ffa214dbb2cddfca0cb78d722eb`.
+- CORS allows the exact trusted origin and emits no ACAO for path-bearing,
+  localhost or arbitrary origins. No planner flag, PayOS/payment path or secret
+  value was changed. The separate T08 `xanthos` branch contains
+  application/migration changes and is not part of authoritative `main`.
