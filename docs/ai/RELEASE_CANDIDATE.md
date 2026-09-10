@@ -9,6 +9,7 @@
 - Verified application SHA: `0b20061e7dc7405df68b18a18da4166e09494ecd`.
 - Verified final release head: `0420807968538f61b669569d064c404f67032174`.
 - Main merge SHA: `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d`.
+- Deployed main SHA: `d1b06732f8a80db4e77986df31ff28d9f04641fa`.
 - The main merge tree is source-equivalent to the verified release head.
 - Release Integration: COMPLETE.
 - Release Publication: COMPLETE.
@@ -39,37 +40,71 @@ the application release merge is empty, and all later changes are docs-only.
 - Release packaging completed.
 - Staging not provisioned / no staging deploy. Build, exact-head recheck, staging
   deploy and smoke steps were skipped after the configuration check.
-- Production deployment **NOT PERFORMED**; the production job was skipped.
-- No production database migration or remote D1 operation was performed.
+- Production deployment completed directly with Wrangler OAuth because the
+  GitHub production environment/secrets are not provisioned.
+- Production D1 `frigo-db` is at migration `0022`; no migration was rerun during
+  deployment.
+
+Post-cutover local gates: `pnpm lint`, `pnpm typecheck`,
+`pnpm check:migrations` and `pnpm build` PASS. Local `pnpm test` reports
+1,427/1,487 PASS; its 60 failures are confined to two UI suites whose shell
+runner lacks functional `localStorage`/`container`. Hosted exact-SHA CI
+`34413458369` remains the authoritative 1,487/87 PASS gate.
 
 ## Feature flags and rollout
 
 Checked-in planner/UI/AI safe defaults remain according to the existing rollout
-policy. Live production values and secrets were not inspected.
+policy. No planner flags or production secrets were changed.
 Planner rollout: NOT STARTED.
 
 ## Production
 
-PRODUCTION LOCAL RECONCILIATION NOT STARTED
+PRODUCTION RECONCILIATION COMPLETE - SCHEMA/CODE CUTOVER VERIFIED
 
-Production local reconciliation: NOT STARTED
+Production reconciliation: COMPLETE - post-cutover source, schema, health and
+traffic checks passed.
 
-PRODUCTION DATABASE MIGRATION NOT PERFORMED
+PRODUCTION DATABASE MIGRATION COMPLETE
 
-Production DB migration: NOT PERFORMED
+Production DB migration: `frigo-db` exact ledger `0001` through `0022`.
 
-PRODUCTION DEPLOYMENT NOT PERFORMED
+PRODUCTION DEPLOYMENT COMPLETE
 
-Production deployment: NOT PERFORMED
+Production deployment: Worker version
+`48e0c366-3c8a-4f2b-a2d5-965785995431`, 100% traffic.
+
+### Production cutover receipt (2026-09-10)
+
+- Live Worker `https://frigo.tungjpstore.net`: liveness and landing smoke return
+  HTTP 200; readiness returns HTTP 200 `status=degraded`,
+  `environment=production`, and full commit
+  `d1b06732f8a80db4e77986df31ff28d9f04641fa`.
+- Active Cloudflare version is `48e0c366-3c8a-4f2b-a2d5-965785995431` at 100%
+  traffic. Readiness services are database/queue/AI/email `ok` or `configured`,
+  rate limiting is `kv-best-effort`, and the only issue is the non-blocking
+  warning `CONFIG_PLUS_GRANT_SECRET_MISSING`; no fatal configuration issue is
+  present.
+- The deployed Worker reports the approved main SHA; no source-only divergence
+  remains on the public runtime.
+- Exact remote schema gate and ledger check pass: all 22 migrations are present,
+  foreign-key violations are `0`, and Week strict reconciliation is 2/2 plans
+  with 0 orphan rows and 0 mismatches.
+- Preserved counts: users 28, households 28, inventory items 13, recipes 59,
+  meal plans 2, scan queue jobs 15, sessions 2 and auth OTPs 0.
+- Backup export is retained locally at
+  `.artifacts/frigo-db-pre-main-d1b0673-20260910T205627Z.sql`, mode 600,
+  SHA-256 `000c9cb88d6045afb19cca6ce3e1caa308b20ffa214dbb2cddfca0cb78d722eb`.
+- CORS returns the exact ACAO for the trusted origin and no ACAO for
+  path-bearing, localhost or arbitrary origins.
+- No planner flag, PayOS/payment path or secret value was changed.
 
 ## Source of truth
 
 GitHub source of truth: main.
 
-GitHub `main` is the authoritative release source. Production local source remains
-separately running and must be reconciled against the frozen GitHub main release
-before any deployment. The current GitHub head is a docs-only continuation of the
-application base SHA above.
+GitHub `main` is the authoritative release source and the production Worker now
+reports the exact deployed main SHA above. The current GitHub head remains a
+documentation-only continuation of the application base SHA.
 
 ## PR #8 metadata
 
@@ -110,11 +145,14 @@ NO APPLICATION CHANGE. PayOS/payment code untouched. No real payment performed.
 
 ## Next task
 
-Next task: PRODUCTION-LOCAL RECONCILIATION
+Next task: POST-DEPLOY MONITORING / FUTURE GUARDED WORKFLOW SETUP
 
-Snapshot and compare the currently running production-local source before any
-update. Do not pull, reset, deploy, migrate production D1, enable planner flags,
-or alter production configuration as part of this bookkeeping task.
+Monitor Worker and queue health through the normal post-deploy window. Keep
+planner flags at safe defaults and do not touch PayOS/payment. Configure the
+GitHub `production` environment, `PRODUCTION_URL`, and Cloudflare secrets before
+the next release so the guarded workflow can produce its own receipt. Rollback
+remains code-only to a schema-compatible SHA; do not use a down-migration.
 
-The final main SHA created by this correction PR must be recorded after merge;
-the pre-cleanup main head is listed above to avoid a self-referential SHA claim.
+The deployed receipt is anchored to main SHA
+`d1b06732f8a80db4e77986df31ff28d9f04641fa`; the pre-cleanup main head remains
+listed above for historical traceability.
