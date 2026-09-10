@@ -36,6 +36,8 @@
 - T08A Audit: complete; dependency map in `inventory-truth/MASTER_CONTEXT.md`.
 - T08B–E Domain/persistence/backfill/projection/parity: implemented and locally verified.
 - T08F Verification/handoff: IN_PROGRESS, canonical publication BLOCKED.
+- 2026-09-10 recheck: b5577ea publish denied again; canonical remote branch/PR
+  absent. Git/diff checks PASS, no source changes or test rerun; prior gates retained.
 - Verified code: `dd2ecc6f7066250dfdc5214a3d6c356e1479b61e`.
 - PASS: 130 focused tests, 1,617 full tests / 89 files, lint/typecheck/build,
   23-migration smoke/local D1 apply/schema and diff checks.

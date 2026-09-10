@@ -49,3 +49,23 @@ Final branch tip is the subsequent docs-only checkpoint (`git rev-parse HEAD`);
 self-referential commit hash cannot be embedded in its own contents.
 Status: IN_PROGRESS, local gates passed, publication BLOCKED. Main, production,
 staging, remote D1 and PayOS remain untouched. No T09 started.
+
+## 2026-09-10 — repository confirmation / publication recheck
+
+Started from: feature/t08-inventory-truth-foundation@b5577ead44645d6d25171e7549a6f0f4cd7f0e4e.
+Inspected: user attachments (identical original T08 packets), the six handoff files
+in order, Git status/log/diff, current remote main, canonical branches/open PRs.
+User reconfirmed vn-2c/Frigo; no change to canonical-only publication authorization.
+Changed: publication receipt in CURRENT_STATE/VERIFICATION/SESSION_LOG and parent
+CURRENT_STATE/TASK_BOARD/HANDOFF. No code, schema or test change.
+Decisions: existing DEC-001/005 retained; no alternate branch publication authorized.
+Failure: b5577ea canonical publish denied again by trusted branch policy.
+Tests: Git/diff checks PASS; FULL SUITE NOT RUN IN THIS SESSION. Previous verified
+code remains dd2ecc6; no source diff since that SHA.
+Commit: following docs-only `docs(t08): record canonical publication recheck`.
+Remaining / exact next action: resolve canonical publication authority or obtain
+explicit user authorization to change the publication-branch requirement. Do not
+act on the alternative without permission. No main/deploy/remote D1/PayOS action.
+Ended implementation at: feature/t08-inventory-truth-foundation@b5577ead44645d6d25171e7549a6f0f4cd7f0e4e;
+final tip is the following docs-only receipt (`git rev-parse HEAD`).
+Status: IN_PROGRESS. Branch pushed: NO.

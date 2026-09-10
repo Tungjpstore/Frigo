@@ -1,6 +1,11 @@
 # Frigo current state — isolated T08 foundation checkpoint
 
-## Active work on this branch (2026-09-09)
+## Active work on this branch (publication rechecked 2026-09-10)
+
+Repository vn-2c/Frigo reconfirmed. Canonical publish of the complete b5577ea
+checkpoint was denied again; no canonical remote branch/open PR exists. No code
+changes since dd2ecc6. The verification results below are retained from 2026-09-09;
+FULL SUITE NOT RUN IN THIS SESSION. Git/diff rechecks PASS; only this receipt changed.
 
 T08 Inventory Truth Foundation: **IN_PROGRESS — local verification passed,
 canonical publication blocked**. User explicitly authorized T08 separately from

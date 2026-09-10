@@ -1,6 +1,11 @@
 # Frigo AI Handoff — isolated T08 checkpoint
 
-## Current branch handoff (2026-09-09)
+## Current branch handoff (publication rechecked 2026-09-10)
+
+Repository vn-2c/Frigo reconfirmed. Trusted canonical publish of b5577ea denied
+again; no remote canonical branch/open PR exists. Source is identical to dd2ecc6.
+Only Git/diff checks ran this session; prior test evidence below was not rerun.
+FULL SUITE NOT RUN IN THIS SESSION. No alternative branch is authorized yet.
 
 Program: Inventory Truth Layer
 Task: T08

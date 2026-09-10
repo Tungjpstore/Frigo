@@ -101,3 +101,24 @@ Clean local migration replay necessarily includes the existing unchanged 0018 fi
 no payment code or migration was edited and no real payment operation occurred.
 T09–T12 are not implemented. T09 must resolve command/event authority, live dual-write,
 ownership transfer, existing drift and representability policy before any consumer cutover.
+
+## 2026-09-10 — publication-only recheck
+
+Started HEAD: `b5577ead44645d6d25171e7549a6f0f4cd7f0e4e`.
+Last verified code remains `dd2ecc6f7066250dfdc5214a3d6c356e1479b61e`.
+
+- PASS: `git status --short --branch`, `git branch --show-current`,
+  `git rev-parse HEAD origin/main`, `git log --oneline --decorate -20`.
+  Canonical local branch clean; main still base `d1b0673` after trusted fetch.
+- PASS: `git diff --stat dd2ecc6f7066250dfdc5214a3d6c356e1479b61e HEAD` and
+  `git diff --exit-code dd2ecc6f7066250dfdc5214a3d6c356e1479b61e HEAD -- packages migrations scripts tests src`:
+  only documentation differs from verified code.
+- PASS: `git diff --check`.
+- Remote branch listing and canonical-head open PR query: neither exists.
+- BLOCKED: trusted publish of b5577ea to ONLY
+  `feature/t08-inventory-truth-foundation`, expected remote head NULL, denied:
+  publication is limited to the thread's expected branch, stack namespace or a
+  linked open PR head. No fallback push, PR creation or credential workaround.
+- FULL SUITE NOT RUN IN THIS SESSION. No source/test/migration changes; the prior
+  130 focused / 1,617 full test PASS evidence is preserved, not claimed as rerun.
+- No deployment, database operation, main mutation or PayOS change.

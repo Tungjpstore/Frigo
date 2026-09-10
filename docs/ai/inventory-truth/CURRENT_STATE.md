@@ -1,12 +1,12 @@
 # Inventory Truth current state
 
-Updated: 2026-09-09 UTC, after final local verification
+Updated: 2026-09-10 UTC, publication-only recheck
 Current Task: T08
 Current Phase: T08F Verification/Handoff — local gates passed; canonical publication blocked
 Status: IN_PROGRESS
 Canonical Branch: feature/t08-inventory-truth-foundation
 Base Main SHA: d1b06732f8a80db4e77986df31ff28d9f04641fa
-Current HEAD: dd2ecc6f7066250dfdc5214a3d6c356e1479b61e (code checkpoint before this docs-only handoff; resolve final tip with git rev-parse HEAD)
+Current HEAD: b5577ead44645d6d25171e7549a6f0f4cd7f0e4e (before this docs-only recheck receipt; resolve final tip with git rev-parse HEAD)
 Last Verified SHA: dd2ecc6f7066250dfdc5214a3d6c356e1479b61e
 origin/main SHA: d1b06732f8a80db4e77986df31ff28d9f04641fa
 Main Has Diverged Since Base: NO (last fetch)
@@ -38,8 +38,14 @@ canonical publication and clean-tree completion gate are satisfied.
 Canonical push is CONFIRMED BLOCKED by the trusted broker. It permits the original
 thread branch/stack or linked open PR head, not the user-required canonical branch.
 No linked PR exists; no alternate branch was pushed. Platform feedback filed.
+2026-09-10: user reconfirmed vn-2c/Frigo; all attached packets are identical to
+the original T08 scope. Remote canonical branch/open PR still absent. Publishing
+the complete b5577ea checkpoint through the broker was again denied by the same
+branch authority rule. Repository identity is resolved; publication authority is not.
 Shell fetch is blocked; explicit main fetch via broker succeeds.
 No unresolved local test failures. No main divergence or numbering conflict seen.
+No code changed since Last Verified SHA; only Git/source-control checks ran in
+this publication-only session. FULL SUITE NOT RUN IN THIS SESSION.
 
 Foundation limitations: sub-milli/overflow/invalid quantities block backfill without
 rounding; unsupported legacy data needs explicit reconciliation. Raw invalid/unknown
