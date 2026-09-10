@@ -116,6 +116,8 @@ tests/integration/inventory-truth.test.ts` as one shell command for the 130 focu
 checks. See VERIFICATION.md for full regression and local-only migration commands.
 Do not run any remote/database/deploy command to validate this foundation.
 
-Last verified code: dd2ecc6f7066250dfdc5214a3d6c356e1479b61e. Subsequent changes are
-docs-only. Publication is now authorized on `hoplite/xanthos-7d942897`; see
-CURRENT_STATE.md and the latest VERIFICATION.md entry for the confirmed receipt.
+T08 COMPLETE. Last code: dd2ecc6f7066250dfdc5214a3d6c356e1479b61e; final verified
+published checkpoint: fb00f46d4633c9659e812be9f86119533973a8bd. Subsequent changes
+are docs-only. Checkout `origin/hoplite/xanthos-7d942897` for cross-account handoff;
+the original feature branch is not the remote handoff. See T08_VERIFICATION.md,
+CURRENT_STATE.md and the latest VERIFICATION.md entry for evidence and T09 prerequisites.

@@ -69,3 +69,32 @@ act on the alternative without permission. No main/deploy/remote D1/PayOS action
 Ended implementation at: feature/t08-inventory-truth-foundation@b5577ead44645d6d25171e7549a6f0f4cd7f0e4e;
 final tip is the following docs-only receipt (`git rev-parse HEAD`).
 Status: IN_PROGRESS. Branch pushed: NO.
+
+## 2026-09-10 — authorized publication / T08 completion
+
+Started from: feature/t08-inventory-truth-foundation@4cc290f8ea2be4000bc1368abd780ef25204b3a5.
+User approved the proposed exact alternative `hoplite/xanthos-7d942897`.
+Inspected: Git/status/log/diff, handoff files in order, actual CI/deploy triggers,
+remote branch existence and main. No source changes since verified dd2ecc6.
+Changed: fast-forwarded the authorized branch to existing T08 lineage; recorded
+DEC-006 and effective branch policy; updated all current handoff/parent docs,
+task completion checklist and new T08_VERIFICATION.md. No code/schema/test edits.
+Decision: only the publication branch name changed; all production/main/remote
+database/payment boundaries remain. Original feature ref is local history only.
+Tests: fresh full 1,617/1,617 (89 files), focused 130/130 (2 files), lint/typecheck,
+build, migration replay/local schema, Git diff/source equivalence all PASS.
+Failures: none. Previous publication denial resolved by user authorization and
+supported broker path, not a bypass. Full exact evidence is in VERIFICATION.md.
+Commits: fb00f46 docs(t08): authorize published handoff branch; subsequent
+docs(t08): complete published inventory truth foundation (this completion receipt).
+Publication: trusted publish then fetch confirmed
+hoplite/xanthos-7d942897@fb00f46d4633c9659e812be9f86119533973a8bd. The docs-only
+completion receipt is published as its fast-forward successor with the same broker.
+Main: d1b06732f8a80db4e77986df31ff28d9f04641fa unchanged; no numbering collision.
+Remaining: none in T08; T09–T12 not started.
+Exact next action: next account fetches/checks out origin/hoplite/xanthos-7d942897,
+reads handoff docs and diffs fb00f46..HEAD (docs only); wait for a separate T09 task.
+Ended verified/published checkpoint: hoplite/xanthos-7d942897@fb00f46d4633c9659e812be9f86119533973a8bd.
+Final tip is the subsequent docs-only completion commit (`git rev-parse HEAD`);
+its own SHA cannot be embedded in its contents. Status COMPLETE. Branch pushed YES.
+Main/production/staging/remote D1/PayOS untouched YES. No PR, merge or deployment.

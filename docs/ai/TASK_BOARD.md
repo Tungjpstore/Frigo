@@ -35,14 +35,15 @@
 
 - T08A Audit: complete; dependency map in `inventory-truth/MASTER_CONTEXT.md`.
 - T08B–E Domain/persistence/backfill/projection/parity: implemented and locally verified.
-- T08F Verification/handoff: IN_PROGRESS, canonical publication BLOCKED.
-- 2026-09-10 recheck: b5577ea publish denied again; canonical remote branch/PR
-  absent. Git/diff checks PASS, no source changes or test rerun; prior gates retained.
+- T08F Verification/handoff: COMPLETE. User approved `hoplite/xanthos-7d942897`
+  instead of the original feature name (DEC-006); trusted publish/fetch confirmed
+  fb00f46 and the docs-only final receipt follows it on the same branch.
 - Verified code: `dd2ecc6f7066250dfdc5214a3d6c356e1479b61e`.
-- PASS: 130 focused tests, 1,617 full tests / 89 files, lint/typecheck/build,
-  23-migration smoke/local D1 apply/schema and diff checks.
-- Remaining: authorized push to ONLY `feature/t08-inventory-truth-foundation`,
-  final post-publication receipt/report. No T09–T12 implementation.
+- Fresh final-session PASS: 130 focused tests, 1,617 full tests / 89 files,
+  lint/typecheck/build, 23-migration replay/local schema and diff checks.
+  Prior local D1 apply passed 23/23. Source unchanged since dd2ecc6.
+- Remaining T08 work: none; final report `inventory-truth/T08_VERIFICATION.md`.
+  Cross-account checkout: `origin/hoplite/xanthos-7d942897`. T09–T12 not started.
 - Full checklist/failures/next action: `inventory-truth/TASK_BOARD.md`,
   `inventory-truth/VERIFICATION.md`, `inventory-truth/CURRENT_STATE.md`.
 

@@ -1,34 +1,30 @@
 # Frigo current state — isolated T08 foundation checkpoint
 
-## Active work on this branch (publication rechecked 2026-09-10)
+## T08 COMPLETE — authorized publication (2026-09-10)
 
-Repository vn-2c/Frigo reconfirmed. Canonical publish of the complete b5577ea
-checkpoint was denied again; no canonical remote branch/open PR exists. No code
-changes since dd2ecc6. The verification results below are retained from 2026-09-09;
-FULL SUITE NOT RUN IN THIS SESSION. Git/diff rechecks PASS; only this receipt changed.
-
-T08 Inventory Truth Foundation: **IN_PROGRESS — local verification passed,
-canonical publication blocked**. User explicitly authorized T08 separately from
-the release/production track below. Canonical branch:
-`feature/t08-inventory-truth-foundation`; base/main:
-`d1b06732f8a80db4e77986df31ff28d9f04641fa` (no divergence at last fetch).
-Last verified code: `dd2ecc6f7066250dfdc5214a3d6c356e1479b61e`.
+Repository `vn-2c/Frigo`. The user explicitly approved publication on
+`hoplite/xanthos-7d942897` instead of the blocked original feature name (DEC-006).
+That branch is now the canonical cross-account handoff; publish and fetch confirmed
+`fb00f46d4633c9659e812be9f86119533973a8bd`, followed by this docs-only completion
+receipt. Last code: `dd2ecc6f7066250dfdc5214a3d6c356e1479b61e`.
+Base/final fetched main: `d1b06732f8a80db4e77986df31ff28d9f04641fa`, unchanged.
 
 Implemented additive 0023 storage/lot schema, strict quantity/money/expiry/source
 contracts, guarded insert-only legacy backfill, compatibility projection/parity.
-No legacy API/read/write path cutover. Focused **130 tests**, full **1,617 tests /
-89 files**, lint/typecheck/build, 23-migration replay, local D1 apply/schema gate
-and diff checks PASS. Early missing-field/smoke-order/latest-migration-test failures
-were corrected and rerun; no local test failures remain.
+No legacy API/read/write path cutover. Fresh final-session **130 focused tests**,
+**1,617 full tests / 89 files**, lint/typecheck/build, 23-migration replay/local
+schema and diff checks PASS. Prior sandbox-local D1 apply passed 23/23. Early
+failures and publication denial are resolved and preserved in the evidence log.
+No source/test/schema change since dd2ecc6; later commits are documentation-only.
 
-The trusted broker rejected the required canonical branch (outside this thread's
-authorized head namespace). No alternate branch was published. Next action: obtain
-authorized canonical publication, push the docs-inclusive checkpoint, then record
-completion only after confirmed push/clean tree. T09 is not authorized to begin.
+Next action: next account checks out `origin/hoplite/xanthos-7d942897`, reads the
+handoff and final report, and waits for a separately authorized T09 task. No T09
+implementation, main integration or deployment is implied by T08 completion.
 
 Read `inventory-truth/MASTER_CONTEXT.md`, `CURRENT_STATE.md`, `TASK_BOARD.md`,
 `DECISIONS.md`, `VERIFICATION.md`, `SESSION_LOG.md` and
-`tasks/T08-inventory-truth-foundation.md` for exact evidence and limitations.
+`inventory-truth/T08_VERIFICATION.md` and `tasks/T08-inventory-truth-foundation.md`
+for exact evidence, final Git anchors, limitations and T09 prerequisites.
 Main, production/staging, remote D1, PayOS and release operations untouched.
 
 ## Preserved T01–T07 release snapshot (not T08 deployment evidence)

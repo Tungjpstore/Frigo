@@ -6,12 +6,16 @@
 - [x] T08D Legacy Backfill — dd2ecc6; retry, concurrency, stale-source rollback,
   populated upgrade, ownership transfer and preservation tests PASS.
 - [x] T08E Projection/Parity — 10+6 eggs=16 and corruption diagnostics PASS.
-- [ ] T08F Verification/Handoff — publication gate remains blocked.
+- [x] T08F Verification/Handoff — final local gates and authorized publication PASS.
   - [x] Focused: 130 tests / 2 files PASS.
   - [x] Full: 1,617 tests / 89 files PASS.
   - [x] Lint, typecheck, build, migration smoke, local D1 apply/schema, diff checks PASS.
   - [x] Code committed; repository handoff/parent docs updated in final docs checkpoint.
-  - [ ] Canonical branch pushed via authorized path (broker denial recorded).
-  - [ ] Final post-publication clean-tree receipt and T08_VERIFICATION.md / COMPLETE.
+  - [x] User-approved canonical handoff branch `hoplite/xanthos-7d942897` pushed;
+    fb00f46 confirmed by trusted publish/fetch (DEC-006).
+  - [x] Post-publication clean tree, final report T08_VERIFICATION.md and COMPLETE.
 
 No completion tick without evidence in VERIFICATION.md. T09–T12 are not started.
+
+Final session reran every local gate; no test coverage was waived by changing the
+publication branch. Historical feature-branch denials remain in the append-only log.

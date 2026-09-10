@@ -122,3 +122,43 @@ Last verified code remains `dd2ecc6f7066250dfdc5214a3d6c356e1479b61e`.
 - FULL SUITE NOT RUN IN THIS SESSION. No source/test/migration changes; the prior
   130 focused / 1,617 full test PASS evidence is preserved, not claimed as rerun.
 - No deployment, database operation, main mutation or PayOS change.
+
+## 2026-09-10 — authorized publication and final completion gates
+
+User explicitly approved `hoplite/xanthos-7d942897` instead of the blocked original
+feature branch; DEC-006 records this narrow amendment. The local authorized branch
+was fast-forwarded from base to existing T08 commits (no new main was integrated).
+Authorization commit: `fb00f46d4633c9659e812be9f86119533973a8bd`.
+Trusted publish succeeded to that exact branch with expected remote head NULL;
+trusted fetch subsequently returned the same SHA. Working tree was clean.
+
+Tests began at docs checkpoint `4cc290f8ea2be4000bc1368abd780ef25204b3a5` and ran
+while authorization docs were committed. Source, test, migration and script trees
+are identical at 4cc290f, fb00f46 and implementation SHA
+`dd2ecc6f7066250dfdc5214a3d6c356e1479b61e`, proven by:
+`git diff --exit-code dd2ecc6f7066250dfdc5214a3d6c356e1479b61e HEAD -- packages migrations scripts tests src`.
+The completion report is a subsequent documentation-only commit.
+
+| Exact command | Fresh final-session result |
+| --- | --- |
+| `pnpm test` | PASS, 1,617 tests / 89 files, started 01:36:42 UTC, 88.37s |
+| `pnpm exec vitest run tests/unit/inventory-truth.test.ts tests/integration/inventory-truth.test.ts` | PASS, 130 tests / 2 files (76 unit + 54 integration), started 01:37:29 UTC |
+| `pnpm lint` | PASS |
+| `pnpm typecheck` | PASS |
+| `pnpm check:migrations` | PASS, full 23-migration clean replay plus existing smoke scenarios |
+| `pnpm schema:check:local` | PASS, sandbox-local schema/FK gate |
+| `pnpm build` | PASS, Vite + Worker TypeScript, no deployment |
+| `git diff --check` | PASS |
+| `git diff d1b06732f8a80db4e77986df31ff28d9f04641fa HEAD --check` | PASS |
+
+Ignored local logs: `.hoplite/artifacts/t08/full-tests-publication.log` and
+`build-publication.log`. Tests themselves and the published Git lineage make these
+results reproducible without account-specific artifacts. Prior local D1 apply
+23/23 is retained evidence; this session ran replay and read-only local schema
+checks, not another remote/local migration apply.
+
+Final fetched main remains `d1b06732f8a80db4e77986df31ff28d9f04641fa`; no divergence
+or numbering conflict. No new failures. No code change, dependency change, PR,
+CI dispatch, main mutation, deployment, remote D1, secret/flag or PayOS operation.
+Checked-in CI push filters do not include this branch; no hosted-CI pass is claimed.
+Final report: T08_VERIFICATION.md. T08 COMPLETE; T09 requires separate authorization.
