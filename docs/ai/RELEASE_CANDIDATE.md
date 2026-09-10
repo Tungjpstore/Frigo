@@ -9,8 +9,9 @@
 - Verified application SHA: `0b20061e7dc7405df68b18a18da4166e09494ecd`.
 - Verified final release head: `0420807968538f61b669569d064c404f67032174`.
 - Main merge SHA: `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d`.
-- Deployed main SHA: `d1b06732f8a80db4e77986df31ff28d9f04641fa`.
-- Current main head: `89eeb52a56f06d766d4ecbe3c4abf9993bbebcb6` (docs-only merge).
+- Deployed application SHA: `d1b06732f8a80db4e77986df31ff28d9f04641fa`.
+- Main has advanced only through documentation-only receipt merges after the
+  deployed application; resolve its current head from GitHub for a future release.
 - The main merge tree is source-equivalent to the verified release head.
 - Release Integration: COMPLETE.
 - Release Publication: COMPLETE.
