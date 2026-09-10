@@ -53,6 +53,11 @@ Post-cutover local gates: `pnpm lint`, `pnpm typecheck`,
 runner lacks functional `localStorage`/`container`. Hosted exact-SHA CI
 `34413458369` remains the authoritative 1,487/87 PASS gate.
 
+`pnpm audit --prod` reports 2 moderate `react-router` advisories through
+`react-router-dom`; the upstream fix requires React Router `>=7.18.0`, so this
+cutover leaves the dependency unchanged and schedules a separately tested
+major-version upgrade.
+
 ## Feature flags and rollout
 
 Checked-in planner/UI/AI safe defaults remain according to the existing rollout

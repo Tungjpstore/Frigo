@@ -119,6 +119,10 @@ then the Worker was deployed from a clean checkout of the approved `main` SHA.
 - Local `pnpm test`: 1,427/1,487 PASS; 60 failures are limited to the two shell
   UI suites because `localStorage`/`container` are unavailable in this runner.
 - Hosted exact-SHA CI `34413458369`: 1,487 tests / 87 files PASS.
+- Dependency audit: `pnpm audit --prod` reports 2 moderate `react-router`
+  advisories (current v6 line; upstream fix requires v7.18.0). Treat the
+  dependency upgrade as a separately tested follow-up; no emergency package
+  change was made during this production cutover.
 
 The local UI limitation is environmental; the hosted exact-SHA CI remains the
 authoritative full-suite gate.
@@ -183,4 +187,5 @@ planner flags at safe defaults and do not touch PayOS/payment. For future
 releases, configure the GitHub `production` environment, `PRODUCTION_URL`, and
 Cloudflare secrets so `.github/workflows/deploy.yml` can provide its own guarded
 receipt. Rollback remains code-only to a schema-compatible SHA; do not use a
-down-migration, and reserve D1 restore/export for incidents.
+down-migration, and reserve D1 restore/export for incidents. Schedule a tested
+React Router major-version upgrade before the next feature release.

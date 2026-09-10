@@ -106,3 +106,6 @@ updated only through the approved additive migrations.
   localhost or arbitrary origins. No planner flag, PayOS/payment path or secret
   value was changed. The separate T08 `xanthos` branch contains
   application/migration changes and is not part of authoritative `main`.
+- Follow-up: test and schedule the React Router `>=7.18.0` upgrade for the two
+  moderate production dependency advisories; do not patch it ad hoc in this
+  receipt-only cutover.

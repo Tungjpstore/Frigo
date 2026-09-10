@@ -97,6 +97,10 @@ Verified against `https://frigo.tungjpstore.net` after the cutover:
   shell/jsdom UI suites (`localStorage`/`container` unavailable). Hosted exact-SHA
   CI run `34413458369` remains the authoritative 1,487/87 PASS gate.
 - `pnpm schema:check:remote`: PASS; `pnpm week:reconcile:remote -- --strict --json`: PASS.
+- `pnpm audit --prod`: 2 moderate `react-router` advisories via
+  `react-router-dom` (patched upstream at 7.18.0; major upgrade not included in
+  this cutover). Full dependency audit reports 21 findings, with the remainder
+  confined to development/tooling paths (`wrangler`/`miniflare`/`jsdom`).
 
 ## PR #8 metadata
 
