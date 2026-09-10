@@ -20,6 +20,8 @@
 ## Authoritative source
 
 - GitHub source of truth: main.
+- Current main head: `89eeb52a56f06d766d4ecbe3c4abf9993bbebcb6` (docs-only merge after deployment).
+- Deployed application SHA: `d1b06732f8a80db4e77986df31ff28d9f04641fa`.
 - PRODUCTION_APPLICATION_BASE_SHA:
   `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d`.
 - PRE_CLEANUP_MAIN_HEAD: `41d2de6bc76331322cc63e8038432b0b02f60da1`.
