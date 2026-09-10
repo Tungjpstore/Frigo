@@ -3,6 +3,12 @@
 User-authorized 2026-09-09, repository confirmed `vn-2c/Frigo`.
 This task runs independently of the T01–T07 production/release work on main.
 
+2026-09-10 authorized amendment (DEC-006): the user approved publishing the full
+T08 checkpoint on `hoplite/xanthos-7d942897` instead of the originally requested
+`feature/t08-inventory-truth-foundation`. All references below to canonical
+publication/checkout now mean the approved handoff branch. No other restriction
+or T09 authorization changed.
+
 ## Start / takeover
 
 1. Inspect clean/dirty Git state, branch, HEAD and fetched explicit origin/main.

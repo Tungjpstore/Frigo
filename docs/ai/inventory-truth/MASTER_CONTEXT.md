@@ -15,13 +15,17 @@ T08 builds a foundation, not the complete truth engine.
 ## Authority and branch policy
 
 User confirmed `vn-2c/Frigo` on 2026-09-09 (the initial packet named another owner).
-Canonical branch: `feature/t08-inventory-truth-foundation`.
+Canonical handoff/publication branch: `hoplite/xanthos-7d942897`.
+Originally requested local branch: `feature/t08-inventory-truth-foundation`.
+On 2026-09-10 the user explicitly permitted publication on the Hoplite-authorized
+branch instead of the original canonical name (DEC-006). This supersedes only the
+branch-name restriction; every main/deployment/database/payment exclusion remains.
 BASE_MAIN_SHA: `d1b06732f8a80db4e77986df31ff28d9f04641fa`.
 Git, source, migrations, tests and these documents are authoritative, not chat or
 account memory. On takeover read these six files in the specified order, inspect
 Git status/HEAD/main and diff Last Verified SHA..HEAD before edits. Use trusted
 repository-bound fetch/publication tools; shell fetch is blocked in this workspace.
-Only the canonical branch may be published. Never force-push or merge/rebase a
+Only the authorized handoff branch may be published. Never force-push or merge/rebase a
 new main automatically; record divergence and numbering collisions instead.
 
 ## Architecture and compatibility
@@ -112,7 +116,6 @@ tests/integration/inventory-truth.test.ts` as one shell command for the 130 focu
 checks. See VERIFICATION.md for full regression and local-only migration commands.
 Do not run any remote/database/deploy command to validate this foundation.
 
-Last verified code: dd2ecc6f7066250dfdc5214a3d6c356e1479b61e. The final handoff commit
-is docs-only. The branch remains local/unpublished due to the recorded broker
-authority denial; Git handoff to another account is NOT available until authorized
-canonical publication succeeds. T08 remains IN_PROGRESS despite passing local gates.
+Last verified code: dd2ecc6f7066250dfdc5214a3d6c356e1479b61e. Subsequent changes are
+docs-only. Publication is now authorized on `hoplite/xanthos-7d942897`; see
+CURRENT_STATE.md and the latest VERIFICATION.md entry for the confirmed receipt.

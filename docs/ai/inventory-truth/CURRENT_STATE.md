@@ -1,12 +1,13 @@
 # Inventory Truth current state
 
-Updated: 2026-09-10 UTC, publication-only recheck
+Updated: 2026-09-10 UTC, user-authorized publication
 Current Task: T08
-Current Phase: T08F Verification/Handoff — local gates passed; canonical publication blocked
-Status: IN_PROGRESS
-Canonical Branch: feature/t08-inventory-truth-foundation
+Current Phase: T08F Verification/Handoff — authorized publication and final gate rerun
+Status: READY_FOR_VERIFICATION
+Canonical Branch: hoplite/xanthos-7d942897 (user-approved handoff/publication branch; DEC-006)
+Original Local Branch: feature/t08-inventory-truth-foundation
 Base Main SHA: d1b06732f8a80db4e77986df31ff28d9f04641fa
-Current HEAD: b5577ead44645d6d25171e7549a6f0f4cd7f0e4e (before this docs-only recheck receipt; resolve final tip with git rev-parse HEAD)
+Current HEAD: 4cc290f8ea2be4000bc1368abd780ef25204b3a5 (before this docs-only authorization checkpoint; resolve final tip with git rev-parse HEAD)
 Last Verified SHA: dd2ecc6f7066250dfdc5214a3d6c356e1479b61e
 origin/main SHA: d1b06732f8a80db4e77986df31ff28d9f04641fa
 Main Has Diverged Since Base: NO (last fetch)
@@ -26,7 +27,7 @@ See VERIFICATION.md for exact commands, failures corrected and limits.
 
 ## In Progress
 
-Canonical branch publication/unblocking; this checkpoint records the final local handoff.
+Publication on the explicitly authorized Hoplite branch and fresh local gate rerun.
 
 ## Not Started
 
@@ -35,7 +36,8 @@ canonical publication and clean-tree completion gate are satisfied.
 
 ## Known Problems
 
-Canonical push is CONFIRMED BLOCKED by the trusted broker. It permits the original
+Historical blocker, superseded by DEC-006: original canonical push was blocked by
+the trusted broker. It permits the original
 thread branch/stack or linked open PR head, not the user-required canonical branch.
 No linked PR exists; no alternate branch was pushed. Platform feedback filed.
 2026-09-10: user reconfirmed vn-2c/Frigo; all attached packets are identical to
@@ -44,8 +46,8 @@ the complete b5577ea checkpoint through the broker was again denied by the same
 branch authority rule. Repository identity is resolved; publication authority is not.
 Shell fetch is blocked; explicit main fetch via broker succeeds.
 No unresolved local test failures. No main divergence or numbering conflict seen.
-No code changed since Last Verified SHA; only Git/source-control checks ran in
-this publication-only session. FULL SUITE NOT RUN IN THIS SESSION.
+No code changed since Last Verified SHA. Full/focused checks are being rerun for
+the publication session; the preceding publication-only session did not rerun tests.
 
 Foundation limitations: sub-milli/overflow/invalid quantities block backfill without
 rounding; unsupported legacy data needs explicit reconciliation. Raw invalid/unknown
@@ -54,10 +56,7 @@ guest household transfers produce parity drift, never automatic lot changes.
 
 ## Exact Next Action
 
-Obtain a platform-authorized publication path for ONLY
-feature/t08-inventory-truth-foundation (e.g. authorized canonical head binding).
-Then inspect status, canonical remote head and Last Verified SHA..HEAD; publish
-the docs-inclusive tip with the trusted broker and its exact remote-head lease.
-Do not use hoplite/* instead, force-push, merge/rebase main, deploy or touch remote
-D1. Only after confirmed push and clean tree, record the final T08 report and
-completion receipt. T09 must not start automatically.
+Publish the docs-inclusive tip to `hoplite/xanthos-7d942897` using the trusted
+broker and exact remote-head lease. Finish local verification and record the final
+T08 report only after confirmed publication and clean tree. Do not force-push,
+merge/rebase main, deploy or touch remote D1. T09 must not start automatically.

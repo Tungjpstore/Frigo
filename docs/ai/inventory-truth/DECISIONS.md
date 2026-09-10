@@ -68,3 +68,17 @@ Alternatives: Modify auth or silently change branch rejected. T09 owns transitio
 Consequences: Local verification is not cross-account Git availability or completion.
 Related files: packages/db/src/inventory-truth.ts; CURRENT_STATE.md; VERIFICATION.md.
 Related commit: dd2ecc6f7066250dfdc5214a3d6c356e1479b61e (code); following docs checkpoint.
+
+## DEC-006 — User-approved publication branch substitution
+
+Context: Trusted publication rejected the requested feature branch; the user
+explicitly approved `hoplite/xanthos-7d942897` instead on 2026-09-10.
+Decision: That exact branch is the canonical cross-account handoff/publication
+branch. Fast-forward it to the existing T08 lineage without rewriting any commit.
+Reason: Satisfy durable Git handoff within both user and platform authorization.
+Alternatives: Credential/policy bypass, force push or main publication remain forbidden.
+Consequences: Supersedes only canonical-name clauses in DEC-001/005 and the original
+task packet. All no-main/no-deploy/no-remote-D1/no-PayOS boundaries are unchanged.
+The original feature branch remains a local historical alias, not the published source.
+Related files: MASTER_CONTEXT.md; CURRENT_STATE.md; T08 task packet and final report.
+Related commit: docs-only authorization checkpoint after 4cc290f (see Git log).
