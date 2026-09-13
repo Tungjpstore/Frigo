@@ -138,7 +138,7 @@ changing the production receipt above:
   remains untrusted draft data requiring review and confirmation.
 - Focused local checks on 2026-09-13: Qwen provider ESLint PASS;
   provider/recovery, queue, quota, scan-route and UI tests PASS. The complete
-  candidate `pnpm check` gate is green: 1,578 tests / 93 files PASS, lint,
+  candidate `pnpm check` gate is green: 1,579 tests / 93 files PASS, lint,
   typecheck, migration replay through `0023` and production build all PASS.
 - Live provider access is **NOT VERIFIED**. A read-only probe of the supplied
   test credential against `https://api.b.ai/v1/models` returned HTTP 401
@@ -165,9 +165,10 @@ changing the production receipt above:
   HEAD...github-frigo/main` returned `0 2`; no remote fetch or mutation was run.
 - `git diff --check`: PASS for this documentation checkpoint.
 - OCR candidate local lint/typecheck/test/build/migration checks: **PASS** on
-  2026-09-13. Hosted CI, authorized live non-PII Qwen smoke, migration `0023`
-  production apply, readiness and canary evidence remain **PENDING**; do not
-  infer production readiness from local gates.
+  2026-09-13. Hosted PR #17 CI run `34728606704` also passed (1,579 tests / 93
+  files). Authorized live non-PII Qwen smoke, migration `0023` production apply,
+  readiness and canary evidence remain **PENDING**; do not infer production
+  readiness from CI alone.
 
 ## PR #8 metadata
 

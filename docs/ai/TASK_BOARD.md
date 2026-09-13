@@ -130,7 +130,7 @@ has not changed remote D1, production secrets or Worker traffic.
 | Output quality | Zod validation plus rejection of generic/placeholder labels and confidence below `0.6`; empty usable output is `AI_SCAN_NO_USABLE_ITEMS` | OCR remains untrusted draft data and requires review/confirmation |
 | Queue failures | Typed permanent `MODEL_NOT_FOUND`/auth/permission/license/schema/invalid-response/quality failures; bounded retries for `REQUEST_TIMEOUT`/`NETWORK_ERROR`/`RATE_LIMITED`/`UPSTREAM_ERROR` | Existing lease, idempotency, tenant fencing, max attempts and DLQ remain authoritative |
 | Schema/data | Additive `0023_scan_request_fingerprint.sql`; no backfill or inventory/auth/Week/PayOS change | Local candidate covers `0001`-`0023`; remote D1 remains at `0022` until explicit guarded migration before deploy |
-| Verification | Full local `pnpm check` PASS on 2026-09-13: 1,578 tests / 93 files, lint, typecheck, migration replay through 0023 and build; hosted CI/live-provider/canary evidence pending (B.AI `/v1/models` probe returned 401) | Do not claim release or readiness until exact-SHA receipts exist |
+| Verification | Local `pnpm check` and hosted PR #17 CI run `34728606704` PASS on 2026-09-13: 1,579 tests / 93 files, lint, typecheck, migration replay through 0023 and build; live-provider/canary evidence pending (B.AI `/v1/models` probe returned 401) | Do not claim release or readiness until exact-SHA receipts exist |
 
 Candidate files are currently uncommitted on `codex/ocr-production-recovery`.
 Local validation is complete; the next owner action is to obtain hosted CI and

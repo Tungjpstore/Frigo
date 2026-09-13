@@ -79,9 +79,9 @@ remains the optional text/ranking fallback when
 `DEEPSEEK_FALLBACK_ENABLED=true`, and Z.ai/GLM the optional vision/text
 extension path when `GLM_FALLBACK_ENABLED=true`. GLM-5.3 Flash is
 future model work, not an active production setting. Full local candidate gates
-passed on 2026-09-13 (1,578 tests / 93 files, lint, typecheck, migration replay
-and build); exact-SHA hosted CI, live non-PII smoke, readiness and canary
-evidence are still required before release.
+passed on 2026-09-13 (1,579 tests / 93 files, lint, typecheck, migration replay
+and build); hosted PR #17 CI run `34728606704` is green. Live non-PII smoke,
+readiness and canary evidence are still required before release.
 A read-only probe of the supplied test credential against `https://api.b.ai/v1/models`
 returned HTTP 401 (`Invalid token`); the credential was not persisted.
 

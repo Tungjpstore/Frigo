@@ -141,9 +141,9 @@ then the Worker was deployed from a clean checkout of the approved `main` SHA.
   dependency upgrade as a separately tested follow-up; no emergency package
   change was made during this production cutover.
 - `git diff --check`: PASS for the OCR candidate. `pnpm check` on 2026-09-13
-  passed 1,578 tests / 93 files plus lint, typecheck, migration replay through
-  `0023` and build. Hosted CI, live-provider smoke and production canary remain
-  pending.
+  passed 1,579 tests / 93 files plus lint, typecheck, migration replay through
+  `0023` and build. Hosted PR #17 CI run `34728606704` passed the same checks;
+  live-provider smoke and production canary remain pending.
 
 The local UI limitation is environmental; the hosted exact-SHA CI remains the
 authoritative full-suite gate.
@@ -180,8 +180,9 @@ receipt or authorize a deployment.
   `0022` until an explicitly authorized guarded migration step.
 
 Focused local checks and the full candidate gates passed on 2026-09-13:
-`pnpm check` reports 1,578 tests / 93 files PASS, lint/typecheck/migration replay
-through `0023` and build PASS. Live provider access is not verified: a read-only
+`pnpm check` reports 1,579 tests / 93 files PASS, lint/typecheck/migration replay
+through `0023` and build PASS; hosted PR #17 CI run `34728606704` is also green.
+Live provider access is not verified: a read-only
 `https://api.b.ai/v1/models` probe with the supplied test credential returned
 HTTP 401 (`Invalid token`); the credential was not persisted or echoed in
 repository files. No remote migration, production secret change, Worker
