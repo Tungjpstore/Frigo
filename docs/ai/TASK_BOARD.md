@@ -46,10 +46,10 @@ authorized work.
 GitHub source of truth: main.
 Deployed application SHA: `d1b06732f8a80db4e77986df31ff28d9f04641fa`.
 Post-deployment GitHub `main` changes are documentation-only receipt merges; the
-OCR candidate is an uncommitted worktree exception and is not deployed.
+OCR candidate is committed on its feature branch and is not deployed.
 Current `github-frigo/main`: `db2377fd9f63d1be38ce3882c6d8173e0bf9e497`;
-the `codex/ocr-production-recovery` worktree contains uncommitted candidate
-code/config/tests and must not be represented as deployed.
+the `codex/ocr-production-recovery` branch contains candidate code/config/tests
+and must not be represented as deployed.
 Release Integration: COMPLETE.
 Main Integration: COMPLETE.
 PRE_CLEANUP_MAIN_HEAD: `41d2de6bc76331322cc63e8038432b0b02f60da1`.
@@ -132,7 +132,8 @@ has not changed remote D1, production secrets or Worker traffic.
 | Schema/data | Additive `0023_scan_request_fingerprint.sql`; no backfill or inventory/auth/Week/PayOS change | Local candidate covers `0001`-`0023`; remote D1 remains at `0022` until explicit guarded migration before deploy |
 | Verification | Local `pnpm check` and hosted PR #17 CI run `34728606704` PASS on 2026-09-13: 1,579 tests / 93 files, lint, typecheck, migration replay through 0023 and build; live-provider/canary evidence pending (B.AI `/v1/models` probe returned 401) | Do not claim release or readiness until exact-SHA receipts exist |
 
-Candidate files are currently uncommitted on `codex/ocr-production-recovery`.
-Local validation is complete; the next owner action is to obtain hosted CI and
-authorized live Qwen smoke evidence, then perform the guarded migration/deploy
-sequence. Keep this item IN PROGRESS until those receipts exist.
+Candidate commits `ec87aec` and `56968ba` are pushed on
+`codex/ocr-production-recovery`. Local and hosted validation is complete; the
+next owner action is to obtain authorized live Qwen smoke evidence, then perform
+the guarded migration/deploy sequence. Keep this item IN PROGRESS until those
+receipts exist.

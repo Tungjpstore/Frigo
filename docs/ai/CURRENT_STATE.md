@@ -31,11 +31,11 @@
 - GitHub API redirects `vn-2c/Frigo` to canonical public repository
   `Tungjpstore/Frigo`; the configured `github-frigo` remote remains the alias.
 - OCR recovery branch: `codex/ocr-production-recovery`, based at `d8ca112a5ac5eb215f36a3f89b4218e2fc691371`;
-  candidate code/config/tests are currently uncommitted in the worktree and are
-  not present in the deployed application.
+  candidate implementation is committed at `ec87aec` with documentation
+  checkpoint `56968ba`; it is not present in the deployed application.
 - At the 2026-09-12 audit, the remote `main` tree was source-equivalent to
   `d8ca112`; its two commits ahead of the local branch were documentation-only
-  merge commits. Do not treat the OCR worktree (or a later local docs commit) as
+  merge commits. Do not treat the OCR branch (or a later local docs commit) as
   a GitHub or production release without a new receipt.
 - PRODUCTION_APPLICATION_BASE_SHA:
   `23ef51d6ec12a5a3e319a2d941dca39d2775cb9d`.
@@ -46,7 +46,7 @@
 - Main head before this correction: `41d2de6bc76331322cc63e8038432b0b02f60da1`.
 - The main merge tree is source-equivalent to the verified release head.
 - Every change after the application base in GitHub `main` is documentation-only;
-  the OCR recovery candidate is an uncommitted worktree exception.
+  the OCR recovery candidate is a feature-branch exception.
 
 ## Verification snapshot
 

@@ -53,8 +53,8 @@ OCR_RECOVERY_BASE_SHA:
 
 OCR_RECOVERY_STATUS: **CANDIDATE / NOT DEPLOYED**
 
-OCR_RECOVERY_CHECKPOINT: 2026-09-12; code, configuration and tests are currently
-uncommitted in the shared worktree. The deployed Worker and production D1 remain
+OCR_RECOVERY_CHECKPOINT: 2026-09-13; implementation `ec87aec` and documentation
+`56968ba` are pushed on the feature branch. The deployed Worker and production D1 remain
 at the receipt above until a separately authorized release is verified.
 
 ## Current status
@@ -71,7 +71,7 @@ APPLICATION INTEGRATION: complete in main at `23ef51d6ec12a5a3e319a2d941dca39d27
 
 The main merge tree is source-equivalent to the verified release head. Changes
 after the production application base on GitHub remain documentation-only; the
-separate OCR recovery worktree contains candidate code/config/test changes that
+separate OCR recovery branch contains candidate code/config/test changes that
 are not part of `main` or production.
 
 ## Production cutover receipt
